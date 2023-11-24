@@ -25,6 +25,9 @@ class Item(db.Model):
     question = db.Column(db.String(100))
     year = db.Column(db.Integer, default=datetime.datetime.now().year)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    category = db.Column(db.String(50))  # New field for category
+    image_url = db.Column(db.String(255))  # New field for image URL
+    priority = db.Column(db.String(50))
 
 @app.route('/')
 def index():
@@ -60,6 +63,9 @@ def submit_item():
         user_id = 1  # Replace this with the actual logic to get the current user's ID
 
         new_item = Item(description=description, link=link, price=price, 
+                        category=request.form['category'], 
+                        image_url=request.form['image_url'],
+                        priority = request.form['priority'],
                         status='Available', user_id=current_user.id)
         db.session.add(new_item)
         db.session.commit()
@@ -91,6 +97,41 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
+@app.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
+@login_required
+def edit_item(item_id):
+    item = Item.query.get_or_404(item_id)
+    if item.user_id != current_user.id:
+        return 'You do not have permission to edit this item.'
+
+    if request.method == 'POST':
+        # Update item details with data from the form
+        item.description = request.form['description']
+        item.link = request.form['link']
+        item.price = float(request.form['price'])
+        # In /edit_item route
+        item.category = request.form['category']
+        item.image_url = request.form['image_url']
+        item.priority = request.form['priority']
+
+        db.session.commit()
+        return redirect(url_for('items'))
+
+    return render_template('edit_item.html', item=item)
+
+@app.route('/delete_item/<int:item_id>')
+@login_required
+def delete_item(item_id):
+    item = Item.query.get_or_404(item_id)
+    if item.user_id != current_user.id:
+        return 'You do not have permission to delete this item.'
+
+    db.session.delete(item)
+    db.session.commit()
+    return redirect(url_for('items'))
+
+
 
 login_manager = LoginManager()
 login_manager.init_app(app)
