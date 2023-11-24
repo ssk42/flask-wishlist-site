@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- ... other head elements ... -->
+</head>
+<body>
+    <header>
+        <nav>
+            <!-- ... other navigation items ... -->
+            {% if current_user.is_authenticated %}
+                <span>Welcome, {{ current_user.name }}!</span>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- ... rest of your HTML structure ... -->
+</body>
+</html>
