@@ -60,7 +60,7 @@ def submit_item():
         user_id = 1  # Replace this with the actual logic to get the current user's ID
 
         new_item = Item(description=description, link=link, price=price, 
-                        status='Available', user_id=user_id)
+                        status='Available', user_id=current_user.id)
         db.session.add(new_item)
         db.session.commit()
 
@@ -69,9 +69,10 @@ def submit_item():
 
 
 @app.route('/items')
+@login_required
 def items():
     all_items = Item.query.all()
-    return render_template('items_list.html', items=all_items)
+    return render_template('items_list.html', items=all_items, current_user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

@@ -1,0 +1,7 @@
+<!-- In items_list.html -->
+{% for item in items %}
+  <!-- Item display code -->
+  {% if item.user_id == current_user.id %}
+    <!-- Show edit/delete options -->
+  {% endif %}
+{% endfor %}
