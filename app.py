@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import datetime
+import pandas as pd
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wishlist.db'
@@ -144,6 +145,29 @@ def delete_item(item_id):
     db.session.delete(item)
     db.session.commit()
     return redirect(url_for('items'))
+
+@app.route('/export_items')
+def export_items():
+    # Query your database for items
+    items = Item.query.all()
+
+    # Create a DataFrame
+    data = {
+        'User': [item.user.name for item in items],
+        'Description': [item.description for item in items],
+        'Link': [item.link for item in items],
+        'Comment': [item.comment for item in items],
+        'Price': [item.price for item in items],
+        'Year': [item.year for item in items]
+        # Add other fields as necessary
+    }
+    df = pd.DataFrame(data)
+
+    # Convert DataFrame to Excel
+    filename = 'allWishlistItems.xlsx'
+    df.to_excel(filename, index=False)
+
+    return send_file(filename, as_attachment=True)
 
 
 

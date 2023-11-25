@@ -2,13 +2,15 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<a href="{{ url_for('items', sort_by='user') }}">Sort by User</a>
-<a href="{{ url_for('items', sort_by='price', sort_order='asc') }}">Sort Price Ascending</a>
-<a href="{{ url_for('items', sort_by='price', sort_order='desc') }}">Sort Price Descending</a>
+<a href="{{ url_for('items', sort_by='user') }}">Sort by User</a><br>
+<a href="{{ url_for('items', sort_by='price', sort_order='asc') }}">Sort Price Ascending</a><br>
+<a href="{{ url_for('items', sort_by='price', sort_order='desc') }}">Sort Price Descending</a><br>
+<a href="{{ url_for('export_items') }}" class="export-button">Export Items to Excel</a>
 
 {% for item in items %}
   <!-- Item display code -->
   {% if item.user_id == current_user.id %}
+  <br><br>
     <a href="{{ url_for('edit_item', item_id=item.id) }}">Edit</a>
     <a href="{{ url_for('delete_item', item_id=item.id) }}" onclick="return confirm('Are you sure?');">Delete</a>
   {% else %}
