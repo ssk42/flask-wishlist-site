@@ -35,6 +35,13 @@
                         <a href="{{ url_for('edit_item', item_id=item.id) }}">Edit</a>
                         <div>Item Status: {{ item.status}}</div>
                     {% endif %}
+                    <!-- Display total for user and status -->
+                    {% set total_key = (item.user_id, item.status) %}
+                    {% if totals.get(total_key) %}
+                        <div class="alert alert-info">
+                            <strong>Total for {{ item.user.name }} ({{ item.status }}):</strong> ${{ totals[total_key] }}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

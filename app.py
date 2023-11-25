@@ -89,7 +89,15 @@ def items():
     else:
         # Default sorting by user and status
         all_items = Item.query.order_by(Item.user_id, Item.status).all()
-    return render_template('items_list.html', items=all_items, current_user=current_user)
+        # Calculate total price by user and status
+        total_price_by_user_status = db.session.query(
+            Item.user_id, Item.status, db.func.sum(Item.price).label('total_price')
+        ).group_by(Item.user_id, Item.status).all()
+
+        # Convert to a more accessible format if necessary, e.g., a dictionary
+        totals_dict = {(total.user_id, total.status): total.total_price for total in total_price_by_user_status}
+
+    return render_template('items_list.html', items=all_items, current_user=current_user, totals=totals_dict)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
