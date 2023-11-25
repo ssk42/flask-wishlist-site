@@ -1,42 +1,54 @@
-<!DOCTYPE html>
 {% extends 'base.html' %}
 
 {% block content %}
-<html>
-<head>
-    <title>Add Item</title>
-</head>
-<body>
+<div class="container mt-4">
     <h1>Add New Item</h1>
     <form action="/submit_item" method="post">
-        <label for="priority">Priority:</label>
-        <select id="priority" name="priority">
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-        </select><br><br>
-        <label for="description">Description:</label>
-        <input type="text" id="description" name="description"><br><br>
-        <label for="link">Link:</label>
-        <input type="text" id="link" name="link"><br><br>
-        <label for="price">Price:</label>
-        <input type="number" id="price" name="price" step="0.01"><br><br>
-        <label for="category">Category:</label>
-        <input type="text" id="category" name="category"><br><br>
-        <label for="image_url">URL for an Image:</label>
-        <input type="text" id="image_url" name="image_url"><br><br>
-        <label for="status">Status:</label>
-        <select id="status" name="status">
-            <option value="Available">Available</option>
-            <option value="Claimed">Claimed</option>
-            <option value="Purchased">Purchased</option>
-            <option value="Received">Received</option>
-        </select><br><br>
-        <input type="submit" value="Submit Item">
+        <div class="form-group">
+            <label for="priority">Priority:</label>
+            <select id="priority" name="priority" class="form-control">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
 
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <input type="text" class="form-control" id="description" name="description">
+        </div>
 
+        <div class="form-group">
+            <label for="link">Link:</label>
+            <input type="text" class="form-control" id="link" name="link">
+        </div>
 
+        <div class="form-group">
+            <label for="price">Price:</label>
+            <input type="number" class="form-control" id="price" name="price" step="0.01">
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <input type="text" class="form-control" id="category" name="category">
+        </div>
+
+        <div class="form-group">
+            <label for="image_url">URL for an Image:</label>
+            <input type="text" class="form-control" id="image_url" name="image_url">
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status:</label>
+            <select id="status" name="status" class="form-control">
+                <option value="Available">Available</option>
+                <option value="Claimed">Claimed</option>
+                <option value="Purchased">Purchased</option>
+                <option value="Received">Received</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Submit Item</button>
     </form>
-</body>
-</html>
+</div>
 {% endblock %}

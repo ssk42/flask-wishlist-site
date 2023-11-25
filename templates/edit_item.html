@@ -1,52 +1,57 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Edit Item</title>
-    <!-- Add any head elements here -->
-</head>
-<body>
+<div class="container mt-4">
     <h1>Edit Item</h1>
     <form action="{{ url_for('edit_item', item_id=item.id) }}" method="post">
 
+        <div class="form-group">
+            <label for="image_url">Image URL:</label>
+            <input type="text" class="form-control" id="image_url" name="image_url" value="{{ item.image_url }}">
+        </div>
 
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <input type="text" class="form-control" id="description" name="description" value="{{ item.description }}">
+        </div>
 
-        <label for="image_url">Image URL:</label>
-        <input type="text" id="image_url" name="image_url" value="{{ item.image_url }}"><br><br>
+        <div class="form-group">
+            <label for="link">Link:</label>
+            <input type="text" class="form-control" id="link" name="link" value="{{ item.link }}">
+        </div>
 
-        <label for="description">Description:</label>
-        <input type="text" id="description" name="description" value="{{ item.description }}"><br><br>
+        <div class="form-group">
+            <label for="price">Price:</label>
+            <input type="number" class="form-control" id="price" name="price" value="{{ item.price }}">
+        </div>
 
-        <label for="link">Link:</label>
-        <input type="text" id="link" name="link" value="{{ item.link }}"><br><br>
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <input type="text" class="form-control" id="category" name="category" value="{{ item.category }}">
+        </div>
 
-        <label for="price">Price:</label>
-        <input type="number" id="price" name="price" value="{{ item.price }}"><br><br>
-
-        <label for="category">Category:</label>
-        <input type="text" id="category" name="category" value="{{ item.category }}"><br><br>
-
-        <label for="priority">Priority:</label>
-        <select id="priority" name="priority">
-            <option value="High" {% if item.priority == 'High' %}selected{% endif %}>High</option>
-            <option value="Medium" {% if item.priority == 'Medium' %}selected{% endif %}>Medium</option>
-            <option value="Low" {% if item.priority == 'Low' %}selected{% endif %}>Low</option>
-        </select><br><br>
+        <div class="form-group">
+            <label for="priority">Priority:</label>
+            <select class="form-control" id="priority" name="priority">
+                <option value="High" {% if item.priority == 'High' %}selected{% endif %}>High</option>
+                <option value="Medium" {% if item.priority == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="Low" {% if item.priority == 'Low' %}selected{% endif %}>Low</option>
+            </select>
+        </div>
 
         {% if item.user_id != current_user.id %}
-        <label for="status">Status:</label>
-        <select id="status" name="status">
-            <option value="Available" {% if item.status == 'Available' %}selected{% endif %}>Available</option>
-            <option value="Claimed">Claimed</option>
-            <option value="Purchased">Purchased</option>
-            <option value="Received">Received</option>
-        </select><br><br>
+        <div class="form-group">
+            <label for="status">Status:</label>
+            <select class="form-control" id="status" name="status">
+                <option value="Available" {% if item.status == 'Available' %}selected{% endif %}>Available</option>
+                <option value="Claimed">Claimed</option>
+                <option value="Purchased">Purchased</option>
+                <option value="Received">Received</option>
+            </select>
+        </div>
         {% endif %}
-        <input type="submit" value="Update Item">
-    </form>
-</body>
-</html>
 
+        <button type="submit" class="btn btn-primary">Update Item</button>
+    </form>
+</div>
 {% endblock %}

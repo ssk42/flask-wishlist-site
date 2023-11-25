@@ -1,13 +1,19 @@
-<!DOCTYPE html>
 {% extends 'base.html' %}
 
 {% block content %}
-<html>
-<head>
-    <title>Wishlist Website</title>
-</head>
-<body>
-    <h1>Welcome to the Wishlist Website</h1>
-</body>
-</html>
+<div class="container mt-4">
+    <h1 class="display-4">Welcome to the Family Wishlist!</h1>
+    <p class="lead">This is a place where family members can share their wishlists with each other.</p>
+
+    <hr class="my-4">
+
+    <p>Start by viewing the current wishlist items or adding your own.</p>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+        <a class="btn btn-primary btn-lg" href="{{ url_for('items') }}" role="button">View Wishlist</a>
+        <a class="btn btn-secondary btn-lg" href="{{ url_for('submit_item') }}" role="button">Add New Item</a>
+    </div>
+
+    <!-- Optionally, include a brief guide or FAQ section here -->
+
+</div>
 {% endblock %}
