@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import session
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import datetime
@@ -47,12 +48,18 @@ def register():
         if existing_user:
             return 'User already exists!'
 
-        new_user = User(name=name, email=email)
-        db.session.add(new_user)
-        db.session.commit()
+        try:
+            new_user = User(name=name, email=email)  # Define new_user
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for('login'))
+        except Exception as e:
+            print(e)  # Log the exception for debugging
+            db.session.rollback()
+            return 'An error occurred during registration.'
 
-        return redirect(url_for('index'))
     return render_template('registration.html')
+
 
 
 @app.route('/submit_item', methods=['GET', 'POST'])
@@ -69,7 +76,7 @@ def submit_item():
                         category=request.form['category'], 
                         image_url=request.form['image_url'],
                         priority = request.form['priority'],
-                        status=request.form['status'], user_id=current_user.id)
+                        status=request.form['status'], user_id=user_id)
         db.session.add(new_item)
         db.session.commit()
 
@@ -120,7 +127,11 @@ def logout():
 @app.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
 @login_required
 def edit_item(item_id):
-    item = Item.query.get_or_404(item_id)
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
+    # Rest of your code...
+
     if item.user_id != current_user.id:
         if request.method == 'POST':
            item.status = request.form['status'] 
@@ -146,13 +157,14 @@ def edit_item(item_id):
 @app.route('/delete_item/<int:item_id>')
 @login_required
 def delete_item(item_id):
-    item = Item.query.get_or_404(item_id)
-    if item.user_id != current_user.id:
+    item = db.session.get(Item, item_id)
+    if item is None or item.user_id != current_user.id:
         return 'You do not have permission to delete this item.'
-
+    
     db.session.delete(item)
     db.session.commit()
     return redirect(url_for('items'))
+
 
 @app.route('/export_items')
 def export_items():
@@ -184,7 +196,7 @@ login_manager.init_app(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 if __name__ == '__main__':
