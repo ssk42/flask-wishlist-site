@@ -28,6 +28,10 @@
                   <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
                   </li>
+                {% else %}
+                  <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('register') }}">Logout</a>
+                  </li>
                 {% endif %}
               </ul>
             </div>
@@ -35,7 +39,7 @@
           
     </header>
 
-    
+
     <main>
         <div class="container mt-4">
             {% block content %}
