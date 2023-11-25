@@ -11,12 +11,7 @@
     <h1>Edit Item</h1>
     <form action="{{ url_for('edit_item', item_id=item.id) }}" method="post">
 
-        <label for="priority">Priority:</label>
-        <select id="priority" name="priority">
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-        </select><br><br>
+
 
         <label for="image_url">Image URL:</label>
         <input type="text" id="image_url" name="image_url" value="{{ item.image_url }}"><br><br>
@@ -40,6 +35,15 @@
             <option value="Low" {% if item.priority == 'Low' %}selected{% endif %}>Low</option>
         </select><br><br>
 
+        {% if item.user_id != current_user.id %}
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="Available" {% if item.status == 'Available' %}selected{% endif %}>Available</option>
+            <option value="Claimed">Claimed</option>
+            <option value="Purchased">Purchased</option>
+            <option value="Received">Received</option>
+        </select><br><br>
+        {% endif %}
         <input type="submit" value="Update Item">
     </form>
 </body>

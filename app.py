@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import datetime
 
@@ -7,6 +8,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wishlist.db'
 db = SQLAlchemy(app)
 app.config['SECRET_KEY'] = 'your-secret-key'
+migrate = Migrate(app, db)
 
 # Database Models
 class User(UserMixin, db.Model):
@@ -21,7 +23,7 @@ class Item(db.Model):
     link = db.Column(db.String(50))
     comment = db.Column(db.String(100))
     price = db.Column(db.Float)
-    status = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='Available')
     question = db.Column(db.String(100))
     year = db.Column(db.Integer, default=datetime.datetime.now().year)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -59,14 +61,14 @@ def submit_item():
         description = request.form['description']
         link = request.form['link']
         price = float(request.form['price'])
-        # Assuming a placeholder for the current user's ID
-        user_id = 1  # Replace this with the actual logic to get the current user's ID
+        user_id = current_user.id  
+
 
         new_item = Item(description=description, link=link, price=price, 
                         category=request.form['category'], 
                         image_url=request.form['image_url'],
                         priority = request.form['priority'],
-                        status='Available', user_id=current_user.id)
+                        status=request.form['status'], user_id=current_user.id)
         db.session.add(new_item)
         db.session.commit()
 
@@ -77,7 +79,15 @@ def submit_item():
 @app.route('/items')
 @login_required
 def items():
-    all_items = Item.query.all()
+    sort_by = request.args.get('sort_by', 'user')  # Default sort by user
+    sort_order = request.args.get('sort_order', 'asc')  # Default sort order
+
+    if sort_by == 'price':
+        # Sorting logic by price
+        all_items = Item.query.order_by(Item.price.asc() if sort_order == 'asc' else Item.price.desc()).all()
+    else:
+        # Default sorting by user and status
+        all_items = Item.query.order_by(Item.user_id, Item.status).all()
     return render_template('items_list.html', items=all_items, current_user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -103,7 +113,10 @@ def logout():
 def edit_item(item_id):
     item = Item.query.get_or_404(item_id)
     if item.user_id != current_user.id:
-        return 'You do not have permission to edit this item.'
+        if request.method == 'POST':
+           item.status = request.form['status'] 
+           db.session.commit()
+           return redirect(url_for('items'))
 
     if request.method == 'POST':
         # Update item details with data from the form
@@ -114,11 +127,12 @@ def edit_item(item_id):
         item.category = request.form['category']
         item.image_url = request.form['image_url']
         item.priority = request.form['priority']
+        # item.status = request.form['status']
 
         db.session.commit()
         return redirect(url_for('items'))
 
-    return render_template('edit_item.html', item=item)
+    return render_template('edit_item.html', item=item, current_user = current_user)
 
 @app.route('/delete_item/<int:item_id>')
 @login_required
