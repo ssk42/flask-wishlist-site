@@ -8,10 +8,11 @@ import pandas as pd
 import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wishlist.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wishlist.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 db = SQLAlchemy(app)
 app.config['SECRET_KEY'] = 'your-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+
 migrate = Migrate(app, db)
 
 # Database Models
