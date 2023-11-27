@@ -22,9 +22,9 @@ class User(UserMixin, db.Model):
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(50), nullable=False)
-    link = db.Column(db.String(50))
+    link = db.Column(db.String(50), nullable=True)
     comment = db.Column(db.String(100))
-    price = db.Column(db.Float)
+    price = db.Column(db.Float, nullable=True)
     status = db.Column(db.String(20), nullable=False, default='Available')
     question = db.Column(db.String(100))
     year = db.Column(db.Integer, default=datetime.datetime.now().year)
@@ -67,8 +67,8 @@ def register():
 def submit_item():
     if request.method == 'POST':
         description = request.form['description']
-        link = request.form['link']
-        price = float(request.form['price'])
+        link = request.form['link'] if request.form['link'] else None
+        price = float(request.form['price']) if request.form['price'] else None
         user_id = current_user.id  
 
 
@@ -146,8 +146,8 @@ def edit_item(item_id):
     if request.method == 'POST':
         # Update item details with data from the form
         item.description = request.form['description']
-        item.link = request.form['link']
-        item.price = float(request.form['price'])
+        item.link = request.form['link'] if request.form['link'] else None
+        item.price = float(request.form['price']) if request.form['price'] else None
         # In /edit_item route
         item.category = request.form['category']
         item.image_url = request.form['image_url']
@@ -205,7 +205,7 @@ def load_user(user_id):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
 
 
 

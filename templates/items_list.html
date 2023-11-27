@@ -16,14 +16,21 @@
     {% for item in items %}
         <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3 mb-3">
             <div class="card">
-                <img src="{{ item.image_url }}" class="card-img-top" alt="{{ item.description }}">
+                {% set total_key = (item.user_id, item.status) %}
+                {% if totals.get(total_key) %}
+                    <div class="alert alert-info">
+                        <strong>Total for {{ item.user.name }} ({{ item.status }}):</strong> ${{ totals[total_key] }}
+                    </div>
+                {% endif %}
+                <img src="{{ item.image_url }}" class="card-img-top" alt="{{ item.description }}" style="height: 200px; object-fit: cover;">
                 <div class="card-body">
-                    <h5 class="card-title">{{ item.link }}</h5>
+                    {% if item.link %}
+                        <p class="card-text">
+                            <a href="{{ item.link }}" target="_blank">View Link</a>
+                        </p>
+                    {% endif %}
                     <p class="card-text">{{ item.category }}</p>
                     <p class="card-text">{{ item.priority }}</p>
-                    {% if item.image_url %}
-                        <img src="{{ item.image_url }}" alt="{{ item.description }}">
-                    {% endif %}
                     <p class="card-text"><small class="text-muted">Price: ${{ item.price }}</small></p>
                     <p class="card-text">{{ item.description }}</p>
                     <!-- Additional item details -->
@@ -36,12 +43,7 @@
                         <div>Item Status: {{ item.status}}</div>
                     {% endif %}
                     <!-- Display total for user and status -->
-                    {% set total_key = (item.user_id, item.status) %}
-                    {% if totals.get(total_key) %}
-                        <div class="alert alert-info">
-                            <strong>Total for {{ item.user.name }} ({{ item.status }}):</strong> ${{ totals[total_key] }}
-                        </div>
-                    {% endif %}
+
                 </div>
             </div>
         </div>
