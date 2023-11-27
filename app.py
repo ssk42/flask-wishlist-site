@@ -6,10 +6,19 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 import datetime
 import pandas as pd
 import os
+import re
 
 app = Flask(__name__)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wishlist.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+
+
+uri = os.getenv("DATABASE_URL")  # or other relevant config var
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+os.environ['DATABASE_URL'] = uri
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
+
 db = SQLAlchemy(app)
 app.config['SECRET_KEY'] = 'your-secret-key'
 
