@@ -29,7 +29,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(50), unique=True, nullable=False)
-    items = db.relationship('Item', backref='user', lazy=True)
+    items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
+    
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -44,6 +45,8 @@ class Item(db.Model):
     category = db.Column(db.String(50))  # New field for category
     image_url = db.Column(db.String(255))  # New field for image URL
     priority = db.Column(db.String(50))
+    last_updated_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
 
 @app.route('/')
 def index():
@@ -159,7 +162,8 @@ def edit_item(item_id):
 
     if item.user_id != current_user.id:
         if request.method == 'POST':
-           item.status = request.form['status'] 
+           item.status = request.form['status']
+           item.last_updated_by_id = current_user.id 
            db.session.commit()
            return redirect(url_for('items'))
 
@@ -213,6 +217,26 @@ def export_items():
     df.to_excel(filename, index=False)
 
     return send_file(filename, as_attachment=True)
+
+@app.route('/export_my_status_updates')
+@login_required
+def export_my_status_updates():
+    items = Item.query.filter_by(last_updated_by_id=current_user.id).all()
+
+    # Prepare data for the DataFrame
+    data = {
+        'Description': [item.description for item in items],
+        'Status': [item.status for item in items],
+        'Price': [item.price for item in items],
+        'Updated By': [item.last_updated_by.name for item in items]
+    }
+    df = pd.DataFrame(data)
+
+    filename = f'status_updates_by_{current_user.name}.xlsx'
+    df.to_excel(filename, index=False)
+
+    return send_file(filename, as_attachment=True)
+
 
 
 
