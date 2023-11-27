@@ -5,11 +5,13 @@ from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import datetime
 import pandas as pd
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wishlist.db'
 db = SQLAlchemy(app)
 app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 migrate = Migrate(app, db)
 
 # Database Models
@@ -87,28 +89,36 @@ def submit_item():
 @app.route('/items')
 @login_required
 def items():
-    sort_by = request.args.get('sort_by', 'user')  # Default sort by user
+    user_filter = request.args.get('user_filter')
+    sort_by = request.args.get('sort_by', 'price')  # Default sort by price
     sort_order = request.args.get('sort_order', 'asc')  # Default sort order
 
     # Initialize totals_dict before the if-else blocks
     totals_dict = {}
 
+    query = Item.query
+    if user_filter:
+        query = query.filter_by(user_id=user_filter)
+    
     if sort_by == 'price':
-        # Sorting logic by price
-        all_items = Item.query.order_by(Item.price.asc() if sort_order == 'asc' else Item.price.desc()).all()
+        query = query.order_by(Item.price.asc() if sort_order == 'asc' else Item.price.desc())
     else:
-        # Default sorting by user and status
-        all_items = Item.query.order_by(Item.user_id, Item.status).all()
+        query = query.order_by(Item.user_id, Item.status)
 
-        # Calculate total price by user and status
-        total_price_by_user_status = db.session.query(
-            Item.user_id, Item.status, db.func.sum(Item.price).label('total_price')
-        ).group_by(Item.user_id, Item.status).all()
+    all_items = query.all()
 
-        # Populate totals_dict
-        totals_dict = {(total.user_id, total.status): total.total_price for total in total_price_by_user_status}
+    # Calculate total price by user and status
+    # Note: Adjust this part if needed to work with the user filter
+    total_price_by_user_status = db.session.query(
+        Item.user_id, Item.status, db.func.sum(Item.price).label('total_price')
+    ).group_by(Item.user_id, Item.status).all()
+    totals_dict = {(total.user_id, total.status): total.total_price for total in total_price_by_user_status}
 
-    return render_template('items_list.html', items=all_items, current_user=current_user, totals=totals_dict)
+    # Fetch all users for the dropdown
+    users = User.query.all()
+
+    return render_template('items_list.html', items=all_items, users=users, current_user=current_user, totals=totals_dict)
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
