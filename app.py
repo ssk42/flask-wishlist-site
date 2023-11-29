@@ -34,7 +34,7 @@ class User(UserMixin, db.Model):
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.String(250), nullable=False)
+    description = db.Column(db.String(750), nullable=False)
     link = db.Column(db.String(500), nullable=True)
     comment = db.Column(db.String(100))
     price = db.Column(db.Float, nullable=True)
