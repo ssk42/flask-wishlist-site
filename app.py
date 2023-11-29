@@ -82,8 +82,8 @@ def register():
 def submit_item():
     if request.method == 'POST':
         description = request.form['description']
-        if description.count() > 250:
-            return 'The description is too long. Consider shortening it.'
+        # if description.count() > 250:
+        #     return 'The description is too long. Consider shortening it.'
         link = request.form['link'] if request.form['link'] else None
         price = float(request.form['price']) if request.form['price'] else None
         user_id = current_user.id  
