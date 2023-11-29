@@ -29,11 +29,13 @@
     {% for item in items %}
         <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3 mb-3">
             <div class="card">
+                {% if item.user_id != current_user.id %}
                 {% set total_key = (item.user_id, item.status) %}
                 {% if totals.get(total_key) %}
                     <div class="alert alert-info">
-                        <strong>Total for {{ item.user.name }} ({{ item.status }}):</strong> ${{ totals[total_key] }}
+                        <strong>Total for {{ item.user.name }} ({{ item.status }}):</strong> ${{ "%.2f"|format(totals[total_key]) }}
                     </div>
+                {% endif %}
                 {% endif %}
                 <p class="card-text">{{ item.description }}</p>
                 <img src="{{ item.image_url }}" class="card-img-top" alt="{{ item.description }}" style="height: 200px; object-fit: cover;">
