@@ -2,13 +2,49 @@
 <html>
 <head>
     <!-- ... other head elements ... -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Wishlist App{% endblock %}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f6f7fb;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+        }
+
+        .badge-priority-high {
+            background-color: #dc3545;
+        }
+
+        .badge-priority-medium {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .badge-priority-low {
+            background-color: #17a2b8;
+        }
+
+        .status-pill {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-img-top {
+            object-fit: cover;
+            height: 220px;
+        }
+    </style>
 
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand" href="#">Wishlist App</a>
+            <a class="navbar-brand" href="{{ url_for('index') }}">Wishlist App</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
               <span class="navbar-toggler-icon"></span>
             </button>
@@ -45,6 +81,18 @@
 
     <main>
         <div class="container mt-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
             {% block content %}
             {% endblock %}
         </div>
