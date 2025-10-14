@@ -1,54 +1,65 @@
 {% extends 'base.html' %}
 
+{% block title %}Add Item · Wishlist App{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <h1>Add New Item</h1>
-    <form action="/submit_item" method="post">
-        <div class="form-group">
-            <label for="priority">Priority:</label>
-            <select id="priority" name="priority" class="form-control">
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-            </select>
+    <h1 class="h3 mb-3">Add a new wishlist item</h1>
+    <p class="text-muted">Give as much detail as you can so your family knows exactly what to look for.</p>
+    <form action="{{ url_for('submit_item') }}" method="post" class="bg-white border rounded shadow-sm p-4">
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="description">Description <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="description" name="description" maxlength="750" required value="{{ form_data.description or '' }}">
+                <small class="form-text text-muted">Keep it short and sweet—what do you want?</small>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="link">Link</label>
+                <input type="url" class="form-control" id="link" name="link" placeholder="https://example.com" value="{{ form_data.link or '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-3">
+                <label for="price">Price</label>
+                <div class="input-group">
+                    <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                    <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" value="{{ form_data.price or '' }}">
+                </div>
+                <small class="form-text text-muted">Leave blank if you're not sure.</small>
+            </div>
+            <div class="form-group col-md-3">
+                <label for="priority">Priority</label>
+                <select id="priority" name="priority" class="form-control">
+                    {% for priority in priority_choices %}
+                        <option value="{{ priority }}" {% if form_data.priority == priority %}selected{% endif %}>{{ priority }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group col-md-3">
+                <label for="status">Status</label>
+                <select id="status" name="status" class="form-control">
+                    {% for status in status_choices %}
+                        <option value="{{ status }}" {% if form_data.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group col-md-3">
+                <label for="category">Category</label>
+                <input type="text" class="form-control" id="category" name="category" placeholder="Books, Toys, Travel…" value="{{ form_data.category or '' }}">
+            </div>
         </div>
 
         <div class="form-group">
-            <label for="description">Description:</label>
-            <input type="text" class="form-control" id="description" name="description">
+            <label for="image_url">Image URL</label>
+            <input type="url" class="form-control" id="image_url" name="image_url" placeholder="https://" value="{{ form_data.image_url or '' }}">
+            <small class="form-text text-muted">Optional, but it helps others know they're looking at the right thing.</small>
         </div>
 
-        <div class="form-group">
-            <label for="link">Link:</label>
-            <input type="text" class="form-control" id="link" name="link">
+        <div class="d-flex justify-content-end">
+            <a href="{{ url_for('items') }}" class="btn btn-outline-secondary mr-2">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save item</button>
         </div>
-
-        <div class="form-group">
-            <label for="price">Price:</label>
-            <input type="number" class="form-control" id="price" name="price" step="0.01">
-        </div>
-
-        <div class="form-group">
-            <label for="category">Category:</label>
-            <input type="text" class="form-control" id="category" name="category">
-        </div>
-
-        <div class="form-group">
-            <label for="image_url">URL for an Image:</label>
-            <input type="text" class="form-control" id="image_url" name="image_url">
-        </div>
-
-        <div class="form-group">
-            <label for="status">Status:</label>
-            <select id="status" name="status" class="form-control">
-                <option value="Available">Available</option>
-                <option value="Claimed">Claimed</option>
-                <option value="Purchased">Purchased</option>
-                <option value="Received">Received</option>
-            </select>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Submit Item</button>
     </form>
 </div>
 {% endblock %}
