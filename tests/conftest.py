@@ -56,6 +56,15 @@ def user(app):
 
 
 @pytest.fixture()
+def other_user(app):
+    with app.app_context():
+        user = User(name="Other User", email="other@example.com")
+        db.session.add(user)
+        db.session.commit()
+        return user.id
+
+
+@pytest.fixture()
 def login(client, user):
     with client.session_transaction() as session:
         session["_user_id"] = str(user)

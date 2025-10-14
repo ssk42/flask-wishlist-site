@@ -90,7 +90,8 @@ browser regression tests powered by Playwright. To run the full suite locally:
    playwright install --with-deps chromium
    ```
 
-3. Execute the tests with `pytest`:
+3. Execute the tests with `pytest` (coverage is enforced at 75% or greater and
+   the XML report is written to `coverage.xml`):
 
    ```bash
    pytest
@@ -98,7 +99,10 @@ browser regression tests powered by Playwright. To run the full suite locally:
 
 Unit tests are located under `tests/unit/` and use Flask's testing client and a
 temporary SQLite database. Browser regression tests live under
-`tests/browser/` and validate the end-to-end registration workflow.
+`tests/browser/` and validate the end-to-end registration workflow. The
+automated GitHub Actions workflow (`.github/workflows/tests.yml`) runs this
+suite for every pull request and push to `main`, and the checks must pass before
+merging.
 
 ## Deployment
 
