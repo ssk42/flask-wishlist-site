@@ -1,4 +1,5 @@
 from collections import OrderedDict, defaultdict
+from types import SimpleNamespace
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import case
@@ -150,7 +151,7 @@ def items():
 
     query = (
         Item.query.options(joinedload(Item.user), joinedload(Item.last_updated_by))
-        .join(User)
+        .join(User, Item.user_id == User.id)
     )
 
     if user_filter:
@@ -203,7 +204,8 @@ def items():
         if item.price:
             totals_dict[key]['total'] += float(item.price)
 
-        grouped_items.setdefault(item.user_id, {'user': item.user, 'items': []})['items'].append(item)
+        group = grouped_items.setdefault(item.user_id, SimpleNamespace(user=item.user, items=[]))
+        group.items.append(item)
 
     users = User.query.order_by(User.name).all()
 
@@ -330,6 +332,29 @@ def edit_item(item_id):
             return redirect(url_for('items'))
 
     return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES)
+
+
+@app.route('/claim_item/<int:item_id>', methods=['POST'])
+@login_required
+def claim_item(item_id):
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
+
+    if item.user_id == current_user.id:
+        flash('You cannot claim your own item.', 'warning')
+        return redirect(url_for('items'))
+
+    if item.status != 'Available':
+        flash('This item is no longer available to claim.', 'warning')
+        return redirect(url_for('items'))
+
+    item.status = 'Claimed'
+    item.last_updated_by_id = current_user.id
+    db.session.commit()
+
+    flash(f'You have claimed "{item.description}".', 'success')
+    return redirect(url_for('items'))
 
 @app.route('/delete_item/<int:item_id>')
 @login_required
