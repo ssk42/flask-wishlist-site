@@ -72,6 +72,34 @@ A step-by-step series of examples that tell you how to get a development environ
 > flask run
 
 
+## Testing
+
+The project includes unit tests that exercise the Flask application and automated
+browser regression tests powered by Playwright. To run the full suite locally:
+
+1. Install Python dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Install the Playwright browsers (only required for the browser regression
+   tests):
+
+   ```bash
+   playwright install --with-deps chromium
+   ```
+
+3. Execute the tests with `pytest`:
+
+   ```bash
+   pytest
+   ```
+
+Unit tests are located under `tests/unit/` and use Flask's testing client and a
+temporary SQLite database. Browser regression tests live under
+`tests/browser/` and validate the end-to-end registration workflow.
+
 ## Deployment
 
 Instructions on how to deploy the app on Heroku:
