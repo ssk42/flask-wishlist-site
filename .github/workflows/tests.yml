@@ -8,7 +8,9 @@ on:
 jobs:
   tests:
     name: Run pytest and browser regression
-    runs-on: ubuntu-latest
+    # Pin to 22.04 because the Playwright dependency installer currently expects libasound2,
+    # which is not available on ubuntu-24.04 runners yet.
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Check out repository

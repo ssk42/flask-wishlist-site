@@ -22,6 +22,13 @@ def test_register_creates_user(client, app):
         assert created_user.name == "Alice"
 
 
+def test_register_get_renders_form(client):
+    response = client.get("/register")
+
+    assert response.status_code == 200
+    assert b"Create your account" in response.data
+
+
 def test_submit_item_requires_description(client, login):
     response = client.post(
         "/submit_item",
@@ -31,6 +38,13 @@ def test_submit_item_requires_description(client, login):
 
     assert response.status_code == 200
     assert b"A description is required" in response.data
+
+
+def test_submit_item_get_returns_blank_form(client, login):
+    response = client.get("/submit_item")
+
+    assert response.status_code == 200
+    assert b"Add a new wishlist item" in response.data
 
 
 def test_items_filtered_by_status(client, app, login, user):
@@ -57,6 +71,55 @@ def test_items_filtered_by_status(client, app, login, user):
     # only the available item should be present
     assert b"Board Game" in response.data
     assert b"Book" not in response.data
+
+
+def test_items_filtered_by_user_priority_and_search(client, app, login, user, other_user):
+    with app.app_context():
+        db.session.add_all(
+            [
+                Item(
+                    description="Laptop Sleeve",
+                    status="Available",
+                    priority="High",
+                    user_id=user,
+                ),
+                Item(
+                    description="Laptop Bag",
+                    status="Available",
+                    priority="Medium",
+                    user_id=user,
+                ),
+                Item(
+                    description="Laptop Stand",
+                    status="Available",
+                    priority="High",
+                    user_id=other_user,
+                ),
+                Item(
+                    description="Phone Charger",
+                    status="Available",
+                    priority="High",
+                    user_id=user,
+                ),
+            ]
+        )
+        db.session.commit()
+
+    response = client.get(
+        "/items",
+        query_string={
+            "user_filter": user,
+            "priority_filter": "High",
+            "q": "Laptop",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.data
+    assert b"Laptop Sleeve" in body
+    assert b"Laptop Bag" not in body
+    assert b"Laptop Stand" not in body
+    assert b"Phone Charger" not in body
 
 
 def test_register_duplicate_email_shows_warning(client, app):
@@ -175,6 +238,14 @@ def test_edit_item_owner_updates_fields(client, app, user):
         assert updated.price == pytest.approx(10.50)
 
 
+def test_edit_item_missing_returns_not_found(client, app, user):
+    login_via_post(client, "test@example.com")
+
+    response = client.post("/edit_item/9999", data={"description": "Nope"})
+
+    assert response.status_code == 404
+
+
 def test_edit_item_invalid_price_keeps_form(client, app, user):
     login_via_post(client, "test@example.com")
     with app.app_context():
@@ -201,6 +272,53 @@ def test_edit_item_invalid_price_keeps_form(client, app, user):
 
     assert response.status_code == 200
     assert b"Price must be a valid number" in response.data
+
+
+def test_edit_item_owner_blank_description_keeps_form(client, app, user):
+    login_via_post(client, "test@example.com")
+    with app.app_context():
+        item = Item(
+            description="Keep Me",
+            status="Available",
+            priority="High",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(
+        f"/edit_item/{item_id}",
+        data={"description": "   "},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Description cannot be empty" in response.data
+
+
+def test_edit_item_other_user_invalid_status_shows_error(client, app, user, other_user):
+    with app.app_context():
+        item = Item(
+            description="Shared Item",
+            status="Available",
+            priority="High",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    login_via_post(client, "other@example.com")
+
+    response = client.post(
+        f"/edit_item/{item_id}",
+        data={"status": "Invalid"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Please choose a valid status" in response.data
 
 
 def test_edit_item_status_update_by_other_user(client, app, user, other_user):
@@ -359,3 +477,164 @@ def test_export_my_status_updates(client, app, user, other_user):
     assert response.status_code == 200
     assert filename.exists()
     filename.unlink()
+
+
+def test_register_commit_failure_rolls_back(client, monkeypatch):
+    def fail_commit():
+        raise RuntimeError("boom")
+
+    rolled_back = {"called": False}
+
+    def mark_rollback():
+        rolled_back["called"] = True
+
+    monkeypatch.setattr(db.session, "commit", fail_commit)
+    monkeypatch.setattr(db.session, "rollback", mark_rollback)
+
+    response = client.post(
+        "/register",
+        data={"name": "Eve", "email": "eve@example.com"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"unexpected error" in response.data
+    assert rolled_back["called"] is True
+
+
+def test_submit_item_database_error_shows_message(client, user, monkeypatch):
+    login_via_post(client, "test@example.com")
+
+    def fail_commit():
+        raise RuntimeError("db unavailable")
+
+    monkeypatch.setattr(db.session, "commit", fail_commit)
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Tent",
+            "status": "Available",
+            "priority": "High",
+            "price": "29.99",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"problem saving your item" in response.data
+
+
+def test_items_preserves_nonexistent_category_filter(client, app, login, user):
+    with app.app_context():
+        db.session.add(
+            Item(
+                description="Kayak",
+                status="Available",
+                priority="High",
+                category="Outdoor",
+                user_id=user,
+            )
+        )
+        db.session.commit()
+
+    response = client.get(
+        "/items",
+        query_string={"category_filter": "Nonexistent", "q": ""},
+    )
+
+    assert response.status_code == 200
+    assert b"No items found" in response.data
+    assert b'value="Nonexistent" selected' in response.data
+
+
+def test_items_default_sorting_by_price_desc(client, app, login, user):
+    with app.app_context():
+        cheap = Item(
+            description="Budget Watch",
+            status="Available",
+            priority="Low",
+            price=10,
+            user_id=user,
+        )
+        premium = Item(
+            description="Luxury Watch",
+            status="Available",
+            priority="High",
+            price=250,
+            user_id=user,
+        )
+        db.session.add_all([cheap, premium])
+        db.session.commit()
+
+    response = client.get(
+        "/items",
+        query_string={"sort_by": "mystery", "sort_order": "desc"},
+    )
+
+    assert response.status_code == 200
+    body = response.data
+    assert body.index(b"Luxury Watch") < body.index(b"Budget Watch")
+
+
+def test_items_summary_rows_include_totals(client, app, login, user, other_user):
+    with app.app_context():
+        db.session.add_all(
+            [
+                Item(
+                    description="Camera",
+                    status="Available",
+                    priority="Medium",
+                    price=300,
+                    user_id=user,
+                ),
+                Item(
+                    description="Tripod",
+                    status="Claimed",
+                    priority="Low",
+                    price=120,
+                    user_id=user,
+                ),
+                Item(
+                    description="Backpack",
+                    status="Claimed",
+                    priority="Medium",
+                    price=80,
+                    user_id=other_user,
+                ),
+            ]
+        )
+        db.session.commit()
+
+    response = client.get("/items")
+
+    assert response.status_code == 200
+    assert b"At-a-glance totals" in response.data
+    assert b"$120.00" in response.data
+    assert b"$300.00" in response.data
+
+def test_claim_item_missing_returns_404(client, app, other_user):
+    login_via_post(client, "other@example.com")
+
+    response = client.post("/claim_item/9999")
+
+    assert response.status_code == 404
+
+
+def test_claim_item_not_available_redirects(client, app, user, other_user):
+    with app.app_context():
+        item = Item(
+            description="Already Claimed",
+            status="Claimed",
+            priority="Low",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    login_via_post(client, "other@example.com")
+
+    response = client.post(f"/claim_item/{item_id}", follow_redirects=False)
+
+    assert response.status_code == 302
