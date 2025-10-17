@@ -148,7 +148,7 @@
                                 {% if item.link %}
                                     <a href="{{ item.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mb-2">View item</a>
                                 {% endif %}
-                                {% if item.last_updated_by %}
+                                {% if item.last_updated_by and item.user_id != current_user.id %}
                                     <p class="text-muted small mb-2">Last updated by {{ item.last_updated_by.name }}</p>
                                 {% endif %}
                                 <div class="mt-auto pt-3">

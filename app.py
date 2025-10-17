@@ -252,10 +252,15 @@ def items():
     totals_dict = defaultdict(lambda: {'count': 0, 'total': 0.0})
     grouped_items = OrderedDict()
     for item in all_items:
-        key = (item.user_id, item.status)
-        totals_dict[key]['count'] += 1
-        if item.price:
-            totals_dict[key]['total'] += float(item.price)
+        # For summary totals, exclude the current user's own claimed/purchased items to preserve surprise
+        if item.user_id == current_user.id and item.status in ['Claimed', 'Purchased']:
+            # Skip adding to totals_dict for surprise protection
+            pass
+        else:
+            key = (item.user_id, item.status)
+            totals_dict[key]['count'] += 1
+            if item.price:
+                totals_dict[key]['total'] += float(item.price)
 
         group = grouped_items.setdefault(item.user_id, SimpleNamespace(user=item.user, items=[]))
         group.items.append(item)
