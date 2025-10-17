@@ -20,7 +20,7 @@ class TestSurpriseProtection:
             # Get the user objects
             user_obj = db.session.get(User, user)
             other_user_obj = db.session.get(User, other_user)
-            
+
             # Create an item for the user
             item = Item(
                 description="User's Gift Item",
@@ -40,11 +40,20 @@ class TestSurpriseProtection:
         response = client.get("/items")
 
         assert response.status_code == 200
-        
+
         # The apostrophe gets HTML-encoded as &#39;
         assert b"User&#39;s Gift Item" in response.data
-        assert b"Claimed" in response.data
-        
+
+        # The user should NOT see the status "Claimed" - instead they should see "Your Item"
+        response_text = response.data.decode('utf-8')
+        # Find the section for this specific item
+        item_section_start = response_text.find("User&#39;s Gift Item")
+        item_section_end = response_text.find("</div>", item_section_start + 200)
+        item_section = response_text[item_section_start:item_section_end]
+
+        assert "Claimed" not in item_section, "User should not see 'Claimed' status on their own item"
+        assert "Your Item" in response_text, "User should see 'Your Item' badge instead of status"
+
         # The user should NOT see who claimed their item
         assert b"Last updated by" not in response.data
 
@@ -293,7 +302,7 @@ class TestSurpriseProtection:
             # Get the user objects
             user_obj = db.session.get(User, user)
             other_user_obj = db.session.get(User, other_user)
-            
+
             # Create items where other user has claimed items
             other_claimed = Item(
                 description="Other User's Claimed Item",
@@ -321,13 +330,82 @@ class TestSurpriseProtection:
 
         assert response.status_code == 200
         assert b"At-a-glance totals" in response.data
-        
+
         # Should see other user's claimed items in the summary table
         assert b"Other User" in response.data
         assert b"Claimed" in response.data
         assert b"$75.00" in response.data
-        
+
         # Should see their own available items in the summary
         assert b"Test User" in response.data
         assert b"Available" in response.data
         assert b"$25.00" in response.data
+
+    def test_user_cannot_see_status_on_edit_page_for_own_items(self, client, app, user, other_user):
+        """Test that users cannot see status dropdown when editing their own items."""
+        with app.app_context():
+            # Get the user object
+            user_obj = db.session.get(User, user)
+
+            # Create an item for the user that has been claimed
+            item = Item(
+                description="My Secret Item",
+                status="Claimed",
+                priority="High",
+                user_id=user_obj.id,
+            )
+            db.session.add(item)
+            db.session.commit()
+            item_id = item.id
+
+        # Login as the item owner
+        login_via_post(client, "test@example.com")
+
+        # View the edit page for their own item
+        response = client.get(f"/edit_item/{item_id}")
+
+        assert response.status_code == 200
+        assert b"My Secret Item" in response.data
+
+        # The user should NOT see the status dropdown
+        response_text_for_check = response.data.decode('utf-8')
+        assert 'for="status"' not in response_text_for_check
+        assert 'name="status"' not in response_text_for_check
+
+        # The user should NOT see the current status anywhere
+        response_text = response.data.decode('utf-8')
+        assert "Claimed" not in response_text, "User should not see 'Claimed' status on edit page for their own item"
+
+    def test_user_can_see_status_on_edit_page_for_other_users_items(self, client, app, user, other_user):
+        """Test that users CAN see status dropdown when editing other users' items."""
+        with app.app_context():
+            # Get the user objects
+            user_obj = db.session.get(User, user)
+            other_user_obj = db.session.get(User, other_user)
+
+            # Create an item for the other user
+            item = Item(
+                description="Another Item",
+                status="Available",
+                priority="Medium",
+                user_id=other_user_obj.id,
+            )
+            db.session.add(item)
+            db.session.commit()
+            item_id = item.id
+
+        # Login as the first user (not the owner)
+        login_via_post(client, "test@example.com")
+
+        # View the edit page for the other user's item
+        response = client.get(f"/edit_item/{item_id}")
+
+        assert response.status_code == 200
+
+        # The user SHOULD see the status dropdown
+        response_text = response.data.decode('utf-8')
+        assert 'for="status"' in response_text, "Should see status label on other users' items"
+        assert 'name="status"' in response_text, "Should see status dropdown on other users' items"
+        assert '<select class="form-select" id="status" name="status">' in response_text
+        # Check that the dropdown contains the status options
+        assert '<option value="Available" selected>Available</option>' in response_text

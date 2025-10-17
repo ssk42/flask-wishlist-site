@@ -135,7 +135,11 @@
                             <img src="{{ item.image_url or default_image_url }}" class="card-img-top" alt="Image for {{ item.description }}" loading="lazy">
                             <div class="card-body d-flex flex-column">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <span class="badge rounded-pill bg-secondary status-pill">{{ item.status }}</span>
+                                    {% if item.user_id != current_user.id %}
+                                        <span class="badge rounded-pill bg-secondary status-pill">{{ item.status }}</span>
+                                    {% else %}
+                                        <span class="badge rounded-pill bg-info status-pill">Your Item</span>
+                                    {% endif %}
                                     <span class="badge rounded-pill {{ 'badge-priority-' ~ item.priority|lower if item.priority else 'bg-light text-dark' }}">{{ item.priority or 'No priority' }}</span>
                                 </div>
                                 <h3 class="h5">{{ item.description }}</h3>
