@@ -165,6 +165,7 @@
                                         <div class="d-flex flex-column">
                                             {% if item.status == 'Available' %}
                                                 <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post" class="mb-2">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <button type="submit" class="btn btn-success btn-sm w-100">Claim</button>
                                                 </form>
                                             {% endif %}

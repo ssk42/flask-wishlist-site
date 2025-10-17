@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /delete_item/
+Allow: /

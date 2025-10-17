@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(pytest:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(flask db migrate:*)",
+      "Bash(flask db:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,14 +6,29 @@ from sqlalchemy import case
 from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_wtf.csrf import CSRFProtect
 import datetime
 import pandas as pd
 import os
+import logging
 
 app = Flask(__name__)
 
+# Setup logging
+try:
+    from logging_config import setup_logging
+    setup_logging(app)
+except ImportError:
+    # Fallback to basic logging if logging_config not available
+    logging.basicConfig(level=logging.INFO)
+    app.logger.info('Using basic logging configuration')
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # CSRF tokens don't expire
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
 
 uri = os.getenv("DATABASE_URL")
 if uri:
@@ -67,15 +82,20 @@ class Item(db.Model):
     link = db.Column(db.String(500), nullable=True)
     comment = db.Column(db.String(100))
     price = db.Column(db.Float, nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='Available')
+    status = db.Column(db.String(20), nullable=False, default='Available', index=True)
     question = db.Column(db.String(100))
     year = db.Column(db.Integer, default=datetime.datetime.now().year)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    category = db.Column(db.String(50))  # New field for category
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    category = db.Column(db.String(50), index=True)  # New field for category
     image_url = db.Column(db.String(255))  # New field for image URL
-    priority = db.Column(db.String(50))
+    priority = db.Column(db.String(50), index=True)
     last_updated_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
+
+    # Composite index for common query pattern (user_id + status)
+    __table_args__ = (
+        db.Index('idx_item_user_status', 'user_id', 'status'),
+    )
 
 @app.route('/')
 def index():
@@ -97,10 +117,11 @@ def register():
             new_user = User(name=name, email=email)  # Define new_user
             db.session.add(new_user)
             db.session.commit()
+            app.logger.info(f'New user registered: {email}')
             flash('Registration successful! Please log in to continue.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
-            print(e)  # Log the exception for debugging
+            app.logger.error(f'Registration failed for {email}: {str(e)}', exc_info=True)
             db.session.rollback()
             flash('An unexpected error occurred during registration. Please try again.', 'danger')
             return render_template('registration.html', name=name, email=email)
@@ -146,11 +167,12 @@ def submit_item():
         try:
             db.session.add(new_item)
             db.session.commit()
+            app.logger.info(f'Item created by user_id={current_user.id}: {description[:50]}')
             flash('Item added to your wishlist!', 'success')
             return redirect(get_items_url_with_filters())
         except Exception as exc:
+            app.logger.error(f'Failed to create item for user_id={current_user.id}: {str(exc)}', exc_info=True)
             db.session.rollback()
-            print(exc)
             flash('There was a problem saving your item. Please try again.', 'danger')
             return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, form_data=form_data)
 
@@ -330,9 +352,11 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user:
             login_user(user)
+            app.logger.info(f'User logged in: {email} (user_id={user.id})')
             flash(f'Welcome back, {user.name}!', 'success')
             return redirect(url_for('index'))
         else:
+            app.logger.warning(f'Failed login attempt for email: {email}')
             flash('We could not find an account with that email address.', 'danger')
             return render_template('login.html', email=email)
     return render_template('login.html')
@@ -481,6 +505,22 @@ login_manager.login_message_category = 'info'
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+
+# Security headers
+@app.after_request
+def set_security_headers(response):
+    """Add security headers to all responses"""
+    headers = app.config.get('SECURITY_HEADERS', {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+    })
+    for header, value in headers.items():
+        response.headers[header] = value
+    return response
 
 
 if __name__ == '__main__':

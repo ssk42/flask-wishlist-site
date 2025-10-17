@@ -1,0 +1,133 @@
+"""
+Configuration management for the Wishlist application.
+Supports multiple environments: development, testing, production.
+"""
+
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (skip if in pytest to allow test overrides)
+if 'pytest' not in os.getenv('_', '').lower():
+    load_dotenv()
+
+
+class Config:
+    """Base configuration class with common settings."""
+
+    # Flask
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+    # SQLAlchemy
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),
+        'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '3600')),
+        'pool_pre_ping': True,  # Verify connections before using them
+    }
+
+    # CSRF Protection
+    WTF_CSRF_TIME_LIMIT = None  # CSRF tokens don't expire
+    WTF_CSRF_ENABLED = True
+
+    # Session
+    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+    # Database
+    @staticmethod
+    def get_database_uri():
+        """Get database URI with postgres:// to postgresql:// conversion for Heroku."""
+        uri = os.getenv('DATABASE_URL')
+        if uri:
+            # Heroku uses postgres://, SQLAlchemy requires postgresql://
+            if uri.startswith('postgres://'):
+                uri = uri.replace('postgres://', 'postgresql://', 1)
+            return uri
+        return None
+
+    SQLALCHEMY_DATABASE_URI = get_database_uri.__func__() or 'sqlite:///wishlist.db'
+
+    # Redis (for future caching)
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+    # Email (for future notifications)
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', '587'))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@wishlist.app')
+
+    # Logging
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_FILE = os.getenv('LOG_FILE', 'wishlist.log')
+
+    # Security Headers (configured in app.py)
+    SECURITY_HEADERS = {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+    }
+
+
+class DevelopmentConfig(Config):
+    """Development environment configuration."""
+
+    DEBUG = True
+    TESTING = False
+
+    # Use SQLite for local development if no DATABASE_URL provided
+    if not os.getenv('DATABASE_URL'):
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///wishlist.db'
+
+
+class TestingConfig(Config):
+    """Testing environment configuration."""
+
+    TESTING = True
+    DEBUG = True
+
+    # Use in-memory SQLite for tests
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+
+    # Disable CSRF for testing
+    WTF_CSRF_ENABLED = False
+
+    # Simpler pool settings for testing
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+    }
+
+
+class ProductionConfig(Config):
+    """Production environment configuration."""
+
+    DEBUG = False
+    TESTING = False
+
+    # Enforce HTTPS cookies in production
+    SESSION_COOKIE_SECURE = True
+
+    # Stricter security headers for production
+    SECURITY_HEADERS = {
+        **Config.SECURITY_HEADERS,
+        'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https:;",
+    }
+
+
+# Configuration mapping
+config = {
+    'development': DevelopmentConfig,
+    'testing': TestingConfig,
+    'production': ProductionConfig,
+    'default': DevelopmentConfig,
+}
+
+
+def get_config():
+    """Get configuration based on FLASK_ENV environment variable."""
+    env = os.getenv('FLASK_ENV', 'development')
+    return config.get(env, config['default'])

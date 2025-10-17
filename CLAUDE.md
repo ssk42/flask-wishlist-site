@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**📋 Important:** See [IMPROVEMENTS.md](IMPROVEMENTS.md) for a comprehensive tracking document of all planned and completed improvements (32 items total, 6 completed).
+
 ## Development Commands
 
 ### Initial Setup
@@ -113,5 +115,27 @@ The application prevents gift receivers from seeing who claimed/purchased their 
 ### Deployment (Heroku)
 - `Procfile` defines web process (gunicorn) and release process (database migrations)
 - Automatic migrations run on every Heroku deployment
-- Environment variables: `DATABASE_URL`, `SECRET_KEY`
+- Environment variables: `DATABASE_URL`, `SECRET_KEY` (see `.env.example` for template)
 - CI/CD via GitHub Actions (`.github/workflows/tests.yml`) - tests must pass before merge
+
+## Recent Improvements (2025-10-16)
+
+### Security Enhancements ✅
+- **CSRF Protection**: Flask-WTF integrated with CSRF tokens on all POST forms
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS, Referrer-Policy
+- **Complete Surprise Protection**: Users cannot see status of their own items (preserves gift surprises)
+
+### Performance Optimizations ✅
+- **Database Indexes**: Added indexes on `user_id`, `status`, `category`, `priority`, and composite `(user_id, status)`
+- **Static Assets**: CSS extracted to `static/css/main.css` for better caching
+- **Migration**: `80bf6accc0b7_add_indexes_for_performance.py`
+
+### Infrastructure ✅
+- **Configuration Template**: `.env.example` documents all environment variables
+- **SEO**: `robots.txt` added to control search engine crawling
+- **Modern UI**: Bootstrap 5.3.2 with custom CSS variables and Inter font
+
+### Test Coverage
+- 60 tests passing (100% code coverage maintained)
+- Browser tests with Playwright
+- Comprehensive surprise protection test suite
