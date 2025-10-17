@@ -10,42 +10,42 @@
     </div>
     <div class="mt-3 mt-md-0">
         <a href="{{ url_for('export_my_status_updates') }}" class="btn btn-outline-primary btn-sm">Export my updates</a>
-        <a href="{{ url_for('submit_item') }}" class="btn btn-primary btn-sm ml-md-2 mt-2 mt-md-0">Add new item</a>
+        <a href="{{ url_for('submit_item') }}" class="btn btn-primary btn-sm ms-md-2 mt-2 mt-md-0">Add new item</a>
     </div>
 </div>
 
 <form action="{{ url_for('items') }}" method="get" class="bg-white border rounded shadow-sm p-3 mb-4">
-    <div class="form-row">
-        <div class="form-group col-md-3">
-            <label class="small text-uppercase text-muted font-weight-bold">Person</label>
-            <select name="user_filter" class="form-control">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label small text-uppercase fw-bold">Person</label>
+            <select name="user_filter" class="form-select">
                 <option value="" {% if not active_filters.user_filter %}selected{% endif %}>All people</option>
                 {% for user in users %}
                     <option value="{{ user.id }}" {% if active_filters.user_filter == user.id %}selected{% endif %}>{{ user.name }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="form-group col-md-3">
-            <label class="small text-uppercase text-muted font-weight-bold">Status</label>
-            <select name="status_filter" class="form-control">
+        <div class="col-md-3">
+            <label class="form-label small text-uppercase fw-bold">Status</label>
+            <select name="status_filter" class="form-select">
                 <option value="" {% if not active_filters.status_filter %}selected{% endif %}>Any status</option>
                 {% for status in status_options %}
                     <option value="{{ status }}" {% if active_filters.status_filter == status %}selected{% endif %}>{{ status }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="form-group col-md-3">
-            <label class="small text-uppercase text-muted font-weight-bold">Priority</label>
-            <select name="priority_filter" class="form-control">
+        <div class="col-md-3">
+            <label class="form-label small text-uppercase fw-bold">Priority</label>
+            <select name="priority_filter" class="form-select">
                 <option value="" {% if not active_filters.priority_filter %}selected{% endif %}>Any priority</option>
                 {% for priority in priority_choices %}
                     <option value="{{ priority }}" {% if active_filters.priority_filter == priority %}selected{% endif %}>{{ priority }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="form-group col-md-3">
-            <label class="small text-uppercase text-muted font-weight-bold">Category</label>
-            <select name="category_filter" class="form-control">
+        <div class="col-md-3">
+            <label class="form-label small text-uppercase fw-bold">Category</label>
+            <select name="category_filter" class="form-select">
                 <option value="" {% if not active_filters.category_filter %}selected{% endif %}>All categories</option>
                 {% for category in category_options %}
                     <option value="{{ category }}" {% if active_filters.category_filter == category %}selected{% endif %}>{{ category }}</option>
@@ -53,39 +53,39 @@
             </select>
         </div>
     </div>
-    <div class="form-row">
-        <div class="form-group col-md-4">
-            <label class="small text-uppercase text-muted font-weight-bold">Search description</label>
+    <div class="row g-3 mt-2">
+        <div class="col-md-4">
+            <label class="form-label small text-uppercase fw-bold">Search description</label>
             <input type="search" name="q" class="form-control" placeholder="e.g. Lego set" value="{{ active_filters.q }}">
         </div>
-        <div class="form-group col-md-4">
-            <label class="small text-uppercase text-muted font-weight-bold">Sort by</label>
-            <select name="sort_by" class="form-control">
+        <div class="col-md-4">
+            <label class="form-label small text-uppercase fw-bold">Sort by</label>
+            <select name="sort_by" class="form-select">
                 {% for value, label in sort_options %}
                     <option value="{{ value }}" {% if active_filters.sort_by == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="form-group col-md-2">
-            <label class="small text-uppercase text-muted font-weight-bold">Order</label>
-            <select name="sort_order" class="form-control">
+        <div class="col-md-2">
+            <label class="form-label small text-uppercase fw-bold">Order</label>
+            <select name="sort_order" class="form-select">
                 <option value="asc" {% if active_filters.sort_order == 'asc' %}selected{% endif %}>Ascending</option>
                 <option value="desc" {% if active_filters.sort_order == 'desc' %}selected{% endif %}>Descending</option>
             </select>
         </div>
-        <div class="form-group col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary btn-block">Apply</button>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Apply</button>
         </div>
     </div>
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center mt-3">
         <div>
             <a href="{{ url_for('items', clear_filters='true') }}" class="small">Clear all filters</a>
             {% if active_filters.user_filter or active_filters.status_filter or active_filters.priority_filter or active_filters.category_filter or active_filters.q %}
-                <span class="badge badge-info ml-2 small">Filters active</span>
+                <span class="badge bg-info ms-2 small">Filters active</span>
             {% endif %}
         </div>
         {% if active_filters.user_filter or active_filters.status_filter or active_filters.priority_filter or active_filters.category_filter or active_filters.q %}
-            <span class="badge badge-light">{{ grouped_items|length }} group{{ 's' if grouped_items|length != 1 else '' }} match your filters</span>
+            <span class="badge bg-light text-dark">{{ grouped_items|length }} group{{ 's' if grouped_items|length != 1 else '' }} match your filters</span>
         {% endif %}
     </div>
 </form>
@@ -102,17 +102,17 @@
                     <tr>
                         <th scope="col">Person</th>
                         <th scope="col">Status</th>
-                        <th scope="col" class="text-right">Items</th>
-                        <th scope="col" class="text-right">Estimated total</th>
+                        <th scope="col" class="text-end">Items</th>
+                        <th scope="col" class="text-end">Estimated total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in summary_rows %}
                         <tr>
                             <td>{{ row.user.name if row.user else 'Unknown' }}</td>
-                            <td><span class="badge badge-secondary status-pill">{{ row.status }}</span></td>
-                            <td class="text-right">{{ row.count }}</td>
-                            <td class="text-right">${{ '%.2f'|format(row.total) }}</td>
+                            <td><span class="badge bg-secondary status-pill">{{ row.status }}</span></td>
+                            <td class="text-end">{{ row.count }}</td>
+                            <td class="text-end">${{ '%.2f'|format(row.total) }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -126,17 +126,17 @@
         <section class="mb-5">
             <div class="d-flex align-items-center mb-3">
                 <h2 class="h4 mb-0">{{ group.user.name }}</h2>
-                <span class="badge badge-light ml-3">{{ group.items|length }} item{{ 's' if group.items|length != 1 else '' }}</span>
+                <span class="badge bg-light text-dark ms-3">{{ group.items|length }} item{{ 's' if group.items|length != 1 else '' }}</span>
             </div>
             <div class="row">
                 {% for item in group.items %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 shadow-sm">
-                            <img src="{{ item.image_url or default_image_url }}" class="card-img-top" alt="Image for {{ item.description }}">
+                            <img src="{{ item.image_url or default_image_url }}" class="card-img-top" alt="Image for {{ item.description }}" loading="lazy">
                             <div class="card-body d-flex flex-column">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <span class="badge badge-pill badge-secondary status-pill">{{ item.status }}</span>
-                                    <span class="badge badge-pill badge-light {{ 'badge-priority-' ~ item.priority|lower if item.priority }}">{{ item.priority or 'No priority' }}</span>
+                                    <span class="badge rounded-pill bg-secondary status-pill">{{ item.status }}</span>
+                                    <span class="badge rounded-pill {{ 'badge-priority-' ~ item.priority|lower if item.priority else 'bg-light text-dark' }}">{{ item.priority or 'No priority' }}</span>
                                 </div>
                                 <h3 class="h5">{{ item.description }}</h3>
                                 {% if item.category %}
@@ -161,10 +161,10 @@
                                         <div class="d-flex flex-column">
                                             {% if item.status == 'Available' %}
                                                 <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post" class="mb-2">
-                                                    <button type="submit" class="btn btn-success btn-sm btn-block">Claim</button>
+                                                    <button type="submit" class="btn btn-success btn-sm w-100">Claim</button>
                                                 </form>
                                             {% endif %}
-                                            <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-outline-primary btn-sm btn-block">Update status</a>
+                                            <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-outline-primary btn-sm w-100">Update status</a>
                                         </div>
                                     {% endif %}
                                 </div>

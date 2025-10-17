@@ -5,23 +5,23 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <h1 class="h3 mb-3">Create your account</h1>
-                <p class="text-muted">Join the family wishlist so you can add and claim gifts.</p>
+        <div class="card shadow border-0">
+            <div class="card-body p-5">
+                <h1 class="h3 mb-3 fw-bold">Create your account</h1>
+                <p class="text-muted mb-4">Join the family wishlist so you can add and claim gifts.</p>
                 <form action="{{ url_for('register') }}" method="post">
-                    <div class="form-group">
-                        <label for="name">Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required value="{{ name or '' }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control form-control-lg" id="name" name="name" required value="{{ name or '' }}" autofocus>
                     </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" required value="{{ email or '' }}">
+                    <div class="mb-4">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control form-control-lg" id="email" name="email" required value="{{ email or '' }}">
                         <small class="form-text text-muted">We'll use this to sign you in—no passwords needed for now.</small>
                     </div>
-                    <div class="d-flex justify-content-end">
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary mr-2">Already registered?</a>
-                        <button type="submit" class="btn btn-primary">Register</button>
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Already registered?</a>
+                        <button type="submit" class="btn btn-primary px-4">Register</button>
                     </div>
                 </form>
             </div>

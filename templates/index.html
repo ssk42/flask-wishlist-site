@@ -1,20 +1,54 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="display-4">Welcome to the Family Wishlist!</h1>
-    <p class="lead">This is a place where family members can share their wishlists with each other.</p>
+<div class="text-center py-5">
+    <h1 class="display-3 fw-bold mb-3" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Welcome to the Family Wishlist!</h1>
+    <p class="lead text-muted mb-5 mx-auto" style="max-width: 600px;">A place where family members can share their wishlists, making gift-giving easier and more meaningful.</p>
 
-    <hr class="my-4">
-
-    <p>Start by viewing the current wishlist items or adding your own.</p>
-    <div class="d-grid gap-2 d-md-flex justify-content-md-start">
-        <a class="btn btn-primary btn-lg" href="{{ url_for('items') }}" role="button">View Wishlist</a>
-        <a class="btn btn-secondary btn-lg" href="{{ url_for('submit_item') }}" role="button">Add New Item</a>
+    <div class="d-flex flex-column flex-md-row gap-3 justify-content-center mb-5">
+        <a class="btn btn-primary btn-lg px-5 py-3" href="{{ url_for('items') }}" role="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-list-ul me-2" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                <path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m-3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2m0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2m0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/>
+            </svg>
+            View Wishlist
+        </a>
+        <a class="btn btn-outline-primary btn-lg px-5 py-3" href="{{ url_for('submit_item') }}" role="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-plus-circle me-2" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+            </svg>
+            Add New Item
+        </a>
     </div>
 
-    <!-- Optionally, include a brief guide or FAQ section here -->
-    
-
+    <div class="row g-4 mt-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 p-4">
+                <div class="card-body text-center">
+                    <div class="mb-3 fs-1">🎁</div>
+                    <h3 class="h5 fw-bold">Share Wishlists</h3>
+                    <p class="text-muted mb-0">Create and share your wishlist with family members so they know exactly what you want.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 p-4">
+                <div class="card-body text-center">
+                    <div class="mb-3 fs-1">✨</div>
+                    <h3 class="h5 fw-bold">Surprise Protection</h3>
+                    <p class="text-muted mb-0">Claim items privately—gift receivers won't see who claimed their wishes.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 p-4">
+                <div class="card-body text-center">
+                    <div class="mb-3 fs-1">🎯</div>
+                    <h3 class="h5 fw-bold">Easy Organization</h3>
+                    <p class="text-muted mb-0">Filter by person, priority, and status to find the perfect gift quickly.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
