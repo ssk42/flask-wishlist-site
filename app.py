@@ -1,6 +1,6 @@
 from collections import OrderedDict, defaultdict
 from types import SimpleNamespace
-from flask import Flask, render_template, request, redirect, url_for, send_file, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import case
 from sqlalchemy.orm import joinedload
@@ -33,6 +33,25 @@ migrate = Migrate(app, db)
 
 PRIORITY_CHOICES = ['High', 'Medium', 'Low']
 STATUS_CHOICES = ['Available', 'Claimed', 'Purchased', 'Received']
+
+def get_items_url_with_filters():
+    """Helper function to build items URL with preserved filters from session"""
+    filters = {}
+    if session.get('user_filter'):
+        filters['user_filter'] = session['user_filter']
+    if session.get('status_filter'):
+        filters['status_filter'] = session['status_filter']
+    if session.get('priority_filter'):
+        filters['priority_filter'] = session['priority_filter']
+    if session.get('category_filter'):
+        filters['category_filter'] = session['category_filter']
+    if session.get('q'):
+        filters['q'] = session['q']
+    if session.get('sort_by'):
+        filters['sort_by'] = session['sort_by']
+    if session.get('sort_order'):
+        filters['sort_order'] = session['sort_order']
+    return url_for('items', **filters)
 
 # Database Models
 class User(UserMixin, db.Model):
@@ -128,7 +147,7 @@ def submit_item():
             db.session.add(new_item)
             db.session.commit()
             flash('Item added to your wishlist!', 'success')
-            return redirect(url_for('items'))
+            return redirect(get_items_url_with_filters())
         except Exception as exc:
             db.session.rollback()
             print(exc)
@@ -141,6 +160,21 @@ def submit_item():
 @app.route('/items')
 @login_required
 def items():
+    # Check if we should clear filters (when explicitly requested)
+    clear_filters = request.args.get('clear_filters') == 'true'
+    
+    if clear_filters:
+        # Clear all filters from session
+        session.pop('user_filter', None)
+        session.pop('status_filter', None)
+        session.pop('priority_filter', None)
+        session.pop('category_filter', None)
+        session.pop('q', None)
+        session.pop('sort_by', None)
+        session.pop('sort_order', None)
+        return redirect(url_for('items'))
+    
+    # Get filters from request args (for new filter applications)
     user_filter = request.args.get('user_filter', type=int)
     status_filter = request.args.get('status_filter')
     priority_filter = request.args.get('priority_filter')
@@ -148,6 +182,25 @@ def items():
     search_query = request.args.get('q', '').strip()
     sort_by = request.args.get('sort_by', 'priority')
     sort_order = request.args.get('sort_order', 'asc')
+    
+    # If filters are provided in the request, save them to session
+    if any([user_filter, status_filter, priority_filter, category_filter, search_query]) or request.args.get('sort_by') or request.args.get('sort_order'):
+        session['user_filter'] = user_filter
+        session['status_filter'] = status_filter
+        session['priority_filter'] = priority_filter
+        session['category_filter'] = category_filter
+        session['q'] = search_query
+        session['sort_by'] = sort_by
+        session['sort_order'] = sort_order
+    else:
+        # Use filters from session if no new filters provided
+        user_filter = session.get('user_filter')
+        status_filter = session.get('status_filter')
+        priority_filter = session.get('priority_filter')
+        category_filter = session.get('category_filter', '')
+        search_query = session.get('q', '')
+        sort_by = session.get('sort_by', 'priority')
+        sort_order = session.get('sort_order', 'asc')
 
     query = (
         Item.query.options(joinedload(Item.user), joinedload(Item.last_updated_by))
@@ -304,7 +357,7 @@ def edit_item(item_id):
                 item.last_updated_by_id = current_user.id
                 db.session.commit()
                 flash('Status updated successfully.', 'success')
-                return redirect(url_for('items'))
+                return redirect(get_items_url_with_filters())
         else:
             description = form_data.get('description', '').strip()
             if not description:
@@ -329,7 +382,7 @@ def edit_item(item_id):
 
             db.session.commit()
             flash('Item updated successfully.', 'success')
-            return redirect(url_for('items'))
+            return redirect(get_items_url_with_filters())
 
     return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES)
 
@@ -343,18 +396,18 @@ def claim_item(item_id):
 
     if item.user_id == current_user.id:
         flash('You cannot claim your own item.', 'warning')
-        return redirect(url_for('items'))
+        return redirect(get_items_url_with_filters())
 
     if item.status != 'Available':
         flash('This item is no longer available to claim.', 'warning')
-        return redirect(url_for('items'))
+        return redirect(get_items_url_with_filters())
 
     item.status = 'Claimed'
     item.last_updated_by_id = current_user.id
     db.session.commit()
 
     flash(f'You have claimed "{item.description}".', 'success')
-    return redirect(url_for('items'))
+    return redirect(get_items_url_with_filters())
 
 @app.route('/delete_item/<int:item_id>')
 @login_required
@@ -362,12 +415,12 @@ def delete_item(item_id):
     item = db.session.get(Item, item_id)
     if item is None or item.user_id != current_user.id:
         flash('You do not have permission to delete this item.', 'danger')
-        return redirect(url_for('items'))
+        return redirect(get_items_url_with_filters())
 
     db.session.delete(item)
     db.session.commit()
     flash('Item deleted.', 'info')
-    return redirect(url_for('items'))
+    return redirect(get_items_url_with_filters())
 
 
 @app.route('/export_items')
