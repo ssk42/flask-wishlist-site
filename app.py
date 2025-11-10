@@ -362,6 +362,34 @@ def login():
             return render_template('login.html', email=email)
     return render_template('login.html')
 
+@app.route('/forgot_email', methods=['GET', 'POST'])
+def forgot_email():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Please enter your name.', 'warning')
+            return render_template('forgot_email.html', name=name)
+
+        # Search for users with matching name (case-insensitive)
+        users = User.query.filter(User.name.ilike(name)).all()
+
+        if len(users) == 1:
+            # Exact match found
+            user = users[0]
+            app.logger.info(f'Email recovery successful for: {user.name}')
+            return render_template('forgot_email.html', found_email=user.email, found_name=user.name)
+        elif len(users) > 1:
+            # Multiple matches found
+            flash(f'We found {len(users)} accounts with similar names. Please contact support.', 'warning')
+            return render_template('forgot_email.html', name=name)
+        else:
+            # No match found
+            app.logger.warning(f'Email recovery failed for name: {name}')
+            flash('We could not find an account with that name. Please check your spelling or sign up.', 'danger')
+            return render_template('forgot_email.html', name=name)
+
+    return render_template('forgot_email.html')
+
 @app.route('/logout')
 @login_required
 def logout():
