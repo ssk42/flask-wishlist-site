@@ -73,13 +73,14 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(50), unique=True, nullable=False)
+    is_private = db.Column(db.Boolean, nullable=False, default=False)
     items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
     
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(750), nullable=False)
-    link = db.Column(db.String(500), nullable=True)
+    link = db.Column(db.String(2048), nullable=True)  # Increased from 500 to 2048 for long URLs with tracking params
     comment = db.Column(db.String(100))
     price = db.Column(db.Float, nullable=True)
     status = db.Column(db.String(20), nullable=False, default='Available', index=True)
@@ -87,7 +88,7 @@ class Item(db.Model):
     year = db.Column(db.Integer, default=datetime.datetime.now().year)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     category = db.Column(db.String(50), index=True)  # New field for category
-    image_url = db.Column(db.String(255))  # New field for image URL
+    image_url = db.Column(db.String(2048))  # Increased from 255 to 2048 for long URLs with tracking params
     priority = db.Column(db.String(50), index=True)
     last_updated_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
