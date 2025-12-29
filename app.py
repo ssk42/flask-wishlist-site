@@ -1,5 +1,6 @@
 from collections import OrderedDict, defaultdict
 from types import SimpleNamespace
+import click
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import case
@@ -7,6 +8,7 @@ from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
+from flask_mail import Mail
 import datetime
 import pandas as pd
 import os
@@ -29,6 +31,18 @@ app.config['WTF_CSRF_TIME_LIMIT'] = None  # CSRF tokens don't expire
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
+
+# Flask-Mail configuration
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'localhost')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() in ('true', '1', 'yes')
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@wishlist.app')
+
+# Initialize Flask-Mail
+mail = Mail(app)
 
 uri = os.getenv("DATABASE_URL")
 if uri:
@@ -77,6 +91,19 @@ class User(UserMixin, db.Model):
     items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
     
 
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
+    created_by = db.relationship('User', backref='events')
+    items = db.relationship('Item', backref='event', lazy=True)
+
+    def __repr__(self):
+        return f'<Event {self.name} ({self.date})>'
+
+
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(750), nullable=False)
@@ -92,6 +119,8 @@ class Item(db.Model):
     priority = db.Column(db.String(50), index=True)
     last_updated_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True, index=True)
+    price_updated_at = db.Column(db.DateTime, nullable=True)
 
     # Composite index for common query pattern (user_id + status)
     __table_args__ = (
@@ -100,7 +129,24 @@ class Item(db.Model):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Dashboard data for logged-in users
+    dashboard_data = None
+    if current_user.is_authenticated:
+        claimed_count = Item.query.filter(
+            Item.last_updated_by_id == current_user.id,
+            Item.status == 'Claimed',
+            Item.user_id != current_user.id
+        ).count()
+        purchased_count = Item.query.filter(
+            Item.last_updated_by_id == current_user.id,
+            Item.status == 'Purchased',
+            Item.user_id != current_user.id
+        ).count()
+        dashboard_data = {
+            'claimed_count': claimed_count,
+            'purchased_count': purchased_count
+        }
+    return render_template('index.html', dashboard_data=dashboard_data)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -134,12 +180,16 @@ def register():
 @app.route('/submit_item', methods=['GET', 'POST'])
 @login_required
 def submit_item():
+    # Get upcoming events for the dropdown
+    today = datetime.date.today()
+    upcoming_events = Event.query.filter(Event.date >= today).order_by(Event.date.asc()).all()
+
     if request.method == 'POST':
         form_data = request.form.to_dict()
         description = form_data.get('description', '').strip()
         if not description:
             flash('A description is required to create an item.', 'danger')
-            return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, form_data=form_data)
+            return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
         link = form_data.get('link', '').strip() or None
         image_url = form_data.get('image_url', '').strip() or None
@@ -147,12 +197,16 @@ def submit_item():
         priority = form_data.get('priority') if form_data.get('priority') in PRIORITY_CHOICES else PRIORITY_CHOICES[0]
         status = form_data.get('status') if form_data.get('status') in STATUS_CHOICES else STATUS_CHOICES[0]
 
+        # Handle event_id
+        event_id_str = form_data.get('event_id', '').strip()
+        event_id = int(event_id_str) if event_id_str else None
+
         price_input = form_data.get('price', '').strip()
         try:
             price = float(price_input) if price_input else None
         except ValueError:
             flash('Price must be a valid number.', 'danger')
-            return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, form_data=form_data)
+            return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
         new_item = Item(
             description=description,
@@ -162,7 +216,8 @@ def submit_item():
             image_url=image_url,
             priority=priority,
             status=status,
-            user_id=current_user.id
+            user_id=current_user.id,
+            event_id=event_id
         )
 
         try:
@@ -175,9 +230,9 @@ def submit_item():
             app.logger.error(f'Failed to create item for user_id={current_user.id}: {str(exc)}', exc_info=True)
             db.session.rollback()
             flash('There was a problem saving your item. Please try again.', 'danger')
-            return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, form_data=form_data)
+            return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
-    return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, form_data={})
+    return render_template('submit_item.html', status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data={})
 
 
 @app.route('/items')
@@ -403,6 +458,11 @@ def edit_item(item_id):
     item = db.session.get(Item, item_id)
     if item is None:
         abort(404)
+
+    # Get upcoming events for the dropdown (only for item owner)
+    today = datetime.date.today()
+    upcoming_events = Event.query.filter(Event.date >= today).order_by(Event.date.asc()).all()
+
     if request.method == 'POST':
         form_data = request.form.to_dict()
 
@@ -420,14 +480,14 @@ def edit_item(item_id):
             description = form_data.get('description', '').strip()
             if not description:
                 flash('Description cannot be empty.', 'danger')
-                return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES)
+                return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events)
 
             price_input = form_data.get('price', '').strip()
             try:
                 price = float(price_input) if price_input else None
             except ValueError:
                 flash('Price must be a valid number.', 'danger')
-                return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES)
+                return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events)
 
             item.description = description
             item.link = form_data.get('link', '').strip() or None
@@ -438,11 +498,15 @@ def edit_item(item_id):
             if priority in PRIORITY_CHOICES:
                 item.priority = priority
 
+            # Handle event_id
+            event_id_str = form_data.get('event_id', '').strip()
+            item.event_id = int(event_id_str) if event_id_str else None
+
             db.session.commit()
             flash('Item updated successfully.', 'success')
             return redirect(get_items_url_with_filters())
 
-    return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES)
+    return render_template('edit_item.html', item=item, current_user=current_user, status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES, events=upcoming_events)
 
 
 @app.route('/claim_item/<int:item_id>', methods=['POST'])
@@ -466,6 +530,30 @@ def claim_item(item_id):
 
     flash(f'You have claimed "{item.description}".', 'success')
     return redirect(get_items_url_with_filters())
+
+@app.route('/item/<int:item_id>/refresh-price', methods=['POST'])
+@login_required
+def refresh_price(item_id):
+    """Refresh the price for an item by fetching from its URL."""
+    from price_service import refresh_item_price
+
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
+
+    if not item.link:
+        flash('This item has no link to fetch price from.', 'warning')
+        return redirect(get_items_url_with_filters())
+
+    success, new_price, message = refresh_item_price(item, db)
+
+    if success:
+        flash(f'Price updated: {message}', 'success')
+    else:
+        flash(f'Could not update price: {message}', 'warning')
+
+    return redirect(get_items_url_with_filters())
+
 
 @app.route('/delete_item/<int:item_id>')
 @login_required
@@ -504,6 +592,154 @@ def export_items():
 
     return send_file(filename, as_attachment=True)
 
+@app.route('/my-claims')
+@login_required
+def my_claims():
+    """Show items the current user has claimed or purchased for others."""
+    # Get items where current user claimed/purchased for someone else
+    items = (
+        Item.query.options(joinedload(Item.user), joinedload(Item.last_updated_by))
+        .filter(
+            Item.last_updated_by_id == current_user.id,
+            Item.status.in_(['Claimed', 'Purchased']),
+            Item.user_id != current_user.id  # Exclude own items
+        )
+        .order_by(Item.user_id, Item.description)
+        .all()
+    )
+
+    # Group items by recipient (item owner)
+    grouped_items = OrderedDict()
+    for item in items:
+        group = grouped_items.setdefault(item.user_id, SimpleNamespace(user=item.user, items=[]))
+        group.items.append(item)
+
+    # Count of claimed (not yet purchased) items for the badge
+    claimed_count = sum(1 for item in items if item.status == 'Claimed')
+    purchased_count = sum(1 for item in items if item.status == 'Purchased')
+
+    default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
+
+    return render_template(
+        'my_claims.html',
+        grouped_items=list(grouped_items.values()),
+        claimed_count=claimed_count,
+        purchased_count=purchased_count,
+        status_choices=STATUS_CHOICES,
+        default_image_url=default_image_url
+    )
+
+
+# Event CRUD routes
+@app.route('/events')
+@login_required
+def events():
+    """List all events grouped by upcoming vs past."""
+    today = datetime.date.today()
+    upcoming_events = Event.query.filter(Event.date >= today).order_by(Event.date.asc()).all()
+    past_events = Event.query.filter(Event.date < today).order_by(Event.date.desc()).all()
+    return render_template('events.html', upcoming_events=upcoming_events, past_events=past_events)
+
+
+@app.route('/events/new', methods=['GET', 'POST'])
+@login_required
+def new_event():
+    """Create a new event."""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        date_str = request.form.get('date', '').strip()
+
+        if not name:
+            flash('Event name is required.', 'danger')
+            return render_template('event_form.html', form_data=request.form.to_dict())
+
+        if not date_str:
+            flash('Event date is required.', 'danger')
+            return render_template('event_form.html', form_data=request.form.to_dict())
+
+        try:
+            event_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
+            return render_template('event_form.html', form_data=request.form.to_dict())
+
+        new_event = Event(
+            name=name,
+            date=event_date,
+            created_by_id=current_user.id
+        )
+        db.session.add(new_event)
+        db.session.commit()
+        app.logger.info(f'Event created by user_id={current_user.id}: {name}')
+        flash(f'Event "{name}" created successfully!', 'success')
+        return redirect(url_for('events'))
+
+    return render_template('event_form.html', form_data={})
+
+
+@app.route('/events/<int:event_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_event(event_id):
+    """Edit an existing event."""
+    event = db.session.get(Event, event_id)
+    if event is None:
+        abort(404)
+
+    if event.created_by_id != current_user.id:
+        flash('You can only edit events you created.', 'danger')
+        return redirect(url_for('events'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        date_str = request.form.get('date', '').strip()
+
+        if not name:
+            flash('Event name is required.', 'danger')
+            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
+
+        if not date_str:
+            flash('Event date is required.', 'danger')
+            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
+
+        try:
+            event_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
+            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
+
+        event.name = name
+        event.date = event_date
+        db.session.commit()
+        flash(f'Event "{name}" updated successfully!', 'success')
+        return redirect(url_for('events'))
+
+    form_data = {
+        'name': event.name,
+        'date': event.date.strftime('%Y-%m-%d')
+    }
+    return render_template('event_form.html', event=event, form_data=form_data)
+
+
+@app.route('/events/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    """Delete an event."""
+    event = db.session.get(Event, event_id)
+    if event is None:
+        abort(404)
+
+    if event.created_by_id != current_user.id:
+        flash('You can only delete events you created.', 'danger')
+        return redirect(url_for('events'))
+
+    # Remove event association from items but don't delete items
+    Item.query.filter_by(event_id=event_id).update({'event_id': None})
+    db.session.delete(event)
+    db.session.commit()
+    flash(f'Event "{event.name}" deleted.', 'info')
+    return redirect(url_for('events'))
+
+
 @app.route('/export_my_status_updates')
 @login_required
 def export_my_status_updates():
@@ -536,6 +772,20 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
+# Context processor to inject claimed count into all templates
+@app.context_processor
+def inject_claimed_count():
+    """Inject the count of claimed items for navbar badge."""
+    if current_user.is_authenticated:
+        claimed_count = Item.query.filter(
+            Item.last_updated_by_id == current_user.id,
+            Item.status == 'Claimed',
+            Item.user_id != current_user.id
+        ).count()
+        return {'nav_claimed_count': claimed_count}
+    return {'nav_claimed_count': 0}
+
+
 # Security headers
 @app.after_request
 def set_security_headers(response):
@@ -550,6 +800,31 @@ def set_security_headers(response):
     for header, value in headers.items():
         response.headers[header] = value
     return response
+
+
+# CLI Commands
+@app.cli.command('send-reminders')
+def send_reminders_command():
+    """Send event reminder emails for events happening in 7 days."""
+    from tasks import send_event_reminders
+    click.echo('Sending event reminders...')
+    stats = send_event_reminders(app, db, Event, Item, User)
+    click.echo(f'Events processed: {stats["events_processed"]}')
+    click.echo(f'Emails sent: {stats["emails_sent"]}')
+    click.echo(f'Errors: {stats["errors"]}')
+    if stats['errors'] > 0:
+        raise SystemExit(1)
+
+
+@app.cli.command('update-prices')
+def update_prices_command():
+    """Update prices for items with links that haven't been updated in 7 days."""
+    from price_service import update_stale_prices
+    click.echo('Updating stale prices...')
+    stats = update_stale_prices(app, db, Item)
+    click.echo(f'Items processed: {stats["items_processed"]}')
+    click.echo(f'Prices updated: {stats["prices_updated"]}')
+    click.echo(f'Errors: {stats["errors"]}')
 
 
 if __name__ == '__main__':

@@ -46,6 +46,23 @@
                         <input type="url" class="form-control" id="image_url" name="image_url" value="{{ item.image_url }}">
                     </div>
                 </div>
+
+                {% if events %}
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <label for="event_id" class="form-label">Event (optional)</label>
+                        <select id="event_id" name="event_id" class="form-select">
+                            <option value="">No event</option>
+                            {% for event in events %}
+                                <option value="{{ event.id }}" {% if item.event_id == event.id %}selected{% endif %}>
+                                    {{ event.name }} ({{ event.date.strftime('%b %d, %Y') }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Associate this item with an upcoming event.</small>
+                    </div>
+                </div>
+                {% endif %}
             {% else %}
                 <div class="alert alert-info">
                     You're updating <strong>{{ item.user.name }}'s</strong> item. Feel free to change the status once you've purchased or delivered it.

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Reminder</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #0d6efd;
+            margin: 0;
+            font-size: 24px;
+        }
+        .event-info {
+            background-color: #e7f1ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .event-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin-bottom: 5px;
+        }
+        .event-date {
+            color: #6c757d;
+            font-size: 16px;
+        }
+        .items-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .item {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .item-description {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .item-meta {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .item-meta span {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-claimed {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status-purchased {
+            background-color: #198754;
+            color: #fff;
+        }
+        .item-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #0d6efd;
+            text-decoration: none;
+        }
+        .item-link:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #0d6efd;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Event Reminder</h1>
+        </div>
+
+        <p>Hi {{ user_name }},</p>
+
+        <p>This is a friendly reminder that <strong>{{ event_name }}</strong> is coming up in just 7 days!</p>
+
+        <div class="event-info">
+            <div class="event-name">{{ event_name }}</div>
+            <div class="event-date">{{ event_date.strftime('%A, %B %d, %Y') }}</div>
+        </div>
+
+        <div class="items-section">
+            <h2>Your Claimed Items ({{ claimed_items|length }})</h2>
+
+            {% for item in claimed_items %}
+            <div class="item">
+                <div class="item-description">{{ item.description }}</div>
+                <div class="item-meta">
+                    <span>For: {{ item.recipient_name }}</span>
+                    {% if item.price %}
+                    <span>Price: ${{ '%.2f'|format(item.price) }}</span>
+                    {% endif %}
+                    <span class="status-badge {{ 'status-claimed' if item.status == 'Claimed' else 'status-purchased' }}">
+                        {{ item.status }}
+                    </span>
+                </div>
+                {% if item.link %}
+                <a href="{{ item.link }}" class="item-link" target="_blank">View Item</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if claimed_items|selectattr('status', 'equalto', 'Claimed')|list|length > 0 %}
+        <p style="text-align: center;">
+            <strong>Reminder:</strong> You still have items marked as "Claimed" that haven't been purchased yet!
+        </p>
+        {% endif %}
+
+        <div class="footer">
+            <p>Happy gift giving!</p>
+            <p style="font-size: 12px;">This email was sent by the Family Wishlist App.</p>
+        </div>
+    </div>
+</body>
+</html>

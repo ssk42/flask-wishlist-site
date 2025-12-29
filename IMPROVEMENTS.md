@@ -2,7 +2,7 @@
 
 This document tracks all planned and completed improvements to the Family Wishlist application.
 
-**Last Updated:** 2025-10-16
+**Last Updated:** 2025-12-28
 
 ---
 
@@ -106,11 +106,14 @@ This document tracks all planned and completed improvements to the Family Wishli
 
 ### Phase 4: Core Features (High Priority)
 
-| # | Feature | Effort | Priority | Status | Notes |
-|---|---------|--------|----------|--------|-------|
-| 20 | Email Notifications | 3-4 hours | 🟡 High | ⏳ Pending | Item claimed, purchased alerts |
-| 21 | Image Upload | 3-4 hours | 🟢 Medium | ⏳ Pending | Direct upload to S3/Cloudinary |
-| 22 | Wishlist Sharing Links | 2-3 hours | 🟡 High | ⏳ Pending | Public/private, guest access |
+| # | Feature | Effort | Priority | Status | Date Completed | Notes |
+|---|---------|--------|----------|--------|----------------|-------|
+| 20 | Email Notifications | 3-4 hours | 🟡 High | ✅ Complete | 2025-12-28 | Event reminders 7 days before |
+| 21 | Image Upload | 3-4 hours | 🟢 Medium | ⏳ Pending | - | Direct upload to S3/Cloudinary |
+| 22 | Wishlist Sharing Links | 2-3 hours | 🟡 High | ⏳ Pending | - | Public/private, guest access |
+| 33 | My Claims Page | 2-3 hours | 🟡 High | ✅ Complete | 2025-12-28 | Track claimed/purchased items for others |
+| 34 | Events Management | 3-4 hours | 🟡 High | ✅ Complete | 2025-12-28 | CRUD for events, item associations |
+| 35 | Price Tracking | 2-3 hours | 🟢 Medium | ✅ Complete | 2025-12-28 | Auto-fetch prices, refresh buttons |
 
 ### Phase 5: Enhanced UX (Medium Priority)
 
@@ -136,21 +139,21 @@ This document tracks all planned and completed improvements to the Family Wishli
 
 ## 📊 Progress Summary
 
-**Total Items:** 32
-**Completed:** 9 (28%)
+**Total Items:** 35
+**Completed:** 13 (37%)
 **In Progress:** 0 (0%)
-**Pending:** 23 (72%)
+**Pending:** 22 (63%)
 
 ### By Priority
 - 🔴 Critical: 0 pending (1 complete)
-- 🟡 High: 2 pending (5 complete)
-- 🟢 Medium: 12 pending (3 complete)
+- 🟡 High: 1 pending (8 complete)
+- 🟢 Medium: 12 pending (4 complete)
 - 🟢 Low: 9 pending (0 complete)
 
 ### By Category
 - ✅ **Quick Wins:** 6/6 complete (100%)
 - ✅ **Infrastructure:** 3/13 complete (23%)
-- ⏳ **User Features:** 0/13 complete (0%)
+- ✅ **User Features:** 4/16 complete (25%)
 
 ---
 
@@ -229,6 +232,33 @@ This document tracks all planned and completed improvements to the Family Wishli
   - Added logging to key routes: register, login, submit_item
   - Development uses human-readable logs, production uses JSON
 - 📈 Progress: 9/32 items complete (28%)
+
+### 2025-12-28 (Session 3)
+- ✅ **My Claims Page (#33)**
+  - New `/my-claims` route showing items claimed/purchased for others
+  - Grouped by recipient with status badges
+  - Dashboard widget on home page
+  - Navbar badge showing claimed items count
+- ✅ **Events Management (#34)**
+  - Event model with name, date, created_by, reminder_sent fields
+  - CRUD routes: /events, /events/new, /events/{id}/edit, /events/{id}/delete
+  - Item-event association (optional event_id on items)
+  - Events dropdown in submit/edit item forms
+- ✅ **Email Notifications (#20)**
+  - Flask-Mail integration for sending emails
+  - Event reminder emails sent 7 days before events
+  - CLI command: `flask send-reminders`
+  - HTML and plain text email templates
+- ✅ **Price Tracking (#35)**
+  - Price fetching service with Amazon support
+  - "Refresh Price" button on item cards
+  - "Price as of [date]" display
+  - CLI command: `flask update-prices`
+  - Background price updates for stale items (7+ days)
+- ✅ New dependencies: Flask-Mail, beautifulsoup4, requests
+- ✅ Database migration: 858a27dc5d01_add_event_model_event_id_and_price_.py
+- ✅ Test coverage: 132 tests passing, 94% coverage
+- 📈 Progress: 13/35 items complete (37%)
 
 ### 2025-10-16 (Session 1)
 - ✅ Completed all 6 Quick Wins

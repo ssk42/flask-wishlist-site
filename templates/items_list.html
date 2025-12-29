@@ -14,11 +14,11 @@
     </div>
 </div>
 
-<form action="{{ url_for('items') }}" method="get" class="bg-white border rounded shadow-sm p-3 mb-4">
+<form action="{{ url_for('items') }}" method="get" class="filter-panel mb-4" aria-label="Filter and sort wishlist items">
     <div class="row g-3">
         <div class="col-md-3">
-            <label class="form-label small text-uppercase fw-bold">Person</label>
-            <select name="user_filter" class="form-select">
+            <label for="user_filter" class="form-label small text-uppercase fw-bold">Person</label>
+            <select name="user_filter" id="user_filter" class="form-select" aria-label="Filter by person">
                 <option value="" {% if not active_filters.user_filter %}selected{% endif %}>All people</option>
                 {% for user in users %}
                     <option value="{{ user.id }}" {% if active_filters.user_filter == user.id %}selected{% endif %}>{{ user.name }}</option>
@@ -26,8 +26,8 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label class="form-label small text-uppercase fw-bold">Status</label>
-            <select name="status_filter" class="form-select">
+            <label for="status_filter" class="form-label small text-uppercase fw-bold">Status</label>
+            <select name="status_filter" id="status_filter" class="form-select" aria-label="Filter by status">
                 <option value="" {% if not active_filters.status_filter %}selected{% endif %}>Any status</option>
                 {% for status in status_options %}
                     <option value="{{ status }}" {% if active_filters.status_filter == status %}selected{% endif %}>{{ status }}</option>
@@ -35,8 +35,8 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label class="form-label small text-uppercase fw-bold">Priority</label>
-            <select name="priority_filter" class="form-select">
+            <label for="priority_filter" class="form-label small text-uppercase fw-bold">Priority</label>
+            <select name="priority_filter" id="priority_filter" class="form-select" aria-label="Filter by priority">
                 <option value="" {% if not active_filters.priority_filter %}selected{% endif %}>Any priority</option>
                 {% for priority in priority_choices %}
                     <option value="{{ priority }}" {% if active_filters.priority_filter == priority %}selected{% endif %}>{{ priority }}</option>
@@ -44,8 +44,8 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label class="form-label small text-uppercase fw-bold">Category</label>
-            <select name="category_filter" class="form-select">
+            <label for="category_filter" class="form-label small text-uppercase fw-bold">Category</label>
+            <select name="category_filter" id="category_filter" class="form-select" aria-label="Filter by category">
                 <option value="" {% if not active_filters.category_filter %}selected{% endif %}>All categories</option>
                 {% for category in category_options %}
                     <option value="{{ category }}" {% if active_filters.category_filter == category %}selected{% endif %}>{{ category }}</option>
@@ -55,31 +55,42 @@
     </div>
     <div class="row g-3 mt-2">
         <div class="col-md-4">
-            <label class="form-label small text-uppercase fw-bold">Search description</label>
-            <input type="search" name="q" class="form-control" placeholder="e.g. Lego set" value="{{ active_filters.q }}">
+            <label for="search_query" class="form-label small text-uppercase fw-bold">Search description</label>
+            <div class="search-wrapper">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+                <input type="search" name="q" id="search_query" class="form-control" placeholder="e.g. Lego set" value="{{ active_filters.q }}" aria-label="Search items by description">
+            </div>
         </div>
         <div class="col-md-4">
-            <label class="form-label small text-uppercase fw-bold">Sort by</label>
-            <select name="sort_by" class="form-select">
+            <label for="sort_by" class="form-label small text-uppercase fw-bold">Sort by</label>
+            <select name="sort_by" id="sort_by" class="form-select" aria-label="Sort items by">
                 {% for value, label in sort_options %}
                     <option value="{{ value }}" {% if active_filters.sort_by == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="col-md-2">
-            <label class="form-label small text-uppercase fw-bold">Order</label>
-            <select name="sort_order" class="form-select">
+            <label for="sort_order" class="form-label small text-uppercase fw-bold">Order</label>
+            <select name="sort_order" id="sort_order" class="form-select" aria-label="Sort order">
                 <option value="asc" {% if active_filters.sort_order == 'asc' %}selected{% endif %}>Ascending</option>
                 <option value="desc" {% if active_filters.sort_order == 'desc' %}selected{% endif %}>Descending</option>
             </select>
         </div>
         <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">Apply</button>
+            <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
         </div>
     </div>
     <div class="d-flex justify-content-between align-items-center mt-3">
         <div>
-            <a href="{{ url_for('items', clear_filters='true') }}" class="small">Clear all filters</a>
+            <a href="{{ url_for('items', clear_filters='true') }}" class="small text-decoration-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-x-circle me-1" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                </svg>
+                Clear all filters
+            </a>
             {% if active_filters.user_filter or active_filters.status_filter or active_filters.priority_filter or active_filters.category_filter or active_filters.q %}
                 <span class="badge bg-info ms-2 small">Filters active</span>
             {% endif %}
@@ -147,10 +158,27 @@
                                     <p class="text-muted mb-1"><strong>Category:</strong> {{ item.category }}</p>
                                 {% endif %}
                                 {% if item.price %}
-                                    <p class="mb-1"><strong>Price:</strong> ${{ '%.2f'|format(item.price) }}</p>
+                                    <p class="mb-1">
+                                        <strong>Price:</strong> ${{ '%.2f'|format(item.price) }}
+                                        {% if item.price_updated_at %}
+                                            <small class="text-muted">(as of {{ item.price_updated_at.strftime('%b %d') }})</small>
+                                        {% endif %}
+                                    </p>
                                 {% endif %}
                                 {% if item.link %}
-                                    <a href="{{ item.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mb-2">View item</a>
+                                    <div class="d-flex gap-2 mb-2 flex-wrap">
+                                        <a href="{{ item.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">View item</a>
+                                        <form action="{{ url_for('refresh_price', item_id=item.id) }}" method="post" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Fetch current price from URL">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+                                                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                                                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                                                </svg>
+                                                Refresh Price
+                                            </button>
+                                        </form>
+                                    </div>
                                 {% endif %}
                                 {% if item.last_updated_by and item.user_id != current_user.id %}
                                     <p class="text-muted small mb-2">Last updated by {{ item.last_updated_by.name }}</p>
@@ -181,10 +209,19 @@
         </section>
     {% endfor %}
 {% else %}
-    <div class="text-center py-5 bg-white border rounded shadow-sm">
-        <h2 class="h4">No items found</h2>
-        <p class="text-muted">Try adjusting your filters or add a brand new wishlist item.</p>
-        <a class="btn btn-primary" href="{{ url_for('submit_item') }}">Add your first item</a>
+    <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-inbox" viewBox="0 0 16 16">
+            <path d="M4.98 4a.5.5 0 0 0-.39.188L1.54 8H6a.5.5 0 0 1 .5.5 1.5 1.5 0 1 0 3 0A.5.5 0 0 1 10 8h4.46l-3.05-3.812A.5.5 0 0 0 11.02 4zm-1.17-.437A1.5 1.5 0 0 1 4.98 3h6.04a1.5 1.5 0 0 1 1.17.563l3.7 4.625a.5.5 0 0 1 .106.374l-.39 3.124A1.5 1.5 0 0 1 14.117 13H1.883a1.5 1.5 0 0 1-1.489-1.314l-.39-3.124a.5.5 0 0 1 .106-.374z"/>
+        </svg>
+        <h2 class="h4 mb-2">No items found</h2>
+        <p class="text-muted mb-4">Try adjusting your filters or add a brand new wishlist item.</p>
+        <a class="btn btn-primary" href="{{ url_for('submit_item') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle me-1" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+            </svg>
+            Add your first item
+        </a>
     </div>
 {% endif %}
 {% endblock %}

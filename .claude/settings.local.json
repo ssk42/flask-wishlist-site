@@ -5,7 +5,17 @@
       "Bash(source:*)",
       "Bash(pip install:*)",
       "Bash(flask db migrate:*)",
-      "Bash(flask db:*)"
+      "Bash(flask db:*)",
+      "Bash(python:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(unset DATABASE_URL:*)",
+      "Bash(DATABASE_URL=\"\" flask db migrate:*)",
+      "Bash(DATABASE_URL=\"\" flask db:*)",
+      "Bash(DATABASE_URL=\"\" pytest tests/unit/:*)",
+      "Bash(DATABASE_URL=\"\" pytest tests/unit/test_routes.py -v --tb=short -x)",
+      "Bash(DATABASE_URL=\"\" pytest:*)",
+      "Bash(DATABASE_URL=\"\" pytest tests/browser/ -v --tb=short:*)"
     ],
     "deny": [],
     "ask": []

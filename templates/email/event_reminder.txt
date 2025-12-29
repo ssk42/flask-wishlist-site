@@ -1,0 +1,31 @@
+EVENT REMINDER
+==============
+
+Hi {{ user_name }},
+
+This is a friendly reminder that {{ event_name }} is coming up in just 7 days!
+
+Event: {{ event_name }}
+Date: {{ event_date.strftime('%A, %B %d, %Y') }}
+
+YOUR CLAIMED ITEMS ({{ claimed_items|length }})
+-----------------------------------------------
+
+{% for item in claimed_items %}
+* {{ item.description }}
+  For: {{ item.recipient_name }}
+  {% if item.price %}Price: ${{ '%.2f'|format(item.price) }}{% endif %}
+
+  Status: {{ item.status }}
+  {% if item.link %}Link: {{ item.link }}{% endif %}
+
+{% endfor %}
+{% if claimed_items|selectattr('status', 'equalto', 'Claimed')|list|length > 0 %}
+REMINDER: You still have items marked as "Claimed" that haven't been purchased yet!
+{% endif %}
+
+---
+
+Happy gift giving!
+
+This email was sent by the Family Wishlist App.
