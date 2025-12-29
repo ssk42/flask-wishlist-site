@@ -536,6 +536,7 @@ def claim_item(item_id):
 def refresh_price(item_id):
     """Refresh the price for an item by fetching from its URL."""
     from price_service import refresh_item_price
+    from urllib.parse import urlparse
 
     item = db.session.get(Item, item_id)
     if item is None:
@@ -550,7 +551,12 @@ def refresh_price(item_id):
     if success:
         flash(f'Price updated: {message}', 'success')
     else:
-        flash(f'Could not update price: {message}', 'warning')
+        # Give more helpful error message for Amazon
+        domain = urlparse(item.link).netloc.lower()
+        if 'amazon' in domain:
+            flash('Amazon blocks automated price fetching. You can update the price manually by editing the item.', 'warning')
+        else:
+            flash(f'Could not fetch price automatically. You can update it manually by editing the item.', 'warning')
 
     return redirect(get_items_url_with_filters())
 

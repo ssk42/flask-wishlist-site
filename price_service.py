@@ -118,29 +118,53 @@ def fetch_price(url):
 
 
 def _fetch_amazon_price(url):
-    """Fetch price from Amazon product page."""
+    """Fetch price from Amazon product page.
+
+    Note: Amazon actively blocks scraping. This function tries multiple approaches
+    but may fail due to CAPTCHAs, bot detection, or page structure changes.
+    For reliable Amazon pricing, consider using the Amazon Product Advertising API.
+    """
     try:
         session = _get_session()
-        # Add Amazon-specific headers
+        # Add Amazon-specific headers to look more like a real browser
         session.headers.update({
             'Accept-Language': 'en-US,en;q=0.9',
             'Referer': 'https://www.amazon.com/',
+            'Host': 'www.amazon.com',
+            'DNT': '1',
         })
 
         response = _make_request(url, session)
         if not response:
+            logger.warning(f'Amazon request failed (possible bot detection): {url}')
+            return None
+
+        # Check if we got a CAPTCHA or robot check page
+        if 'captcha' in response.text.lower() or 'robot check' in response.text.lower():
+            logger.warning(f'Amazon returned CAPTCHA/robot check page: {url}')
             return None
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Extensive list of Amazon price selectors (they change frequently)
+        # First try: Extract from twister-plus-price-data-price attribute
+        price_elem = soup.find(attrs={'data-asin-price': True})
+        if price_elem:
+            price = _parse_price(price_elem.get('data-asin-price'))
+            if price and price > 0:
+                logger.info(f'Found Amazon price from data-asin-price: ${price}')
+                return price
+
+        # Second try: Extensive list of Amazon price selectors
         price_selectors = [
-            # Main price displays
+            # Main price displays (2024-2025 layouts)
             '#corePrice_feature_div .a-offscreen',
             '#corePriceDisplay_desktop_feature_div .a-offscreen',
             '#apex_offerDisplay_desktop .a-offscreen',
             '.apexPriceToPay .a-offscreen',
             '#tp_price_block_total_price_ww .a-offscreen',
+            '.priceToPay .a-offscreen',
+            '.reinventPricePriceToPayMargin .a-offscreen',
+            # Legacy selectors
             '#priceblock_ourprice',
             '#priceblock_dealprice',
             '#priceblock_saleprice',
@@ -148,13 +172,9 @@ def _fetch_amazon_price(url):
             '#price_inside_buybox',
             '#newBuyBoxPrice',
             '#kindle-price',
-            # Deal prices
-            '#dealprice_shippingmessage .a-size-large',
-            '.reinventPricePriceToPayMargin .a-offscreen',
-            # Alternative layouts
-            'span[data-a-color="price"] .a-offscreen',
-            '.priceToPay .a-offscreen',
             '#price',
+            # Try broader selectors last
+            'span[data-a-color="price"] .a-offscreen',
             '.a-color-price',
         ]
 
@@ -167,12 +187,18 @@ def _fetch_amazon_price(url):
                     logger.info(f'Found Amazon price: ${price} using {selector}')
                     return price
 
-        # Try extracting from page data/scripts
+        # Third try: Extract from embedded JavaScript data
         price = _extract_amazon_price_from_scripts(soup)
         if price:
             return price
 
-        logger.warning(f'Could not find price on Amazon page: {url}')
+        # Check if we got blocked or got an error page
+        title = soup.find('title')
+        title_text = title.get_text() if title else ''
+        if 'Sorry!' in title_text or 'Page Not Found' in title_text:
+            logger.warning(f'Amazon returned error page: {url}')
+        else:
+            logger.warning(f'Could not find price on Amazon page (may be blocked or page structure changed): {url}')
         return None
 
     except Exception as e:
