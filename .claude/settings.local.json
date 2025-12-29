@@ -15,7 +15,8 @@
       "Bash(DATABASE_URL=\"\" pytest tests/unit/:*)",
       "Bash(DATABASE_URL=\"\" pytest tests/unit/test_routes.py -v --tb=short -x)",
       "Bash(DATABASE_URL=\"\" pytest:*)",
-      "Bash(DATABASE_URL=\"\" pytest tests/browser/ -v --tb=short:*)"
+      "Bash(DATABASE_URL=\"\" pytest tests/browser/ -v --tb=short:*)",
+      "Bash(DATABASE_URL=\"\" pytest tests/unit/test_price_service.py -v --tb=short:*)"
     ],
     "deny": [],
     "ask": []

@@ -65,8 +65,8 @@ class TestFetchPrice:
         assert fetch_price(None) is None
         assert fetch_price("") is None
 
-    @patch('price_service.requests.get')
-    def test_fetch_amazon_price(self, mock_get):
+    @patch('price_service._make_request')
+    def test_fetch_amazon_price(self, mock_request):
         """Should extract price from Amazon page."""
         from price_service import _fetch_amazon_price
 
@@ -81,14 +81,13 @@ class TestFetchPrice:
         </body>
         </html>
         '''
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         price = _fetch_amazon_price("https://www.amazon.com/dp/B12345")
         assert price == 29.99
 
-    @patch('price_service.requests.get')
-    def test_fetch_generic_meta_price(self, mock_get):
+    @patch('price_service._make_request')
+    def test_fetch_generic_meta_price(self, mock_request):
         """Should extract price from meta tags."""
         from price_service import fetch_price
 
@@ -98,32 +97,29 @@ class TestFetchPrice:
             <meta property="og:price:amount" content="49.99">
         </html>
         '''
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         price = fetch_price("https://www.example.com/product")
         assert price == 49.99
 
-    @patch('price_service.requests.get')
-    def test_fetch_price_handles_network_error(self, mock_get):
+    @patch('price_service._make_request')
+    def test_fetch_price_handles_network_error(self, mock_request):
         """Should return None on network errors."""
         from price_service import fetch_price
-        import requests
 
-        mock_get.side_effect = requests.RequestException("Network error")
+        mock_request.return_value = None
 
         price = fetch_price("https://www.amazon.com/dp/B12345")
         assert price is None
 
-    @patch('price_service.requests.get')
-    def test_fetch_price_handles_missing_price(self, mock_get):
+    @patch('price_service._make_request')
+    def test_fetch_price_handles_missing_price(self, mock_request):
         """Should return None when price not found on page."""
         from price_service import fetch_price
 
         mock_response = MagicMock()
         mock_response.text = '<html><body>No price here</body></html>'
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         price = fetch_price("https://www.example.com/page")
         assert price is None
