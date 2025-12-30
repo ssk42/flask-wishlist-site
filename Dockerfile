@@ -34,6 +34,11 @@ COPY . .
 # Make sure scripts in .local are usable
 ENV PATH=/root/.local/bin:$PATH
 
+# Install Playwright browsers and dependencies
+# Ensure we have the necessary system dependencies for chromium
+RUN playwright install --with-deps chromium
+
+
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app

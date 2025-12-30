@@ -117,6 +117,39 @@ def fetch_price(url):
         return None
 
 
+def _fetch_with_playwright(url):
+    """Fetch content using Playwright (headless browser) for stubborn sites."""
+    from playwright.sync_api import sync_playwright
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            # Create a context with realistic browser attributes
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1280, 'height': 800},
+                device_scale_factor=2,
+            )
+            page = context.new_page()
+            
+            # Stealthier navigation
+            try:
+                page.goto(url, timeout=30000, wait_until='domcontentloaded')
+                # Wait a bit for JS to execute (many sites render price via JS)
+                page.wait_for_timeout(2000)
+                
+                content = page.content()
+                soup = BeautifulSoup(content, 'html.parser')
+                return soup
+            finally:
+                browser.close()
+                
+    except Exception as e:
+        logger.error(f"Playwright fetch failed for {url}: {e}")
+        return None
+
+
+
 def _fetch_amazon_price(url):
     """Fetch price from Amazon product page.
 
@@ -141,7 +174,10 @@ def _fetch_amazon_price(url):
 
         # Check if we got a CAPTCHA or robot check page
         if 'captcha' in response.text.lower() or 'robot check' in response.text.lower():
-            logger.warning(f'Amazon returned CAPTCHA/robot check page: {url}')
+            logger.warning(f'Amazon returned CAPTCHA/robot check page via requests, trying Playwright: {url}')
+            soup = _fetch_with_playwright(url)
+            if soup:
+                 return _extract_amazon_price_from_soup(soup)
             return None
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -191,19 +227,77 @@ def _fetch_amazon_price(url):
         price = _extract_amazon_price_from_scripts(soup)
         if price:
             return price
-
-        # Check if we got blocked or got an error page
-        title = soup.find('title')
-        title_text = title.get_text() if title else ''
-        if 'Sorry!' in title_text or 'Page Not Found' in title_text:
-            logger.warning(f'Amazon returned error page: {url}')
-        else:
-            logger.warning(f'Could not find price on Amazon page (may be blocked or page structure changed): {url}')
-        return None
+            
+        return None  # Let it fall through to the fallback at the end
 
     except Exception as e:
         logger.warning(f'Amazon price fetch failed for {url}: {str(e)}')
-        return None
+        # Determine if we should try fallback based on error? 
+        # For now, let's try fallback if requests fails significantly
+        pass
+        
+    # Final Fallback 
+    logger.info(f"Targeting Playwright fallback for {url}")
+    soup = _fetch_with_playwright(url)
+    if soup:
+        # Debug trace
+        title = soup.find('title')
+        title_text = title.get_text().strip() if title else 'No Title'
+        logger.info(f"Playwright loaded Amazon page: {title_text}")
+        
+        return _extract_amazon_price_from_soup(soup)
+        
+    return None
+
+def _extract_amazon_price_from_soup(soup):
+    """Refactored extraction logic to start with soup."""
+    # First try: Extract from twister-plus-price-data-price attribute
+    price_elem = soup.find(attrs={'data-asin-price': True})
+    if price_elem:
+        price = _parse_price(price_elem.get('data-asin-price'))
+        if price and price > 0:
+            logger.info(f'Found Amazon price via soup data-asin-price: ${price}')
+            return price
+
+    # Second try: Extensive list of Amazon price selectors
+    price_selectors = [
+        # Main price displays (2024-2025 layouts)
+        '#corePrice_feature_div .a-offscreen',
+        '#corePriceDisplay_desktop_feature_div .a-offscreen',
+        '#apex_offerDisplay_desktop .a-offscreen',
+        '.apexPriceToPay .a-offscreen',
+        '#tp_price_block_total_price_ww .a-offscreen',
+        '.priceToPay .a-offscreen',
+        '.reinventPricePriceToPayMargin .a-offscreen',
+        # Legacy selectors
+        '#priceblock_ourprice',
+        '#priceblock_dealprice',
+        '#priceblock_saleprice',
+        '.a-price .a-offscreen',
+        '#price_inside_buybox',
+        '#newBuyBoxPrice',
+        '#kindle-price',
+        '#price',
+        # Try broader selectors last
+        'span[data-a-color="price"] .a-offscreen',
+        '.a-color-price',
+    ]
+
+    for selector in price_selectors:
+        elements = soup.select(selector)
+        for element in elements:
+            price_text = element.get_text(strip=True)
+            price = _parse_price(price_text)
+            if price is not None and price > 0:
+                logger.info(f'Found Amazon price via soup: ${price} using {selector}')
+                return price
+
+    # Third try: Extract from embedded JavaScript data
+    price = _extract_amazon_price_from_scripts(soup)
+    if price:
+        return price
+        
+    return None
 
 
 def _extract_amazon_price_from_scripts(soup):
@@ -244,6 +338,21 @@ def _fetch_target_price(url):
             if not response:
                 return None
             tcin_match = re.search(r'"tcin":"(\d+)"', response.text)
+            
+            # If standard request failed to get TCIN, try Playwright
+            if not tcin_match:
+                 soup = _fetch_with_playwright(url)
+                 if soup:
+                     # Try to find TCIN in the full rendered page
+                     text = str(soup)
+                     tcin_match = re.search(r'"tcin":"(\d+)"', text)
+                     
+                     # Or try to parse price directly from rendered page 
+                     # (reusing the fallback logic below)
+                     price = _extract_price_from_target_soup(soup)
+                     if price:
+                         return price
+
 
         if tcin_match:
             tcin = tcin_match.group(1)
@@ -290,11 +399,42 @@ def _fetch_target_price(url):
                     if price and price > 0:
                         return price
 
+        # Fallback to Playwright if everything else failed
+        logger.info(f"Trying Target fallback via Playwright for {url}")
+        soup = _fetch_with_playwright(url)
+        if soup:
+             price = _extract_price_from_target_soup(soup)
+             if price:
+                 return price
+
         return None
 
     except Exception as e:
         logger.warning(f'Target price fetch failed for {url}: {str(e)}')
         return None
+
+def _extract_price_from_target_soup(soup):
+    """Helper to extract Target price from a BeautifulSoup object."""
+    # Look for price in JSON-LD
+    price = _extract_price_from_json_ld_all(soup)
+    if price:
+        return price
+
+    # Try page selectors (updated for 2024/2025)
+    selectors = [
+        '[data-test="product-price"]',
+        '.styles_CurrentPrice',
+        '[data-test="current-price"]',
+        '[data-test="product-price-container"] span',
+    ]
+    for selector in selectors:
+        elem = soup.select_one(selector)
+        if elem:
+            price = _parse_price(elem.get_text())
+            if price and price > 0:
+                logger.info(f'Found Target price via soup: ${price}')
+                return price
+    return None
 
 
 def _fetch_walmart_price(url):
