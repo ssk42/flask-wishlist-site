@@ -103,6 +103,10 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(50), unique=True, nullable=False)
     is_private = db.Column(db.Boolean, nullable=False, default=False)
     items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
+
+    @property
+    def unread_count(self):
+        return Notification.query.filter_by(user_id=self.id, is_read=False).count()
     
 
 class Event(db.Model):
@@ -136,10 +140,43 @@ class Item(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True, index=True)
     price_updated_at = db.Column(db.DateTime, nullable=True)
 
+    comments = db.relationship('Comment', backref='item', lazy=True, cascade='all, delete-orphan')
+
     # Composite index for common query pattern (user_id + status)
     __table_args__ = (
         db.Index('idx_item_user_status', 'user_id', 'status'),
     )
+
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
+    
+    # Author relationship
+    author = db.relationship('User', backref='comments')
+
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.String(500), nullable=False)
+    link = db.Column(db.String(500), nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    recipient = db.relationship('User', backref='notifications')
+
+    recipient = db.relationship('User', backref='notifications')
+
+@app.context_processor
+def inject_notifications():
+    if current_user.is_authenticated:
+        return dict(unread_notifications_count=current_user.unread_count)
+    return dict(unread_notifications_count=0)
+
 
 @app.route('/')
 def index():
@@ -295,7 +332,11 @@ def items():
         sort_order = session.get('sort_order', 'asc')
 
     query = (
-        Item.query.options(joinedload(Item.user), joinedload(Item.last_updated_by))
+        Item.query.options(
+            joinedload(Item.user),
+            joinedload(Item.last_updated_by),
+            joinedload(Item.comments).joinedload(Comment.author)
+        )
         .join(User, Item.user_id == User.id)
     )
 
@@ -617,8 +658,13 @@ def export_items():
 def my_claims():
     """Show items the current user has claimed or purchased for others."""
     # Get items where current user claimed/purchased for someone else
+    # Eager load comments and their authors to prevent N+1 queries
     items = (
-        Item.query.options(joinedload(Item.user), joinedload(Item.last_updated_by))
+        Item.query.options(
+            joinedload(Item.user),
+            joinedload(Item.last_updated_by),
+            joinedload(Item.comments).joinedload(Comment.author)
+        )
         .filter(
             Item.last_updated_by_id == current_user.id,
             Item.status.in_(['Claimed', 'Purchased']),
@@ -851,6 +897,60 @@ def api_fetch_metadata():
     except Exception as e:
         app.logger.error(f"Metadata fetch failed: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/item/<int:item_id>/comment', methods=['POST'])
+@login_required
+def add_comment(item_id):
+    item = Item.query.get_or_404(item_id)
+    text = request.form.get('text', '').strip()
+    
+    if not text:
+        flash('Comment cannot be empty.', 'warning')
+        return redirect(get_items_url_with_filters())
+        
+    if item.user_id == current_user.id:
+        flash('You cannot comment on your own wishlist item.', 'danger')
+        return redirect(get_items_url_with_filters())
+        
+    # Add Comment
+    comment = Comment(text=text, user_id=current_user.id, item_id=item.id)
+    db.session.add(comment)
+    
+    # Generate Notifications
+    # 1. Notify other commenters on this item
+    previous_commenters = db.session.query(User).join(Comment).filter(
+        Comment.item_id == item_id,
+        User.id != current_user.id, # Don't notify self
+        User.id != item.user_id     # Don't notify owner (redundant but safe)
+    ).distinct().all()
+    
+    for recipient in previous_commenters:
+        msg = f"{current_user.name} commented on an item for {item.user.name}: {item.description[:30]}..."
+        link = url_for('items', _anchor=f'item-{item.id}')
+        notif = Notification(user_id=recipient.id, message=msg, link=link)
+        db.session.add(notif)
+        
+    db.session.commit()
+    flash('Comment added!', 'success')
+    return redirect(get_items_url_with_filters())
+
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
+    return render_template('notifications.html', notifications=notifs)
+
+@app.route('/notifications/read/<int:notif_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notif_id):
+    notif = Notification.query.filter_by(id=notif_id, user_id=current_user.id).first_or_404()
+    notif.is_read = True
+    db.session.commit()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True})
+    return redirect(url_for('notifications'))
 
 
 @app.cli.command('update-prices')
