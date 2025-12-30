@@ -217,9 +217,15 @@
                         {% else %}
                         <div class="d-flex flex-column">
                             {% if item.status == 'Available' %}
-                            <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post" class="mb-2">
+                            <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post" class="mb-2"
+                                hx-post="{{ url_for('claim_item', item_id=item.id) }}" hx-swap="outerHTML"
+                                hx-target="closest .card" hx-indicator=".htmx-indicator">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                                <button type="submit" class="btn btn-success btn-sm w-100">Claim</button>
+                                <button type="submit" class="btn btn-success btn-sm w-100">
+                                    <span class="htmx-indicator spinner-border spinner-border-sm me-1"
+                                        role="status"></span>
+                                    Claim
+                                </button>
                             </form>
                             {% endif %}
                             <a href="{{ url_for('edit_item', item_id=item.id) }}"

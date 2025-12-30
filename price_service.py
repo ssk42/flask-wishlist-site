@@ -968,13 +968,14 @@ def _fetch_generic_metadata(url):
         return None
 
 
-def update_stale_prices(app, db, Item):
+def update_stale_prices(app, db, Item, Notification=None):
     """Update prices for items that haven't been updated in 7 days.
 
     Args:
         app: Flask application instance
         db: SQLAlchemy database instance
         Item: Item model class
+        Notification: Notification model class (optional, for price drop alerts)
 
     Returns:
         Dictionary with counts of items processed, updated, and errors
@@ -995,6 +996,7 @@ def update_stale_prices(app, db, Item):
         stats = {
             'items_processed': 0,
             'prices_updated': 0,
+            'price_drops': 0,
             'errors': 0
         }
 
@@ -1013,6 +1015,15 @@ def update_stale_prices(app, db, Item):
                     if old_price != new_price:
                         logger.info(f'Updated price for item {item.id}: ${old_price} -> ${new_price}')
                     stats['prices_updated'] += 1
+
+                    # Check for significant price drop (≥10%)
+                    if Notification and old_price and new_price < old_price:
+                        drop_percent = ((old_price - new_price) / old_price) * 100
+                        if drop_percent >= 10:
+                            stats['price_drops'] += 1
+                            _create_price_drop_notifications(
+                                item, old_price, new_price, drop_percent, db, Notification
+                            )
                 else:
                     # Update timestamp to avoid repeatedly trying failed URLs
                     item.price_updated_at = datetime.datetime.now()
@@ -1029,6 +1040,37 @@ def update_stale_prices(app, db, Item):
 
         logger.info(f'Price update complete: {stats}')
         return stats
+
+
+def _create_price_drop_notifications(item, old_price, new_price, drop_percent, db, Notification):
+    """Create notifications for significant price drops.
+    
+    Notifies:
+    - Item owner
+    - User who claimed the item (if any, and not the owner)
+    """
+    # Notification for owner
+    owner_message = f"🎉 Price drop! '{item.description[:50]}' is now ${new_price:.2f} (was ${old_price:.2f}) - {drop_percent:.0f}% off!"
+    owner_notif = Notification(
+        message=owner_message,
+        link=f"/items?user_filter={item.user_id}",
+        user_id=item.user_id
+    )
+    db.session.add(owner_notif)
+    logger.info(f'Created price drop notification for owner (user_id={item.user_id})')
+    
+    # Notification for claimer (if different from owner)
+    if item.last_updated_by_id and item.last_updated_by_id != item.user_id and item.status in ['Claimed', 'Purchased']:
+        claimer_message = f"💰 Price drop on '{item.description[:50]}' you claimed! Now ${new_price:.2f} (was ${old_price:.2f})"
+        claimer_notif = Notification(
+            message=claimer_message,
+            link="/my-claims",
+            user_id=item.last_updated_by_id
+        )
+        db.session.add(claimer_notif)
+        logger.info(f'Created price drop notification for claimer (user_id={item.last_updated_by_id})')
+    
+    db.session.commit()
 
 
 def refresh_item_price(item, db):

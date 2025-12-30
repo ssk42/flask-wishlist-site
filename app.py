@@ -591,6 +591,11 @@ def claim_item(item_id):
     item.last_updated_by_id = current_user.id
     db.session.commit()
 
+    # For htmx requests, return the updated item card
+    if request.headers.get('HX-Request'):
+        default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
+        return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
+
     flash(f'You have claimed "{item.description}".', 'success')
     return redirect(get_items_url_with_filters())
 
@@ -973,9 +978,10 @@ def update_prices_command():
     """Update prices for items with links that haven't been updated in 7 days."""
     from price_service import update_stale_prices
     click.echo('Updating stale prices...')
-    stats = update_stale_prices(app, db, Item)
+    stats = update_stale_prices(app, db, Item, Notification)
     click.echo(f'Items processed: {stats["items_processed"]}')
     click.echo(f'Prices updated: {stats["prices_updated"]}')
+    click.echo(f'Price drops detected: {stats["price_drops"]}')
     click.echo(f'Errors: {stats["errors"]}')
 
 
