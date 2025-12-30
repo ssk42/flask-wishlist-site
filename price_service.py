@@ -98,7 +98,7 @@ def fetch_price(url):
         domain = parsed.netloc.lower()
 
         # Site-specific extractors
-        if 'amazon' in domain:
+        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
             return _fetch_amazon_price(url)
         elif 'target.com' in domain:
             return _fetch_target_price(url)
@@ -163,7 +163,6 @@ def _fetch_amazon_price(url):
         session.headers.update({
             'Accept-Language': 'en-US,en;q=0.9',
             'Referer': 'https://www.amazon.com/',
-            'Host': 'www.amazon.com',
             'DNT': '1',
         })
 
@@ -199,7 +198,11 @@ def _fetch_amazon_price(url):
             '.apexPriceToPay .a-offscreen',
             '#tp_price_block_total_price_ww .a-offscreen',
             '.priceToPay .a-offscreen',
+            '.priceToPay .a-offscreen',
             '.reinventPricePriceToPayMargin .a-offscreen',
+            # Book specific
+            '#price', 
+            '.header-price',
             # Legacy selectors
             '#priceblock_ourprice',
             '#priceblock_dealprice',
@@ -269,6 +272,9 @@ def _extract_amazon_price_from_soup(soup):
         '#tp_price_block_total_price_ww .a-offscreen',
         '.priceToPay .a-offscreen',
         '.reinventPricePriceToPayMargin .a-offscreen',
+        # Book specific
+        '#price', 
+        '.header-price',
         # Legacy selectors
         '#priceblock_ourprice',
         '#priceblock_dealprice',
