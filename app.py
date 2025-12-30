@@ -1,7 +1,7 @@
 from collections import OrderedDict, defaultdict
 from types import SimpleNamespace
 import click
-from flask import Flask, render_template, request, redirect, url_for, send_file, flash, abort, session
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash, abort, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import case
 from sqlalchemy.orm import joinedload
@@ -834,6 +834,23 @@ def send_reminders_command():
     click.echo(f'Errors: {stats["errors"]}')
     if stats['errors'] > 0:
         raise SystemExit(1)
+
+
+@app.route('/api/fetch-metadata', methods=['POST'])
+@login_required
+def api_fetch_metadata():
+    from price_service import fetch_metadata
+    
+    if not request.json or 'url' not in request.json:
+        return jsonify({'error': 'Missing URL'}), 400
+    
+    url = request.json['url']
+    try:
+        metadata = fetch_metadata(url)
+        return jsonify(metadata)
+    except Exception as e:
+        app.logger.error(f"Metadata fetch failed: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.cli.command('update-prices')

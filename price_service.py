@@ -117,6 +117,49 @@ def fetch_price(url):
         return None
 
 
+def fetch_metadata(url):
+    """Fetch metadata (title, price, image, etc.) from a URL.
+
+    Args:
+        url: The product URL
+
+    Returns:
+        Dictionary with keys: title, price, image_url, category, domain
+    """
+    if not url:
+        return {}
+
+    metadata = {
+        'title': None,
+        'price': None,
+        'image_url': None,
+        'description': None,
+        'url': url
+    }
+
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        metadata['domain'] = domain
+
+        # Site-specific extractors
+        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
+            data = _fetch_amazon_metadata(url)
+            if data:
+                metadata.update(data)
+            return metadata
+        
+        # Generic approach for other sites
+        data = _fetch_generic_metadata(url)
+        if data:
+            metadata.update(data)
+        return metadata
+
+    except Exception as e:
+        logger.warning(f'Failed to fetch metadata from {url}: {str(e)}')
+        return metadata
+
+
 def _fetch_with_playwright(url):
     """Fetch content using Playwright (headless browser) for stubborn sites."""
     from playwright.sync_api import sync_playwright
@@ -792,6 +835,136 @@ def _parse_price(price_text):
             return None
         return result
     except ValueError:
+        return None
+
+
+
+def _fetch_amazon_metadata(url):
+    """Fetch all metadata from Amazon."""
+    metadata = {}
+    
+    # Try requests first
+    try:
+        session = _get_session()
+        # Add Amazon-specific headers
+        session.headers.update({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.amazon.com/',
+            'DNT': '1',
+        })
+        response = _make_request(url, session)
+        
+        soup = None
+        if response and 'captcha' not in response.text.lower() and 'robot check' not in response.text.lower():
+             soup = BeautifulSoup(response.text, 'html.parser')
+        else:
+            logger.warning(f'Amazon CAPTCHA detected, switching to Playwright for metadata: {url}')
+            soup = _fetch_with_playwright(url)
+            
+        if soup:
+            # Title
+            title_elem = soup.select_one('#productTitle') or soup.select_one('#title')
+            if title_elem:
+                metadata['title'] = title_elem.get_text(strip=True)
+                
+            # Price
+            price = _extract_amazon_price_from_soup(soup)
+            if price:
+                metadata['price'] = price
+                
+            # Image
+            img_elem = soup.select_one('#landingImage') or soup.select_one('#imgBlkFront')
+            if img_elem:
+                # Try to get high res from data attribute
+                if img_elem.get('data-a-dynamic-image'):
+                    try:
+                        data = json.loads(img_elem['data-a-dynamic-image'])
+                        if data:
+                            # Get the largest image key
+                            metadata['image_url'] = max(data.keys(), key=lambda k: data[k][0])
+                    except:
+                        pass
+                if not metadata.get('image_url'):
+                    metadata['image_url'] = img_elem.get('src')
+
+            return metadata
+
+    except Exception as e:
+        logger.warning(f"Error fetching Amazon metadata: {e}")
+    
+    return metadata
+
+
+def _fetch_generic_metadata(url):
+    """Fetch metadata using OpenGraph and generic extractors."""
+    metadata = {}
+    try:
+        response = _make_request(url)
+        if not response:
+            return None
+            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 1. OpenGraph Tags
+        og_mapping = {
+            'og:title': 'title',
+            'og:image': 'image_url',
+            'og:description': 'description',
+            'og:price:amount': 'price',
+            'product:price:amount': 'price'
+        }
+        
+        for prop, key in og_mapping.items():
+            elem = soup.find('meta', property=prop)
+            if elem and elem.get('content'):
+                val = elem['content']
+                if key == 'price':
+                    price = _parse_price(val)
+                    if price:
+                        metadata[key] = price
+                else:
+                    metadata[key] = val
+
+        # 2. Title fallback
+        if not metadata.get('title'):
+            if soup.title:
+                metadata['title'] = soup.title.get_text(strip=True)
+
+        # 3. Price Fallback
+        if not metadata.get('price'):
+            # Microdata
+            price_elem = soup.find(itemprop='price')
+            if price_elem:
+                val = price_elem.get('content') or price_elem.get_text()
+                price = _parse_price(val)
+                if price: metadata['price'] = price
+
+            # CSS Classes
+            if not metadata.get('price'):
+                price_classes = [
+                    '.product-price', '.price', '.current-price', '.sale-price', 
+                    '.product__price', '[data-price]', '.price-value', '.ProductPrice'
+                ]
+                for selector in price_classes:
+                    elements = soup.select(selector)
+                    for element in elements:
+                        val = element.get('data-price') or element.get('content') or element.get_text(strip=True)
+                        price = _parse_price(val)
+                        if price and price > 0:
+                            metadata['price'] = price
+                            break
+                    if metadata.get('price'): break
+
+        # 4. Image Fallback
+        if not metadata.get('image_url'):
+            elem = soup.find('meta', attrs={'name': 'twitter:image'})
+            if elem and elem.get('content'):
+                metadata['image_url'] = elem['content']
+
+        return metadata
+
+    except Exception as e:
+        logger.warning(f"Error fetching generic metadata: {e}")
         return None
 
 
