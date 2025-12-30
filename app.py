@@ -13,6 +13,8 @@ import datetime
 import pandas as pd
 import os
 import logging
+from flask_compress import Compress
+from whitenoise import WhiteNoise
 
 app = Flask(__name__)
 
@@ -28,6 +30,12 @@ except ImportError:
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['WTF_CSRF_TIME_LIMIT'] = None  # CSRF tokens don't expire
+
+# Initialize Flask-Compress
+Compress(app)
+
+# Initialize WhiteNoise
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -54,6 +62,12 @@ else:
     os.makedirs(app.instance_path, exist_ok=True)
     sqlite_path = os.path.join(app.instance_path, 'wishlist.sqlite')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
+
+# Configure database connection pooling for stability
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+}
 
 db = SQLAlchemy(app)
 

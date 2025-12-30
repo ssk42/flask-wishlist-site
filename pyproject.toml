@@ -11,6 +11,7 @@ dependencies = [
     "docutils==0.20.1",
     "et-xmlfile==1.1.0",
     "flask==3.0.0",
+    "flask-compress>=1.23",
     "flask-login==0.6.3",
     "flask-mail==0.10.0",
     "flask-migrate==4.0.5",
@@ -42,4 +43,5 @@ dependencies = [
     "typing-extensions==4.8.0",
     "tzdata==2023.3",
     "werkzeug==3.0.1",
+    "whitenoise>=6.11.0",
 ]
