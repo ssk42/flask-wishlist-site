@@ -158,6 +158,10 @@ class Comment(db.Model):
     # Author relationship
     author = db.relationship('User', backref='comments')
 
+    __table_args__ = (
+        db.Index('idx_comment_item', 'item_id', 'created_at'),
+    )
+
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -168,6 +172,10 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     recipient = db.relationship('User', backref='notifications')
+
+    __table_args__ = (
+        db.Index('idx_notif_user_unread', 'user_id', 'is_read'),
+    )
 
     recipient = db.relationship('User', backref='notifications')
 
@@ -702,8 +710,15 @@ def my_claims():
 def events():
     """List all events grouped by upcoming vs past."""
     today = datetime.date.today()
-    upcoming_events = Event.query.filter(Event.date >= today).order_by(Event.date.asc()).all()
-    past_events = Event.query.filter(Event.date < today).order_by(Event.date.desc()).all()
+    
+    # Eager load creator and items to prevent N+1 queries
+    base_query = Event.query.options(
+        joinedload(Event.created_by),
+        joinedload(Event.items)
+    )
+    
+    upcoming_events = base_query.filter(Event.date >= today).order_by(Event.date.asc()).all()
+    past_events = base_query.filter(Event.date < today).order_by(Event.date.desc()).all()
     return render_template('events.html', upcoming_events=upcoming_events, past_events=past_events)
 
 
