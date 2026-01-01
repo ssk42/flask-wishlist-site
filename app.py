@@ -86,8 +86,8 @@ def get_items_url_with_filters():
         filters['status_filter'] = session['status_filter']
     if session.get('priority_filter'):
         filters['priority_filter'] = session['priority_filter']
-    if session.get('category_filter'):
-        filters['category_filter'] = session['category_filter']
+    if session.get('event_filter'):
+        filters['event_filter'] = session['event_filter']
     if session.get('q'):
         filters['q'] = session['q']
     if session.get('sort_by'):
@@ -326,7 +326,7 @@ def items():
         session.pop('user_filter', None)
         session.pop('status_filter', None)
         session.pop('priority_filter', None)
-        session.pop('category_filter', None)
+        session.pop('event_filter', None)
         session.pop('q', None)
         session.pop('sort_by', None)
         session.pop('sort_order', None)
@@ -336,17 +336,17 @@ def items():
     user_filter = request.args.get('user_filter', type=int)
     status_filter = request.args.get('status_filter')
     priority_filter = request.args.get('priority_filter')
-    category_filter = request.args.get('category_filter', '').strip()
+    event_filter = request.args.get('event_filter', type=int)
     search_query = request.args.get('q', '').strip()
     sort_by = request.args.get('sort_by', 'priority')
     sort_order = request.args.get('sort_order', 'asc')
     
     # If filters are provided in the request, save them to session
-    if any([user_filter, status_filter, priority_filter, category_filter, search_query]) or request.args.get('sort_by') or request.args.get('sort_order'):
+    if any([user_filter, status_filter, priority_filter, event_filter, search_query]) or request.args.get('sort_by') or request.args.get('sort_order'):
         session['user_filter'] = user_filter
         session['status_filter'] = status_filter
         session['priority_filter'] = priority_filter
-        session['category_filter'] = category_filter
+        session['event_filter'] = event_filter
         session['q'] = search_query
         session['sort_by'] = sort_by
         session['sort_order'] = sort_order
@@ -355,7 +355,7 @@ def items():
         user_filter = session.get('user_filter')
         status_filter = session.get('status_filter')
         priority_filter = session.get('priority_filter')
-        category_filter = session.get('category_filter', '')
+        event_filter = session.get('event_filter')
         search_query = session.get('q', '')
         sort_by = session.get('sort_by', 'priority')
         sort_order = session.get('sort_order', 'asc')
@@ -378,8 +378,8 @@ def items():
     if priority_filter:
         query = query.filter(Item.priority == priority_filter)
 
-    if category_filter:
-        query = query.filter(Item.category.ilike(f"%{category_filter}%"))
+    if event_filter:
+        query = query.filter(Item.event_id == event_filter)
 
     if search_query:
         ilike_query = f"%{search_query}%"
@@ -441,10 +441,7 @@ def items():
 
     summary_rows.sort(key=lambda row: ((row['user'].name if row['user'] else ''), row['status']))
 
-    category_options = [value for value, in db.session.query(Item.category).filter(Item.category.isnot(None)).distinct().order_by(Item.category)]
-    if category_filter and category_filter not in category_options:
-        category_options.append(category_filter)
-        category_options.sort()
+    event_options = Event.query.order_by(Event.date.desc()).all()
     status_options = [value for value, in db.session.query(Item.status).filter(Item.status.isnot(None)).distinct().order_by(Item.status)]
     status_options = sorted(set(status_options + STATUS_CHOICES))
 
@@ -452,7 +449,7 @@ def items():
         'user_filter': user_filter,
         'status_filter': status_filter,
         'priority_filter': priority_filter,
-        'category_filter': category_filter,
+        'event_filter': event_filter,
         'q': search_query,
         'sort_by': sort_by,
         'sort_order': sort_order
@@ -477,7 +474,7 @@ def items():
         summary_rows=summary_rows,
         status_options=status_options,
         priority_choices=PRIORITY_CHOICES,
-        category_options=category_options,
+        event_options=event_options,
         active_filters=active_filters,
         sort_options=sort_options,
         default_image_url=default_image_url

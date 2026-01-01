@@ -48,12 +48,12 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label for="category_filter" class="form-label small text-uppercase fw-bold">Category</label>
-            <select name="category_filter" id="category_filter" class="form-select" aria-label="Filter by category">
-                <option value="" {% if not active_filters.category_filter %}selected{% endif %}>All categories</option>
-                {% for category in category_options %}
-                <option value="{{ category }}" {% if active_filters.category_filter==category %}selected{% endif %}>{{
-                    category }}</option>
+            <label for="event_filter" class="form-label small text-uppercase fw-bold">Event</label>
+            <select name="event_filter" id="event_filter" class="form-select" aria-label="Filter by event">
+                <option value="" {% if not active_filters.event_filter %}selected{% endif %}>All events</option>
+                {% for event in event_options %}
+                <option value="{{ event.id }}" {% if active_filters.event_filter==event.id %}selected{% endif %}>{{
+                    event.name }} ({{ event.date.strftime('%b %d, %Y') }})</option>
                 {% endfor %}
             </select>
         </div>

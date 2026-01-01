@@ -525,27 +525,16 @@ def test_submit_item_database_error_shows_message(client, user, monkeypatch):
     assert b"problem saving your item" in response.data
 
 
-def test_items_preserves_nonexistent_category_filter(client, app, login, user):
-    with app.app_context():
-        db.session.add(
-            Item(
-                description="Kayak",
-                status="Available",
-                priority="High",
-                category="Outdoor",
-                user_id=user,
-            )
-        )
-        db.session.commit()
-
-    response = client.get(
-        "/items",
-        query_string={"category_filter": "Nonexistent", "q": ""},
-    )
-
-    assert response.status_code == 200
-    assert b"No items found" in response.data
-    assert b'value="Nonexistent" selected' in response.data
+def test_items_preserves_nonexistent_event_filter(client, app, login, user):
+    """
+    Test that filtering by an event that doesn't exist (e.g. valid ID format but no match) 
+    """
+    with client:
+        # 999 is assumed to be a non-existent event ID
+        response = client.get(url_for('items'), query_string={"event_filter": "999", "q": ""})
+        assert response.status_code == 200
+        # Should be preserved in session as int
+        assert session['event_filter'] == 999
 
 
 def test_items_default_sorting_by_price_desc(client, app, login, user):
