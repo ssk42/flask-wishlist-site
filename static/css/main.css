@@ -1185,3 +1185,16 @@ body {
 [data-theme="dark"] .modal-header .btn-close {
     filter: invert(1);
 }
+
+/* Fix for dark mode input visibility */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: var(--surface-color) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .form-control::placeholder,
+[data-theme="dark"] .form-select::placeholder {
+    color: var(--text-muted);
+}
