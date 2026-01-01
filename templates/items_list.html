@@ -205,9 +205,6 @@
                     {% endif %}
                 </div>
                 <h3 class="h6 card-title-truncate mb-2">{{ item.description }}</h3>
-                {% if item.category %}
-                <p class="text-muted mb-1"><strong>Category:</strong> {{ item.category }}</p>
-                {% endif %}
                 {% if item.price %}
                 <p class="mb-1">
                     <strong>Price:</strong> ${{ '%.2f'|format(item.price) }}
