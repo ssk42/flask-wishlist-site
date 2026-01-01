@@ -281,7 +281,7 @@
                             onclick="return confirm('Are you sure you want to delete this item?');">Delete</a>
                     </div>
                     {% else %}
-                    <div class="d-flex flex-column">
+                    <div>
                         {% if item.status == 'Available' %}
                         <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post"
                             hx-post="{{ url_for('claim_item', item_id=item.id) }}" hx-swap="outerHTML"
@@ -293,54 +293,58 @@
                             </button>
                         </form>
                         {% elif item.status == 'Claimed' %}
-                        <span class="badge bg-warning text-dark py-2">🙋 Claimed</span>
+                        <div class="btn btn-warning btn-sm w-100 disabled" style="pointer-events: none;">🙋 Claimed
+                        </div>
                         {% elif item.status == 'Purchased' %}
-                        <span class="badge bg-success py-2">✅ Purchased</span>
+                        <div class="btn btn-success btn-sm w-100 disabled" style="pointer-events: none;">✅ Purchased
+                        </div>
                         {% endif %}
                     </div>
                     {% endif %}
                 </div>
             </div>
         </div>
+        {% endfor %}
+    </div>
 
-        {# Comments Modal #}
-        {% if item.user_id != current_user.id %}
-        <div class="modal fade" id="comments-modal-{{ item.id }}" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">💬 Comments for "{{ item.description[:40] }}..."</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        {% if item.comments %}
-                        <div class="list-group list-group-flush mb-3">
-                            {% for comment in item.comments %}
-                            <div class="list-group-item px-0">
-                                <strong>{{ comment.author.name }}:</strong> {{ comment.text }}
-                                <div class="text-muted small">{{ comment.created_at.strftime('%b %d, %H:%M') }}</div>
-                            </div>
-                            {% endfor %}
+    {# Comments Modals - rendered outside the grid to avoid layout issues #}
+    {% for item in group.items %}
+    {% if item.user_id != current_user.id %}
+    <div class="modal fade" id="comments-modal-{{ item.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">💬 Comments for "{{ item.description[:40] }}{% if item.description|length >
+                        40 %}...{% endif %}"</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if item.comments %}
+                    <div class="list-group list-group-flush mb-3">
+                        {% for comment in item.comments %}
+                        <div class="list-group-item px-0">
+                            <strong>{{ comment.author.name }}:</strong> {{ comment.text }}
+                            <div class="text-muted small">{{ comment.created_at.strftime('%b %d, %H:%M') }}</div>
                         </div>
-                        {% else %}
-                        <p class="text-muted fst-italic">No comments yet. Start a secret thread!</p>
-                        {% endif %}
-                        <form action="{{ url_for('add_comment', item_id=item.id) }}" method="post">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                            <div class="input-group">
-                                <input type="text" name="text" class="form-control" placeholder="Add a comment..."
-                                    required>
-                                <button class="btn btn-primary" type="submit">Post</button>
-                            </div>
-                            <small class="text-muted">Hidden from {{ item.user.name }}</small>
-                        </form>
+                        {% endfor %}
                     </div>
+                    {% else %}
+                    <p class="text-muted fst-italic">No comments yet. Start a secret thread!</p>
+                    {% endif %}
+                    <form action="{{ url_for('add_comment', item_id=item.id) }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <div class="input-group">
+                            <input type="text" name="text" class="form-control" placeholder="Add a comment..." required>
+                            <button class="btn btn-primary" type="submit">Post</button>
+                        </div>
+                        <small class="text-muted">Hidden from {{ item.user.name }}</small>
+                    </form>
                 </div>
             </div>
         </div>
-        {% endif %}
-        {% endfor %}
     </div>
+    {% endif %}
+    {% endfor %}
 </section>
 {% endfor %}
 {% else %}
