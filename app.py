@@ -610,15 +610,15 @@ def claim_item(item_id):
     db.session.commit()
 
     # For htmx requests, return the updated item card
-    # For htmx requests, return the updated item card
     if request.headers.get('HX-Request'):
         context = request.args.get('context')
         if context == 'dashboard':
-             # Return updated card AND flash messages (OOB)
-             card_html = render_template('partials/_dashboard_item_card.html', item=item)
-             flash_html = render_template('partials/_flash_messages.html')
-             return card_html + flash_html
-        
+            # Flash message before rendering so it appears in the OOB swap
+            flash(f'You have claimed "{item.description}".', 'success')
+            card_html = render_template('partials/_dashboard_item_card.html', item=item)
+            flash_html = render_template('partials/_flash_messages.html')
+            return card_html + flash_html
+
         default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
         return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
 
@@ -641,19 +641,19 @@ def unclaim_item(item_id):
         if request.headers.get('HX-Request'):
             context = request.args.get('context')
             if context == 'dashboard':
-                 # Return updated card AND flash messages (OOB)
-                 card_html = render_template('partials/_dashboard_item_card.html', item=item)
-                 flash_html = render_template('partials/_flash_messages.html')
-                 return card_html + flash_html
-            
-            # Fallback/Other contexts can be added here
+                # Flash message before rendering so it appears in the OOB swap
+                flash(f'You have unclaimed "{item.description}".', 'info')
+                card_html = render_template('partials/_dashboard_item_card.html', item=item)
+                flash_html = render_template('partials/_flash_messages.html')
+                return card_html + flash_html
+
             default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
             return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
 
         flash(f'You have unclaimed "{item.description}".', 'info')
     else:
         flash('You cannot unclaim this item.', 'danger')
-    
+
     return redirect(get_items_url_with_filters())
 
 @app.route('/items/<int:item_id>/modal')

@@ -527,14 +527,15 @@ def test_submit_item_database_error_shows_message(client, user, monkeypatch):
 
 def test_items_preserves_nonexistent_event_filter(client, app, login, user):
     """
-    Test that filtering by an event that doesn't exist (e.g. valid ID format but no match) 
+    Test that filtering by an event that doesn't exist (e.g. valid ID format but no match)
+    still preserves the filter value in the session.
     """
-    with client:
-        # 999 is assumed to be a non-existent event ID
-        response = client.get(url_for('items'), query_string={"event_filter": "999", "q": ""})
-        assert response.status_code == 200
-        # Should be preserved in session as int
-        assert session['event_filter'] == 999
+    # 999 is assumed to be a non-existent event ID
+    response = client.get("/items", query_string={"event_filter": "999", "q": ""})
+    assert response.status_code == 200
+    # Should be preserved in session as int
+    with client.session_transaction() as sess:
+        assert sess.get('event_filter') == 999
 
 
 def test_items_default_sorting_by_price_desc(client, app, login, user):

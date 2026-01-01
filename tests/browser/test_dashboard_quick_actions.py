@@ -47,24 +47,18 @@ def test_quick_claim_flow(page, live_server):
     # Find the claim button for this specific item
     # We look for the card containing the text, then find the claim button within it
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
-    claim_button = item_card.locator('button:has-text("Claim")')
-    
-    # Needs to handle the confirm dialog if strictly implemented, 
-    # but hx-confirm might be handled via a browser dialog listener or 
-    # if using playwright we can auto-accept dialogs.
+
+    # Use a more specific selector - the Claim button has outline-primary class
+    claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
+
+    # Handle the confirm dialog
     page.on("dialog", lambda dialog: dialog.accept())
     claim_button.click()
 
     # 5. Verify the card updates (HTMX swap)
-    # The 'Claim' button should disappear or be replaced by status (e.g. 'Pending' or 'Claimed' or similar info)
-    # Based on partials/_dashboard_item_card.html logic:
-    # If claimed, it renders "Claimed by You" or similar if we were to refresh, 
-    # but the immediate swap response for 'claim_item' returning partial needs to be checked.
-    # The current partial logic: 
-    # {% if item.status == 'Available' %} ... Claim Button ... {% else %} ... Status Badge ... {% endif %}
-    # So we expect the status badge to appear.
-    
-    expect(item_card.locator('span.badge:has-text("Claimed")')).to_be_visible()
+    # After claiming, the claimer sees an "Unclaim" button (outline-warning class)
+    unclaim_button = item_card.locator('button.btn-outline-warning:has-text("Unclaim")')
+    expect(unclaim_button).to_be_visible()
     expect(claim_button).not_to_be_visible()
 
 def test_quick_view_flow(page, live_server):

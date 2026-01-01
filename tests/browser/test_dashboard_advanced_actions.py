@@ -58,7 +58,8 @@ def test_modal_claim_flow_and_flash(page, live_server):
     expect(modal).not_to_be_visible()
 
     # 6. Verify Card Updates (Background Swap)
-    expect(item_card.locator('span.badge:has-text("Claimed")')).to_be_visible()
+    # After claiming, the claimer sees an "Unclaim" button (not a badge)
+    expect(item_card.locator('button.btn-outline-warning:has-text("Unclaim")')).to_be_visible()
 
     # 7. Verify Flash Message Appears
     flash_message = page.locator('.alert.alert-success')
@@ -102,22 +103,25 @@ def test_unclaim_flow(page, live_server):
     # 3. Claim Item (Quick Claim)
     page.goto(f"{live_server}/")
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
-    
+
     # Handle Confirm Dialog for Claim (if added)
     page.on("dialog", lambda dialog: dialog.accept())
-    
-    item_card.locator('button:has-text("Claim")').click()
-    
-    # Verify Claimed
-    expect(item_card.locator('button:has-text("Unclaim")')).to_be_visible()
+
+    # Use specific selector - Claim button has outline-primary class
+    claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
+    claim_button.click()
+
+    # Verify Claimed - claimer sees Unclaim button (outline-warning)
+    unclaim_button = item_card.locator('button.btn-outline-warning:has-text("Unclaim")')
+    expect(unclaim_button).to_be_visible()
     expect(page.locator('.alert.alert-success')).to_contain_text("You have claimed")
 
     # 4. Unclaim Item
-    item_card.locator('button:has-text("Unclaim")').click()
+    unclaim_button.click()
 
-    # 5. Verify Available Again
-    expect(item_card.locator('button:has-text("Claim")')).to_be_visible()
-    
+    # 5. Verify Available Again - Claim button (outline-primary) is back
+    expect(claim_button).to_be_visible()
+
     # Verify Flash Message for Unclaim
     # Note: Logic sends 'info' for unclaim
     expect(page.locator('.alert.alert-info')).to_contain_text("You have unclaimed")

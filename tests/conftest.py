@@ -16,12 +16,32 @@ from app import app as flask_app, db, User
 
 @pytest.fixture(scope="session")
 def app(tmp_path_factory):
+    """App fixture for unit tests - CSRF disabled for easier testing."""
     db_file = tmp_path_factory.mktemp("data") / "test.sqlite"
     flask_app.config.update(
         TESTING=True,
         SECRET_KEY="test-secret-key",
         SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_file}",
         WTF_CSRF_ENABLED=False,
+        SQLALCHEMY_EXPIRE_ON_COMMIT=False,
+    )
+
+    with flask_app.app_context():
+        db.create_all()
+        yield flask_app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture(scope="session")
+def browser_app(tmp_path_factory):
+    """App fixture for browser tests - CSRF enabled for realistic testing."""
+    db_file = tmp_path_factory.mktemp("browser_data") / "test.sqlite"
+    flask_app.config.update(
+        TESTING=True,
+        SECRET_KEY="test-secret-key",
+        SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_file}",
+        WTF_CSRF_ENABLED=True,  # Enable CSRF for browser tests
         SQLALCHEMY_EXPIRE_ON_COMMIT=False,
     )
 
@@ -73,8 +93,9 @@ def login(client, user):
 
 
 @pytest.fixture(scope="session")
-def live_server(app):
-    server = make_server("127.0.0.1", 5001, app)
+def live_server(browser_app):
+    """Live server for browser tests - uses browser_app with CSRF enabled."""
+    server = make_server("127.0.0.1", 5001, browser_app)
     thread = threading.Thread(target=server.serve_forever)
     thread.daemon = True
     thread.start()
@@ -85,3 +106,18 @@ def live_server(app):
     finally:
         server.shutdown()
         thread.join(timeout=5)
+
+
+@pytest.fixture(autouse=True)
+def _clean_browser_database(browser_app, request):
+    """Clean database after browser tests."""
+    # Only run for browser tests (those that use live_server)
+    if "live_server" not in request.fixturenames:
+        yield
+        return
+
+    with browser_app.app_context():
+        yield
+        for table in reversed(db.metadata.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.commit()
