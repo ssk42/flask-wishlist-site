@@ -104,9 +104,6 @@ def test_unclaim_flow(page, live_server):
     page.goto(f"{live_server}/")
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
 
-    # Handle Confirm Dialog for Claim (if added)
-    page.on("dialog", lambda dialog: dialog.accept())
-
     # Use specific selector - Claim button has outline-primary class
     claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
     claim_button.click()

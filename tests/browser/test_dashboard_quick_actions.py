@@ -50,9 +50,6 @@ def test_quick_claim_flow(page, live_server):
 
     # Use a more specific selector - the Claim button has outline-primary class
     claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
-
-    # Handle the confirm dialog
-    page.on("dialog", lambda dialog: dialog.accept())
     claim_button.click()
 
     # 5. Verify the card updates (HTMX swap)
