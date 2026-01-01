@@ -321,8 +321,10 @@
     </a>
 </div>
 {% endif %}
+{% endblock %}
 
-{# All Comments Modals - rendered at root level to avoid z-index issues #}
+{% block modals %}
+{# All Comments Modals - rendered outside app-layout via base.html #}
 {% if grouped_items %}
 {% for group in grouped_items %}
 {% for item in group.items %}
