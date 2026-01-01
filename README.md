@@ -1,126 +1,212 @@
-# Family Wishlist Application
+# Family Wishlist
 
-## Overview
+A beautiful, modern web application for families to share wishlists and coordinate gift-giving while keeping surprises intact.
 
-The Family Wishlist Application is a web-based platform designed for families to create, share, and manage their wishlists. It allows each family member to add items they wish for, along with details like description, price, and category. Family members can view each other's wishlists, making it easier to give meaningful gifts.
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Dashboard Preview" width="800">
+</p>
 
 ## Features
 
-- User registration and login system.
-- Ability to add, edit, and delete wishlist items.
-- View wishlists of all family members.
-- Sort items by different criteria (user, price, status).
-- Export wishlist items to Excel.
-- Responsive design for a better experience across various devices.
+### Dashboard
+The home dashboard provides a quick overview of recent wishes and upcoming events, making it easy to stay on top of gift-giving opportunities.
 
-## Technologies Used
+![Dashboard](docs/screenshots/dashboard-full.png)
 
-- Flask (Python web framework)
-- Bootstrap (Front-end framework)
-- SQLite/PostgreSQL (Database)
-- Heroku (Hosting platform)
+### Wishlist Management
+- **Add Items** - Create wishlist items with descriptions, links, prices, images, and priority levels
+- **Quick Claim** - Claim items directly from the dashboard or item list with a single click
+- **Smart Filtering** - Filter by person, status, priority, event, and search terms
+- **Price Tracking** - Automatic price fetching from product URLs with refresh capability
 
-## Getting Started
+![Items List](docs/screenshots/items-list.png)
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+### Surprise Protection
+The app intelligently hides claim information from gift recipients, ensuring surprises aren't spoiled. You can see who claimed items on other people's lists, but never your own.
+
+### Quick View Modal
+Preview item details without leaving the page. View prices, notes, and claim status in a sleek modal overlay.
+
+### Events Calendar
+Track birthdays, holidays, and special occasions. Associate wishlist items with specific events to help gift-givers plan ahead.
+
+![Events](docs/screenshots/events.png)
+
+### My Claims
+A dedicated page to track all items you've claimed or purchased, with easy status updates.
+
+![My Claims](docs/screenshots/my-claims.png)
+
+### Comments & Coordination
+Leave private comments on items (hidden from the gift recipient) to coordinate with other family members about gift-giving plans.
+
+### Welcome Page
+A clean, inviting landing page for new and returning users.
+
+![Landing Page](docs/screenshots/landing.png)
+
+### Modern UI
+- Glassmorphism design with smooth animations
+- Dark/Light theme support
+- Fully responsive for mobile, tablet, and desktop
+- Bootstrap 5.3 with custom styling
+
+<p align="center">
+  <img src="docs/screenshots/mobile.png" alt="Mobile View" width="300">
+</p>
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Backend | Flask (Python) |
+| Database | SQLite (dev) / PostgreSQL (prod) |
+| Frontend | Bootstrap 5.3, htmx |
+| Hosting | Heroku |
+| Testing | pytest, Playwright |
+| CI/CD | GitHub Actions |
+
+## Quick Start
 
 ### Prerequisites
+- Python 3.8+
+- pip
 
-What things you need to install the software and how to install them:
+### Installation
 
-> python>=3.8
-> pip
-> virtualenv (optional)
+```bash
+# Clone the repository
+git clone https://github.com/ssk42/flask-wishlist-site.git
+cd flask-wishlist-site
 
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Unix/macOS
+# or
+.\venv\Scripts\activate   # Windows
 
-### Installing
+# Install dependencies
+pip install -r requirements.txt
 
-A step-by-step series of examples that tell you how to get a development environment running:
+# Initialize the database
+flask db upgrade
 
-1. Clone the repository:
-> git clone https://github.com/ssk42/flask-wishlist-site.git
+# Run the application
+flask run
+```
 
-2. Navigate to the project directory:
-> cd wishlist
+Visit `http://localhost:5000` in your browser.
 
-3. Create a virtual environment (optional):
-> virtualenv venv
+### Environment Variables
 
-4. Activate the virtual environment:
-- On Windows:
-  ```
-  .\venv\Scripts\activate
-  ```
-- On Unix or MacOS:
-  ```
-  source venv/bin/activate
-  ```
-5. Install required packages:
-> pip install -r requirements.txt
+Copy `.env.example` to `.env` and configure:
 
-
-### Running the Application
-
-1. Set environment variables:
-> export FLASK_APP=app.py
-> export FLASK_ENV=development
-
-2. Initialize the database:
-> flask db upgrade
-
-3. Run the application:
-> flask run
-
+```bash
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=postgresql://...  # For production
+```
 
 ## Testing
 
-The project includes unit tests that exercise the Flask application and automated
-browser regression tests powered by Playwright. To run the full suite locally:
+The project maintains **90%+ code coverage** with comprehensive unit and browser tests.
 
-1. Install Python dependencies:
+```bash
+# Install test dependencies (including Playwright browsers)
+pip install -r requirements.txt
+playwright install --with-deps chromium
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Run all tests
+pytest
 
-2. Install the Playwright browsers (only required for the browser regression
-   tests):
+# Run only unit tests
+pytest tests/unit/
 
-   ```bash
-   playwright install --with-deps chromium
-   ```
-
-3. Execute the tests with `pytest` (coverage is enforced at 75% or greater and
-   the XML report is written to `coverage.xml`):
-
-   ```bash
-   pytest
-   ```
-
-Unit tests are located under `tests/unit/` and use Flask's testing client and a
-temporary SQLite database. Browser regression tests live under
-`tests/browser/` and validate the end-to-end registration workflow. The
-automated GitHub Actions workflow (`.github/workflows/tests.yml`) runs this
-suite for every pull request and push to `main`, and the checks must pass before
-merging.
+# Run only browser tests
+pytest tests/browser/
+```
 
 ## Deployment
 
-Instructions on how to deploy the app on Heroku:
+### Heroku
 
-1. Create a Heroku account and install Heroku CLI.
-2. Log in to Heroku through the CLI.
-3. Set up your Heroku git remote.
-4. Push to Heroku:
->git push heroku main
-5. Set up environment variables on Heroku.
+```bash
+# Login to Heroku
+heroku login
 
+# Create app (if not exists)
+heroku create your-app-name
 
-## Authors
+# Set environment variables
+heroku config:set SECRET_KEY=your-secret-key
 
-- **Steve Reitz** - 
+# Deploy
+git push heroku main
+```
 
+The `Procfile` handles automatic database migrations on each deploy.
 
-## Acknowledgments
+## Project Structure
 
-- Thx ChatGPT for helping me learn Flask!
+```
+.
+├── app.py                 # Main application (routes, models, config)
+├── templates/             # Jinja2 templates
+│   ├── base.html          # Base layout with nav & theme
+│   ├── index.html         # Dashboard
+│   ├── items_list.html    # All items view
+│   ├── partials/          # Reusable components
+│   │   ├── _item_card.html
+│   │   ├── _dashboard_item_card.html
+│   │   └── _item_quick_view.html
+│   └── ...
+├── static/
+│   ├── css/main.css       # Custom styles
+│   └── js/theme.js        # Theme toggle
+├── tests/
+│   ├── unit/              # Flask test client tests
+│   └── browser/           # Playwright E2E tests
+├── migrations/            # Alembic database migrations
+└── docs/screenshots/      # README images
+```
+
+## Screenshots
+
+Screenshots are captured using Playwright. To regenerate them:
+
+```bash
+# Set your test user email and run the script
+TEST_EMAIL=your@email.com python scripts/take_screenshots.py
+```
+
+This will save screenshots to `docs/screenshots/`.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+All PRs must pass the test suite before merging.
+
+## Security Features
+
+- CSRF protection on all forms and htmx requests
+- Security headers (X-Content-Type-Options, X-Frame-Options, HSTS)
+- Email-based authentication (no passwords stored)
+- Surprise protection prevents gift recipients from seeing claim status
+
+## License
+
+This project is private and intended for family use.
+
+## Author
+
+**Steve Reitz** - [GitHub](https://github.com/ssk42)
+
+---
+
+<p align="center">
+  <i>Making gift-giving easier, one wish at a time.</i>
+</p>
