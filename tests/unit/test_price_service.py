@@ -362,12 +362,13 @@ class TestPriceDisplayInUI:
         assert b'Jan 15' in response.data
 
     def test_items_list_shows_refresh_button(self, app, client, login_owner):
-        """Items with links should show Refresh Price button."""
+        """Items with links and price should show Refresh Price button."""
         with app.app_context():
             item = Item(
                 description="Linked Item",
                 user_id=login_owner,
-                link="https://example.com/product"
+                link="https://example.com/product",
+                price=29.99
             )
             db.session.add(item)
             db.session.commit()

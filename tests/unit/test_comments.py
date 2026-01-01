@@ -119,7 +119,7 @@ def test_items_page_shows_comments_to_non_owner(client, app, test_data):
     login_via_post(client, "charlie@example.com")
     response = client.get("/items")
     assert b"Secret" in response.data
-    assert b"1 comment" in response.data
+    assert b"Comments (1)" in response.data
     
     # View as Alice (Owner)
     login_via_post(client, "alice@example.com")
