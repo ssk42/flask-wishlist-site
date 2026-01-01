@@ -1135,3 +1135,47 @@ body {
         display: none;
     }
 }
+
+/* ============================================
+   MODAL FIXES
+   ============================================ */
+
+/* Ensure modals render above everything including sidebar */
+.modal {
+    z-index: 1060 !important;
+}
+
+.modal-backdrop {
+    z-index: 1055 !important;
+}
+
+.modal-dialog {
+    z-index: 1065 !important;
+    pointer-events: auto !important;
+}
+
+.modal-content {
+    pointer-events: auto !important;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+    border-bottom-color: var(--border-color);
+}
+
+.modal-body {
+    color: var(--text-primary);
+}
+
+/* Dark mode modal support */
+[data-theme="dark"] .modal-content {
+    background: var(--surface-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-header .btn-close {
+    filter: invert(1);
+}
