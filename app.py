@@ -613,12 +613,25 @@ def claim_item(item_id):
     db.session.commit()
 
     # For htmx requests, return the updated item card
+    # For htmx requests, return the updated item card
     if request.headers.get('HX-Request'):
+        context = request.args.get('context')
+        if context == 'dashboard':
+             return render_template('partials/_dashboard_item_card.html', item=item)
+        
         default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
         return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
 
     flash(f'You have claimed "{item.description}".', 'success')
     return redirect(get_items_url_with_filters())
+
+@app.route('/items/<int:item_id>/modal')
+@login_required
+def get_item_modal(item_id):
+    item = db.session.get(Item, item_id)
+    if item is None:
+        return 'Item not found', 404
+    return render_template('partials/_item_quick_view.html', item=item)
 
 @app.route('/item/<int:item_id>/refresh-price', methods=['POST'])
 @login_required

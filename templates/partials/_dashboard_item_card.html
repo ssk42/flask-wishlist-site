@@ -1,0 +1,44 @@
+<div class="glass-card p-3 h-100 d-flex flex-column" id="dashboard-item-{{ item.id }}">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <span class="badge bg-light text-dark border">{{ item.user.name }}</span>
+        <span
+            class="badge bg-{{ 'danger' if item.priority == 'High' else 'warning' if item.priority == 'Medium' else 'info' }} bg-opacity-10 text-{{ 'danger' if item.priority == 'High' else 'warning' if item.priority == 'Medium' else 'info' }}">
+            {{ item.priority }}
+        </span>
+    </div>
+    <div class="position-relative">
+        <h3 class="h6 fw-bold mb-1 text-truncate" title="{{ item.description }}">{{ item.description }}</h3>
+        {% if item.price %}
+        <p class="text-muted small mb-2">${{ "%.2f"|format(item.price) }}</p>
+        {% endif %}
+    </div>
+
+    <div class="mt-auto pt-2 border-top border-light-subtle d-flex justify-content-between align-items-center">
+        {% if item.status == 'Available' %}
+        <button class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill"
+            hx-post="{{ url_for('claim_item', item_id=item.id, context='dashboard') }}"
+            hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML"
+            hx-confirm="Are you sure you want to claim this item?">
+            <i class="bi bi-check2"></i> Claim
+        </button>
+        {% else %}
+        <span class="badge bg-light text-muted border py-1 px-2 rounded-pill fw-normal">
+            {{ item.status }}
+        </span>
+        {% endif %}
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-muted hover-primary"
+                hx-get="{{ url_for('get_item_modal', item_id=item.id) }}" hx-target="#quick-view-content"
+                hx-trigger="click" data-bs-toggle="modal" data-bs-target="#quickViewModal" title="Quick View">
+                <i class="bi bi-eye"></i>
+            </button>
+            {% if item.link %}
+            <a href="{{ item.link }}" target="_blank"
+                class="btn btn-sm btn-link p-0 text-decoration-none text-muted hover-primary" title="Visit Link">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
