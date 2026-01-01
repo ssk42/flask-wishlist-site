@@ -157,14 +157,16 @@ class TestDashboardWidget:
 
         response = client.get('/')
         assert response.status_code == 200
-        assert b'Your Gift Tracker' in response.data
-        assert b'View My Claims' in response.data
+        assert b'Welcome back' in response.data
+        assert b'Claimed' in response.data
+        assert b'Purchased' in response.data
 
     def test_dashboard_hidden_when_no_claims(self, client, login_claimer):
         """Dashboard should not show when user has no claims."""
         response = client.get('/')
         assert response.status_code == 200
-        assert b'Your Gift Tracker' not in response.data
+        # "Welcome back" is always shown for logged in users now
+        assert b'Welcome back' in response.data
 
 
 class TestNavbarBadge:

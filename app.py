@@ -617,12 +617,46 @@ def claim_item(item_id):
     if request.headers.get('HX-Request'):
         context = request.args.get('context')
         if context == 'dashboard':
-             return render_template('partials/_dashboard_item_card.html', item=item)
+             # Return updated card AND flash messages (OOB)
+             card_html = render_template('partials/_dashboard_item_card.html', item=item)
+             flash_html = render_template('partials/_flash_messages.html')
+             return card_html + flash_html
         
         default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
         return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
 
     flash(f'You have claimed "{item.description}".', 'success')
+    return redirect(get_items_url_with_filters())
+
+@app.route('/unclaim_item/<int:item_id>', methods=['POST'])
+@login_required
+def unclaim_item(item_id):
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
+
+    # Allow unclaim if it's Claimed and the current user was the last to update it (the claimer)
+    if item.status == 'Claimed' and item.last_updated_by_id == current_user.id:
+        item.status = 'Available'
+        item.last_updated_by_id = current_user.id
+        db.session.commit()
+
+        if request.headers.get('HX-Request'):
+            context = request.args.get('context')
+            if context == 'dashboard':
+                 # Return updated card AND flash messages (OOB)
+                 card_html = render_template('partials/_dashboard_item_card.html', item=item)
+                 flash_html = render_template('partials/_flash_messages.html')
+                 return card_html + flash_html
+            
+            # Fallback/Other contexts can be added here
+            default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
+            return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
+
+        flash(f'You have unclaimed "{item.description}".', 'info')
+    else:
+        flash('You cannot unclaim this item.', 'danger')
+    
     return redirect(get_items_url_with_filters())
 
 @app.route('/items/<int:item_id>/modal')
@@ -1008,11 +1042,15 @@ def mark_notification_read(notif_id):
 
 
 @app.cli.command('update-prices')
-def update_prices_command():
+@click.option('--force', is_flag=True, help='Force update all items regardless of last update time')
+def update_prices_command(force):
     """Update prices for items with links that haven't been updated in 7 days."""
     from price_service import update_stale_prices
-    click.echo('Updating stale prices...')
-    stats = update_stale_prices(app, db, Item, Notification)
+    if force:
+        click.echo('Force updating ALL prices (ignoring 7-day window)...')
+    else:
+        click.echo('Updating stale prices...')
+    stats = update_stale_prices(app, db, Item, Notification, force_all=force)
     click.echo(f'Items processed: {stats["items_processed"]}')
     click.echo(f'Prices updated: {stats["prices_updated"]}')
     click.echo(f'Price drops detected: {stats["price_drops"]}')

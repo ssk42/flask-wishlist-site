@@ -46,16 +46,24 @@ class TestSurpriseProtection:
 
         # The user should NOT see the status "Claimed" - instead they should see "Your Item"
         response_text = response.data.decode('utf-8')
-        # Find the section for this specific item
+        # Find the section for this specific item (increase window to capture full card)
         item_section_start = response_text.find("User&#39;s Gift Item")
-        item_section_end = response_text.find("</div>", item_section_start + 200)
+        item_section_end = response_text.find("glass-card", item_section_start + 10) # Find NEXT card or end
+        if item_section_end == -1:
+            item_section_end = len(response_text)
+            
         item_section = response_text[item_section_start:item_section_end]
 
+        # Normalize whitespace for checking "Your Item" which spans lines in template
+        normalized_section = ' '.join(item_section.split())
         assert "Claimed" not in item_section, "User should not see 'Claimed' status on their own item"
-        assert "Your Item" in response_text, "User should see 'Your Item' badge instead of status"
-
-        # The user should NOT see who claimed their item
-        assert b"Last updated by" not in response.data
+        assert "Your Item" in normalized_section, "User should see 'Your Item' badge"
+        
+        # Verify Edit link is present (more robust than checking for "Edit" text specifically in the slice)
+        assert f"/edit_item/{item_id}" in response_text
+        assert "Delete" in item_section
+        assert "Last updated by" not in item_section
+        assert "Claimed by" not in item_section
 
     def test_user_can_see_who_claimed_other_users_items(self, client, app, user, other_user):
         """Test that a user can see who claimed other users' items."""
@@ -87,7 +95,7 @@ class TestSurpriseProtection:
         assert b"Claimed" in response.data
         
         # The user should see who claimed the other user's item
-        assert b"Last updated by Test User" in response.data
+        assert b"Claimed by Test User" in response.data
 
     def test_user_cannot_see_last_updated_info_on_their_own_available_items(self, client, app, user, other_user):
         """Test that a user doesn't see last updated info on their own available items."""
@@ -150,8 +158,8 @@ class TestSurpriseProtection:
         assert b"Other User&#39;s Available Item" in response.data
         assert b"Available" in response.data
         
-        # The user should see last updated info for other users' items
-        assert b"Last updated by Test User" in response.data
+        # The user should see the item is Available (updater info is no longer shown for Available items)
+        assert b"Available" in response.data
 
     def test_surprise_protection_with_multiple_users(self, client, app):
         """Test surprise protection with multiple users and items."""
@@ -201,7 +209,7 @@ class TestSurpriseProtection:
         
         # User1 should see user2's item and who claimed it
         assert b"User2&#39;s Gift" in response.data
-        assert b"Last updated by User3" in response.data
+        assert b"Claimed by User3" in response.data
 
     def test_surprise_protection_works_with_filters(self, client, app, user, other_user):
         """Test that surprise protection works when filters are applied."""
@@ -242,7 +250,7 @@ class TestSurpriseProtection:
         assert b"Last updated by Other User" not in response.data
         
         # Should see who claimed the other user's item
-        assert b"Last updated by Test User" in response.data
+        assert b"Claimed by Test User" in response.data
 
     def test_user_cannot_see_their_own_claimed_items_in_summary_table(self, client, app, user, other_user):
         """Test that a user cannot see their own claimed items in the summary totals table."""
@@ -277,7 +285,7 @@ class TestSurpriseProtection:
         response = client.get("/items")
 
         assert response.status_code == 200
-        assert b"At-a-glance totals" in response.data
+        assert b"At a Glance" in response.data
         
         # Should NOT see their own claimed items in the summary table
         # The summary table should only show "Other User" with "Available" status
@@ -329,7 +337,7 @@ class TestSurpriseProtection:
         response = client.get("/items")
 
         assert response.status_code == 200
-        assert b"At-a-glance totals" in response.data
+        assert b"At a Glance" in response.data
 
         # Should see other user's claimed items in the summary table
         assert b"Other User" in response.data

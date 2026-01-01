@@ -609,7 +609,7 @@ def test_items_summary_rows_include_totals(client, app, login, user, other_user)
     response = client.get("/items")
 
     assert response.status_code == 200
-    assert b"At-a-glance totals" in response.data
+    assert b"At a Glance" in response.data
     assert b"$120.00" in response.data
     assert b"$300.00" in response.data
 

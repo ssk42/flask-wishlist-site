@@ -968,7 +968,7 @@ def _fetch_generic_metadata(url):
         return None
 
 
-def update_stale_prices(app, db, Item, Notification=None):
+def update_stale_prices(app, db, Item, Notification=None, force_all=False):
     """Update prices for items that haven't been updated in 7 days.
 
     Args:
@@ -976,6 +976,7 @@ def update_stale_prices(app, db, Item, Notification=None):
         db: SQLAlchemy database instance
         Item: Item model class
         Notification: Notification model class (optional, for price drop alerts)
+        force_all: If True, update all items with links regardless of last update time
 
     Returns:
         Dictionary with counts of items processed, updated, and errors
@@ -983,15 +984,43 @@ def update_stale_prices(app, db, Item, Notification=None):
     with app.app_context():
         seven_days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
 
-        # Find items with links that need updating
-        items = Item.query.filter(
+        # Diagnostic: count items with links
+        total_items = Item.query.count()
+        items_with_links = Item.query.filter(
+            Item.link.isnot(None),
+            Item.link != ''
+        ).count()
+        items_never_updated = Item.query.filter(
             Item.link.isnot(None),
             Item.link != '',
-            db.or_(
-                Item.price_updated_at.is_(None),
-                Item.price_updated_at < seven_days_ago
-            )
-        ).all()
+            Item.price_updated_at.is_(None)
+        ).count()
+        items_stale = Item.query.filter(
+            Item.link.isnot(None),
+            Item.link != '',
+            Item.price_updated_at < seven_days_ago
+        ).count()
+
+        logger.info(f'Price update diagnostics: total_items={total_items}, items_with_links={items_with_links}, '
+                    f'never_updated={items_never_updated}, stale={items_stale}, cutoff_date={seven_days_ago}, force_all={force_all}')
+
+        # Find items with links that need updating
+        if force_all:
+            # Force mode: update all items with links
+            items = Item.query.filter(
+                Item.link.isnot(None),
+                Item.link != ''
+            ).all()
+        else:
+            # Normal mode: only update stale items
+            items = Item.query.filter(
+                Item.link.isnot(None),
+                Item.link != '',
+                db.or_(
+                    Item.price_updated_at.is_(None),
+                    Item.price_updated_at < seven_days_ago
+                )
+            ).all()
 
         stats = {
             'items_processed': 0,

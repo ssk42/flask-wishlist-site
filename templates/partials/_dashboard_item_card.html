@@ -21,6 +21,13 @@
             hx-confirm="Are you sure you want to claim this item?">
             <i class="bi bi-check2"></i> Claim
         </button>
+        {% elif item.status == 'Claimed' and item.last_updated_by_id == current_user.id %}
+        <button class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill"
+            hx-post="{{ url_for('unclaim_item', item_id=item.id, context='dashboard') }}"
+            hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML"
+            hx-confirm="Are you sure you want to unclaim this item?">
+            <i class="bi bi-x-circle"></i> Unclaim
+        </button>
         {% else %}
         <span class="badge bg-light text-muted border py-1 px-2 rounded-pill fw-normal">
             {{ item.status }}
