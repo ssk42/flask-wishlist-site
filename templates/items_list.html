@@ -258,20 +258,6 @@
                     </div>
                 </div>
                 {% endif %}
-                {% if item.last_updated_by and item.user_id != current_user.id %}
-                <p class="text-muted small mb-2">Last updated by {{ item.last_updated_by.name }}</p>
-                {% endif %}
-
-                {# Comment indicator - shown on all cards for consistency #}
-                {% if item.user_id != current_user.id %}
-                <div class="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom">
-                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" data-bs-toggle="modal"
-                        data-bs-target="#comments-modal-{{ item.id }}">
-                        💬 <span class="small">{{ item.comments|length }} comment{{ 's' if item.comments|length != 1
-                            }}</span>
-                    </button>
-                </div>
-                {% endif %}
 
                 <div class="mt-auto pt-2">
                     {% if item.user_id == current_user.id %}
