@@ -615,3 +615,107 @@ body {
         border: 1px solid #000;
     }
 }
+
+/* Stat Cards */
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.stat-secondary {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.125rem;
+}
+
+.stat-card-available {
+    border-left: 4px solid var(--success-color);
+}
+
+.stat-card-claimed {
+    border-left: 4px solid var(--warning-color);
+}
+
+.stat-card-purchased {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Item Action Menu */
+.item-actions-menu .dropdown-toggle {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+}
+
+.item-actions-menu .dropdown-toggle:hover {
+    background: var(--background-color);
+    color: var(--text-primary);
+}
+
+.item-actions-menu .dropdown-toggle::after {
+    display: none;
+}
+
+.item-actions-menu .dropdown-menu {
+    min-width: 180px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
+    background: var(--surface-color);
+}
+
+.item-actions-menu .dropdown-item {
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.item-actions-menu .dropdown-item:hover {
+    background: var(--background-color);
+}
+
+.item-actions-menu .dropdown-divider {
+    margin: 0.5rem 0;
+    border-color: var(--border-color);
+}
+

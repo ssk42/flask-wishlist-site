@@ -116,32 +116,59 @@
 </form>
 
 {% if summary_rows %}
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h2 class="h6 mb-0">At-a-glance totals</h2>
-        <small class="text-muted">Totals reflect the current filters.</small>
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 mb-0">📊 At a Glance</h2>
+        <small class="text-muted">Based on current filters</small>
     </div>
-    <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
-            <thead>
-                <tr>
-                    <th scope="col">Person</th>
-                    <th scope="col">Status</th>
-                    <th scope="col" class="text-end">Items</th>
-                    <th scope="col" class="text-end">Estimated total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in summary_rows %}
-                <tr>
-                    <td>{{ row.user.name if row.user else 'Unknown' }}</td>
-                    <td><span class="badge bg-secondary status-pill">{{ row.status }}</span></td>
-                    <td class="text-end">{{ row.count }}</td>
-                    <td class="text-end">${{ '%.2f'|format(row.total) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="row g-3">
+        {% set ns = namespace(available_count=0, available_total=0, claimed_count=0, claimed_total=0, purchased_count=0,
+        purchased_total=0) %}
+        {% for row in summary_rows %}
+        {% if row.status == 'Available' %}
+        {% set ns.available_count = ns.available_count + row.count %}
+        {% set ns.available_total = ns.available_total + row.total %}
+        {% elif row.status == 'Claimed' %}
+        {% set ns.claimed_count = ns.claimed_count + row.count %}
+        {% set ns.claimed_total = ns.claimed_total + row.total %}
+        {% elif row.status == 'Purchased' %}
+        {% set ns.purchased_count = ns.purchased_count + row.count %}
+        {% set ns.purchased_total = ns.purchased_total + row.total %}
+        {% endif %}
+        {% endfor %}
+
+        <div class="col-6 col-md-4">
+            <div class="stat-card stat-card-available">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ ns.available_count }}</div>
+                    <div class="stat-label">Available</div>
+                    <div class="stat-secondary">${{ '%.0f'|format(ns.available_total) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <div class="stat-card stat-card-claimed">
+                <div class="stat-icon">🙋</div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ ns.claimed_count }}</div>
+                    <div class="stat-label">Claimed</div>
+                    <div class="stat-secondary">${{ '%.0f'|format(ns.claimed_total) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <div class="stat-card stat-card-purchased">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ ns.purchased_count }}</div>
+                    <div class="stat-label">Purchased</div>
+                    <div class="stat-secondary">${{ '%.0f'|format(ns.purchased_total) }}</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -184,23 +211,48 @@
                     </p>
                     {% endif %}
                     {% if item.link %}
-                    <div class="d-flex gap-2 mb-2 flex-wrap">
+                    <div class="d-flex gap-2 mb-2 align-items-center">
                         <a href="{{ item.link }}" target="_blank" rel="noopener"
-                            class="btn btn-sm btn-outline-primary">View item</a>
-                        <form action="{{ url_for('refresh_price', item_id=item.id) }}" method="post" class="d-inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                            <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                title="Fetch current price from URL">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
-                                    class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
-                                    <path fill-rule="evenodd"
-                                        d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+                            class="btn btn-sm btn-outline-primary flex-grow-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                                class="bi bi-box-arrow-up-right me-1" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd"
+                                    d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5" />
+                                <path fill-rule="evenodd"
+                                    d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z" />
+                            </svg>
+                            View
+                        </a>
+                        <div class="dropdown item-actions-menu">
+                            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                                aria-expanded="false" title="More actions">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    viewBox="0 0 16 16">
                                     <path
-                                        d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+                                        d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3" />
                                 </svg>
-                                Refresh Price
                             </button>
-                        </form>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <form action="{{ url_for('refresh_price', item_id=item.id) }}" method="post">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <button type="submit" class="dropdown-item">
+                                            🔄 Refresh Price
+                                        </button>
+                                    </form>
+                                </li>
+                                {% if item.user_id != current_user.id %}
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('edit_item', item_id=item.id) }}">
+                                        ✏️ Update Status
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
                     </div>
                     {% endif %}
                     {% if item.last_updated_by and item.user_id != current_user.id %}
@@ -217,19 +269,21 @@
                         {% else %}
                         <div class="d-flex flex-column">
                             {% if item.status == 'Available' %}
-                            <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post" class="mb-2"
+                            <form action="{{ url_for('claim_item', item_id=item.id) }}" method="post"
                                 hx-post="{{ url_for('claim_item', item_id=item.id) }}" hx-swap="outerHTML"
                                 hx-target="closest .card" hx-indicator=".htmx-indicator">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                 <button type="submit" class="btn btn-success btn-sm w-100">
                                     <span class="htmx-indicator spinner-border spinner-border-sm me-1"
                                         role="status"></span>
-                                    Claim
+                                    🎁 Claim This Gift
                                 </button>
                             </form>
+                            {% elif item.status == 'Claimed' %}
+                            <span class="badge bg-warning text-dark py-2">🙋 Claimed</span>
+                            {% elif item.status == 'Purchased' %}
+                            <span class="badge bg-success py-2">✅ Purchased</span>
                             {% endif %}
-                            <a href="{{ url_for('edit_item', item_id=item.id) }}"
-                                class="btn btn-outline-primary btn-sm w-100">Update status</a>
                         </div>
                         {% endif %}
                     </div>
