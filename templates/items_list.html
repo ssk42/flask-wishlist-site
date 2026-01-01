@@ -246,12 +246,6 @@
                             </li>
                             {% if item.user_id != current_user.id %}
                             <li>
-                                <button type="button" class="dropdown-item" data-bs-toggle="modal"
-                                    data-bs-target="#comments-modal-{{ item.id }}">
-                                    💬 Comments ({{ item.comments|length }})
-                                </button>
-                            </li>
-                            <li>
                                 <hr class="dropdown-divider">
                             </li>
                             <li>
@@ -266,6 +260,27 @@
                 {% endif %}
 
                 <div class="mt-auto pt-2">
+
+                    {# Comment Toggle - Always present for structure, but manipulated based on user #}
+                    <div class="mb-2 d-flex justify-content-between align-items-center">
+                        {% if item.user_id != current_user.id %}
+                        <button class="btn btn-sm btn-link p-0 text-decoration-none d-flex align-items-center gap-1"
+                            type="button" data-bs-toggle="collapse" data-bs-target="#comments-{{ item.id }}"
+                            aria-expanded="false" aria-controls="comments-{{ item.id }}">
+                            💬 {{ item.comments|length }} comment{{ 's' if item.comments|length != 1 }}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor"
+                                class="bi bi-chevron-down ms-1" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd"
+                                    d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
+                            </svg>
+                        </button>
+                        {% else %}
+                        {# Spacer for owner to maintain alignment if needed, or just hidden #}
+                        <span class="text-muted small opacity-50" style="font-size: 0.8em; visibility: hidden;">💬 0
+                            comments</span>
+                        {% endif %}
+                    </div>
+
                     {% if item.user_id == current_user.id %}
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-primary btn-sm">Edit</a>
@@ -293,6 +308,36 @@
                             ✅ Purchased{% if item.last_updated_by %} by {{ item.last_updated_by.name }}{% endif %}
                         </div>
                         {% endif %}
+
+                        {# Inline Collapsible Comments #}
+                        <div class="collapse mt-2" id="comments-{{ item.id }}">
+                            <div class="card card-body p-2 bg-light border-0 small">
+                                {% if item.comments %}
+                                <div class="list-group list-group-flush mb-2 rounded">
+                                    {% for comment in item.comments %}
+                                    <div
+                                        class="list-group-item bg-white px-2 py-1 mb-1 border-0 rounded text-wrap text-break">
+                                        <strong>{{ comment.author.name }}:</strong> {{ comment.text }}
+                                        <div class="text-muted" style="font-size: 0.7em;">{{
+                                            comment.created_at.strftime('%b %d, %H:%M') }}</div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted fst-italic mb-2">No comments yet.</p>
+                                {% endif %}
+                                <form action="{{ url_for('add_comment', item_id=item.id) }}" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="text" class="form-control" placeholder="Add comment..."
+                                            required>
+                                        <button class="btn btn-outline-primary" type="submit">Post</button>
+                                    </div>
+                                    <small class="text-muted d-block mt-1" style="font-size: 0.7em;">Hidden from {{
+                                        item.user.name }}</small>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                     {% endif %}
                 </div>
