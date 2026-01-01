@@ -246,6 +246,12 @@
                             </li>
                             {% if item.user_id != current_user.id %}
                             <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal"
+                                    data-bs-target="#comments-modal-{{ item.id }}">
+                                    💬 Comments ({{ item.comments|length }})
+                                </button>
+                            </li>
+                            <li>
                                 <hr class="dropdown-divider">
                             </li>
                             <li>
@@ -279,10 +285,12 @@
                             </button>
                         </form>
                         {% elif item.status == 'Claimed' %}
-                        <div class="btn btn-warning btn-sm w-100 disabled" style="pointer-events: none;">🙋 Claimed
+                        <div class="btn btn-warning btn-sm w-100 disabled text-start" style="pointer-events: none;">
+                            🙋 Claimed{% if item.last_updated_by %} by {{ item.last_updated_by.name }}{% endif %}
                         </div>
                         {% elif item.status == 'Purchased' %}
-                        <div class="btn btn-success btn-sm w-100 disabled" style="pointer-events: none;">✅ Purchased
+                        <div class="btn btn-success btn-sm w-100 disabled text-start" style="pointer-events: none;">
+                            ✅ Purchased{% if item.last_updated_by %} by {{ item.last_updated_by.name }}{% endif %}
                         </div>
                         {% endif %}
                     </div>
