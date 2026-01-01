@@ -816,6 +816,12 @@ body {
     max-height: 400px;
     overflow: hidden;
     position: relative;
+    transition: max-height 0.3s ease;
+}
+
+.glass-card.compact.expanded {
+    max-height: none;
+    overflow: visible;
 }
 
 .glass-card.compact::after {
