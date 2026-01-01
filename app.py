@@ -190,6 +190,10 @@ def inject_notifications():
 def index():
     # Dashboard data for logged-in users
     dashboard_data = None
+    recent_items = []
+    upcoming_events = []
+    today = datetime.date.today()
+
     if current_user.is_authenticated:
         claimed_count = Item.query.filter(
             Item.last_updated_by_id == current_user.id,
@@ -205,7 +209,24 @@ def index():
             'claimed_count': claimed_count,
             'purchased_count': purchased_count
         }
-    return render_template('index.html', dashboard_data=dashboard_data)
+
+        # Fetch recent items from other users
+        recent_items = Item.query.options(joinedload(Item.user))\
+            .filter(Item.user_id != current_user.id)\
+            .order_by(Item.id.desc())\
+            .limit(6).all()
+
+        # Fetch upcoming events
+        today = datetime.date.today()
+        upcoming_events = Event.query.filter(Event.date >= today)\
+            .order_by(Event.date.asc())\
+            .limit(3).all()
+
+    return render_template('index.html', 
+                         dashboard_data=dashboard_data, 
+                         recent_items=recent_items, 
+                         upcoming_events=upcoming_events,
+                         today=today)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
