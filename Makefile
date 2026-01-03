@@ -1,17 +1,17 @@
 .PHONY: help build up down restart logs shell test clean migrate db-reset
 
 help: ## Show this help message
-	d@echo 'Usage: make [target]'
-	d@echo ''
-	d@echo 'Available targets:'
-	d@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %%-15s %%s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %%-15s %%s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build Docker images
 	docker compose build
 
 up: ## Start all services
 	docker compose up -d
-	d@echo "Application running at http://localhost:5000"
+	@echo "Application running at http://localhost:5001"
 
 down: ## Stop all services
 	docker compose down
@@ -41,12 +41,12 @@ migrate: ## Run database migrations
 	docker compose exec web flask db upgrade
 
 migrate-create: ## Create a new migration
-	d@read -p "Enter migration message: " msg; \
-	ddocker compose exec web flask db migrate -m "$$msg"
+	@read -p "Enter migration message: " msg; \
+	docker compose exec web flask db migrate -m "$$msg"
 
 db-reset: ## Reset database (WARNING: destroys all data)
-	d@echo "WARNING: This will destroy all data!"
-	d@read -p "Are you sure? [y/N] " confirm; \
+	@echo "WARNING: This will destroy all data!"
+	@read -p "Are you sure? [y/N] " confirm; \
 	if [ "$$confirm" = "y" ]; then \
 		docker compose down -v; \
 		docker compose up -d db; \
@@ -62,7 +62,7 @@ clean: ## Remove containers, volumes, and images
 
 prod-up: ## Start production-like environment
 	docker compose --profile production up -d
-	d@echo "Production application running at http://localhost:8000"
+	@echo "Production application running at http://localhost:8000"
 
 prod-down: ## Stop production environment
 	docker compose --profile production down

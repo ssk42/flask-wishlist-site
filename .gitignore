@@ -103,3 +103,10 @@ alembic/versions/*.pyc
 # Local development
 *.local
 .claude/settings.local.json
+
+# Docker setup temporary files
+lima.tar.gz
+lima_extract/
+colima
+convert_reqs.py
+requirements.txt

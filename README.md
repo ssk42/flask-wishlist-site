@@ -71,6 +71,18 @@ A clean, inviting landing page for new and returning users.
 ### Prerequisites
 - Python 3.8+
 - pip
+- Docker (Docker Desktop or Colima for macOS)
+
+### Docker on macOS (Apple Silicon)
+If using Apple Silicon (M1/M2/M3), we recommend using **Colima** with the ARM64 binaries to avoid Rosetta issues.
+
+```bash
+# Install Colima and Docker CLI (if not already installed)
+brew install colima docker docker-compose
+
+# Start Colima with x86_64 emulation support (optional, but app runs natively)
+colima start
+```
 
 ### Installation
 
@@ -91,11 +103,11 @@ pip install -r requirements.txt
 # Initialize the database
 flask db upgrade
 
-# Run the application
-flask run
-```
 
-Visit `http://localhost:5000` in your browser.
+# Run the application
+make up
+
+Visit `http://localhost:5001` in your browser. (Note: Port 5001 is used to avoid AirPlay conflicts on macOS)
 
 ### Environment Variables
 

@@ -2,7 +2,7 @@
 
 This document tracks all planned and completed improvements to the Family Wishlist application.
 
-**Last Updated:** 2025-12-28
+**Last Updated:** 2026-01-03
 
 ---
 
@@ -259,6 +259,33 @@ This document tracks all planned and completed improvements to the Family Wishli
 - ✅ Database migration: 858a27dc5d01_add_event_model_event_id_and_price_.py
 - ✅ Test coverage: 132 tests passing, 94% coverage
 - 📈 Progress: 13/35 items complete (37%)
+
+### 2026-01-03 (Session 4)
+- ✅ **Fixed Failing Browser Tests**
+  - Resolved 9 failing browser tests (100% pass rate restored: 211 tests)
+  - Fixed Playwright strict mode violations and timing issues
+- 🐛 **Critical Bug Fixes**
+  - **Template Rendering:** Fixed `edit_item.html` where `None` values rendered as "None" string, breaking HTML5 validation on URL fields
+  - **Login Redirects:** Fixed `next` parameter handling in `login` route and template for proper redirection
+- 🧪 **Export Verification Enhancements**
+  - Updated export tests to verify actual Excel file content (headers, data) using `pandas`
+  - Fixed tests to target correct export endpoints (`/export_items` vs `/export_my_status_updates`)
+- 📈 Test coverage: 98% coverage
+
+### 2026-01-03 (Session 5: Docker Infrastructure)
+- ✅ **Infrastructure Fixes**
+  - **Docker/Colima Setup:** Fixed `lima` Rosetta compatibility issues on Apple Silicon by manual installation of ARM64 binaries.
+  - **Dependencies:** Pinned Docker base image to `python:3.11-slim-bookworm` to fix `playwright` dependency failures (missing stable font packages in newer Debian versions).
+  - **Permissions:** Refactored Dockerfile to use a virtual environment (`/opt/venv`), resolving `Permission denied` errors for non-root users.
+  - **Port Configuration:** Changed default port to **5001** to avoid conflict with macOS AirPlay Receiver (port 5000).
+  - **Documentation:** Updated `.gitignore` and `README.md` with streamlined setup instructions.
+- ⚙️ **Dev Experience**
+  - Auto-generation of `requirements.txt` from `pyproject.toml` for Docker builds.
+  - Validated full stack startup (`make up`) including PostgreSQL and Redis.
+- ✅ **Error Tracking (Sentry)**
+  - Integrated `sentry-sdk` for production error monitoring.
+  - Configured environment-based DSN loading.
+  - Verified with test exception.
 
 ### 2025-10-16 (Session 1)
 - ✅ Completed all 6 Quick Wins

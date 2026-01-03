@@ -15,6 +15,24 @@ import os
 import logging
 from flask_compress import Compress
 from whitenoise import WhiteNoise
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+# Initialize Sentry
+if os.getenv('SENTRY_DSN'):
+    sentry_sdk.init(
+        dsn=os.getenv('SENTRY_DSN'),
+        integrations=[
+            FlaskIntegration(),
+            SqlalchemyIntegration(),
+        ],
+        traces_sample_rate=1.0,  # Capture 100% of transactions for performance monitoring
+        # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions.
+        # We recommend adjusting this value in production.
+        profiles_sample_rate=1.0,
+        environment=os.getenv('FLASK_ENV', 'development')
+    )
 
 app = Flask(__name__)
 
@@ -793,6 +811,7 @@ def events():
     upcoming_events = base_query.filter(Event.date >= today).order_by(Event.date.asc()).all()
     past_events = base_query.filter(Event.date < today).order_by(Event.date.desc()).all()
     return render_template('events.html', upcoming_events=upcoming_events, past_events=past_events)
+
 
 
 @app.route('/events/new', methods=['GET', 'POST'])
