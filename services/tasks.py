@@ -25,7 +25,7 @@ def send_event_reminders(app, db, Event, Item, User):
     Returns:
         Dictionary with counts of events processed, emails sent, and errors
     """
-    from email_service import send_event_reminder
+    from services.email_service import send_event_reminder
 
     with app.app_context():
         today = datetime.date.today()

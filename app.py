@@ -38,7 +38,7 @@ app = Flask(__name__)
 
 # Setup logging
 try:
-    from logging_config import setup_logging
+    from services.logging_config import setup_logging
     setup_logging(app)
 except ImportError:
     # Fallback to basic logging if logging_config not available
@@ -689,7 +689,7 @@ def get_item_modal(item_id):
 @login_required
 def refresh_price(item_id):
     """Refresh the price for an item by fetching from its URL."""
-    from price_service import refresh_item_price
+    from services.price_service import refresh_item_price
     from urllib.parse import urlparse
 
     item = db.session.get(Item, item_id)
@@ -979,7 +979,7 @@ def set_security_headers(response):
 @app.cli.command('send-reminders')
 def send_reminders_command():
     """Send event reminder emails for events happening in 7 days."""
-    from tasks import send_event_reminders
+    from services.tasks import send_event_reminders
     click.echo('Sending event reminders...')
     stats = send_event_reminders(app, db, Event, Item, User)
     click.echo(f'Events processed: {stats["events_processed"]}')
@@ -992,7 +992,7 @@ def send_reminders_command():
 @app.route('/api/fetch-metadata', methods=['POST'])
 @login_required
 def api_fetch_metadata():
-    from price_service import fetch_metadata
+    from services.price_service import fetch_metadata
     
     if not request.json or 'url' not in request.json:
         return jsonify({'error': 'Missing URL'}), 400
@@ -1064,7 +1064,7 @@ def mark_notification_read(notif_id):
 @click.option('--force', is_flag=True, help='Force update all items regardless of last update time')
 def update_prices_command(force):
     """Update prices for items with links that haven't been updated in 7 days."""
-    from price_service import update_stale_prices
+    from services.price_service import update_stale_prices
     if force:
         click.echo('Force updating ALL prices (ignoring 7-day window)...')
     else:

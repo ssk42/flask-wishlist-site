@@ -56,7 +56,7 @@ def get_logging_config(log_level=None, log_file=None):
                 'format': '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
             },
             'json': {
-                '()': 'logging_config.CustomJsonFormatter',
+                '()': 'services.logging_config.CustomJsonFormatter',
                 'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
             },
         },

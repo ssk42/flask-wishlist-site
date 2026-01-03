@@ -29,30 +29,30 @@ class TestPriceParser:
 
     def test_parse_us_dollar_format(self):
         """Should parse US dollar format like $19.99"""
-        from price_service import _parse_price
+        from services.price_service import _parse_price
         assert _parse_price("$19.99") == 19.99
         assert _parse_price("$1,234.56") == 1234.56
 
     def test_parse_european_format(self):
         """Should parse European format like 19,99"""
-        from price_service import _parse_price
+        from services.price_service import _parse_price
         assert _parse_price("19,99") == 19.99
 
     def test_parse_with_currency_symbols(self):
         """Should strip currency symbols."""
-        from price_service import _parse_price
+        from services.price_service import _parse_price
         assert _parse_price("USD 19.99") == 19.99
         assert _parse_price("EUR 19,99") == 19.99
 
     def test_parse_empty_returns_none(self):
         """Should return None for empty input."""
-        from price_service import _parse_price
+        from services.price_service import _parse_price
         assert _parse_price("") is None
         assert _parse_price(None) is None
 
     def test_parse_invalid_returns_none(self):
         """Should return None for invalid input."""
-        from price_service import _parse_price
+        from services.price_service import _parse_price
         assert _parse_price("not a price") is None
 
 
@@ -61,14 +61,14 @@ class TestFetchPrice:
 
     def test_fetch_price_no_url(self):
         """Should return None when URL is empty."""
-        from price_service import fetch_price
+        from services.price_service import fetch_price
         assert fetch_price(None) is None
         assert fetch_price("") is None
 
-    @patch('price_service._make_request')
+    @patch('services.price_service._make_request')
     def test_fetch_amazon_price(self, mock_request):
         """Should extract price from Amazon page."""
-        from price_service import _fetch_amazon_price
+        from services.price_service import _fetch_amazon_price
 
         mock_response = MagicMock()
         # More complete HTML with proper Amazon price structure
@@ -86,10 +86,10 @@ class TestFetchPrice:
         price = _fetch_amazon_price("https://www.amazon.com/dp/B12345")
         assert price == 29.99
 
-    @patch('price_service._make_request')
+    @patch('services.price_service._make_request')
     def test_fetch_generic_meta_price(self, mock_request):
         """Should extract price from meta tags."""
-        from price_service import fetch_price
+        from services.price_service import fetch_price
 
         mock_response = MagicMock()
         mock_response.text = '''
@@ -102,20 +102,20 @@ class TestFetchPrice:
         price = fetch_price("https://www.example.com/product")
         assert price == 49.99
 
-    @patch('price_service._make_request')
+    @patch('services.price_service._make_request')
     def test_fetch_price_handles_network_error(self, mock_request):
         """Should return None on network errors."""
-        from price_service import fetch_price
+        from services.price_service import fetch_price
 
         mock_request.return_value = None
 
         price = fetch_price("https://www.amazon.com/dp/B12345")
         assert price is None
 
-    @patch('price_service._make_request')
+    @patch('services.price_service._make_request')
     def test_fetch_price_handles_missing_price(self, mock_request):
         """Should return None when price not found on page."""
-        from price_service import fetch_price
+        from services.price_service import fetch_price
 
         mock_response = MagicMock()
         mock_response.text = '<html><body>No price here</body></html>'
@@ -130,7 +130,7 @@ class TestRefreshItemPrice:
 
     def test_refresh_price_no_link(self, app, item_owner):
         """Should fail gracefully when item has no link."""
-        from price_service import refresh_item_price
+        from services.price_service import refresh_item_price
 
         with app.app_context():
             item = Item(
@@ -147,10 +147,10 @@ class TestRefreshItemPrice:
             assert new_price is None
             assert 'no link' in message.lower()
 
-    @patch('price_service.fetch_price')
+    @patch('services.price_service.fetch_price')
     def test_refresh_price_success(self, mock_fetch, app, item_owner):
         """Should update price when fetch succeeds."""
-        from price_service import refresh_item_price
+        from services.price_service import refresh_item_price
         mock_fetch.return_value = 39.99
 
         with app.app_context():
@@ -174,10 +174,10 @@ class TestRefreshItemPrice:
             assert updated_item.price == 39.99
             assert updated_item.price_updated_at is not None
 
-    @patch('price_service.fetch_price')
+    @patch('services.price_service.fetch_price')
     def test_refresh_price_updates_timestamp(self, mock_fetch, app, item_owner):
         """Should update price_updated_at timestamp."""
-        from price_service import refresh_item_price
+        from services.price_service import refresh_item_price
         mock_fetch.return_value = 25.00
 
         with app.app_context():
@@ -200,10 +200,10 @@ class TestRefreshItemPrice:
 class TestUpdateStalePrices:
     """Tests for the batch price update function."""
 
-    @patch('price_service.fetch_price')
+    @patch('services.price_service.fetch_price')
     def test_update_stale_prices_finds_old_items(self, mock_fetch, app, item_owner):
         """Should find items with price_updated_at older than 7 days."""
-        from price_service import update_stale_prices
+        from services.price_service import update_stale_prices
 
         mock_fetch.return_value = 19.99
 
@@ -225,10 +225,10 @@ class TestUpdateStalePrices:
             assert stats['items_processed'] == 1
             assert stats['prices_updated'] == 1
 
-    @patch('price_service.fetch_price')
+    @patch('services.price_service.fetch_price')
     def test_update_stale_prices_skips_recent(self, mock_fetch, app, item_owner):
         """Should skip items updated recently."""
-        from price_service import update_stale_prices
+        from services.price_service import update_stale_prices
 
         with app.app_context():
             recent_date = datetime.datetime.now() - datetime.timedelta(days=1)
@@ -248,10 +248,10 @@ class TestUpdateStalePrices:
             assert stats['items_processed'] == 0
             mock_fetch.assert_not_called()
 
-    @patch('price_service.fetch_price')
+    @patch('services.price_service.fetch_price')
     def test_update_stale_prices_handles_null_date(self, mock_fetch, app, item_owner):
         """Should process items with NULL price_updated_at."""
-        from price_service import update_stale_prices
+        from services.price_service import update_stale_prices
 
         mock_fetch.return_value = 29.99
 
@@ -270,10 +270,10 @@ class TestUpdateStalePrices:
 
             assert stats['items_processed'] == 1
 
-    @patch('price_service.fetch_price')
+    @patch('services.price_service.fetch_price')
     def test_update_stale_prices_handles_errors(self, mock_fetch, app, item_owner):
         """Should handle errors gracefully and continue processing."""
-        from price_service import update_stale_prices
+        from services.price_service import update_stale_prices
 
         mock_fetch.side_effect = Exception("Fetch error")
 
@@ -322,7 +322,7 @@ class TestRefreshPriceRoute:
         assert response.status_code == 200
         assert b'no link' in response.data.lower()
 
-    @patch('price_service.refresh_item_price')
+    @patch('services.price_service.refresh_item_price')
     def test_refresh_price_success(self, mock_refresh, app, client, login_owner):
         """Should show success message when price is updated."""
         mock_refresh.return_value = (True, 49.99, "Price updated")

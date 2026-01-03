@@ -16,7 +16,7 @@ def test_fetch_metadata_missing_url(client, login):
     assert response.status_code == 400
     assert response.json == {'error': 'Missing URL'}
 
-@patch('price_service.fetch_metadata')
+@patch('services.price_service.fetch_metadata')
 def test_fetch_metadata_success(mock_fetch, client, login):
     # Setup mock return value
     mock_data = {
@@ -35,7 +35,7 @@ def test_fetch_metadata_success(mock_fetch, client, login):
     assert response.json == mock_data
     mock_fetch.assert_called_once_with("https://example.com/product")
 
-@patch('price_service.fetch_metadata')
+@patch('services.price_service.fetch_metadata')
 def test_fetch_metadata_failure(mock_fetch, client, login):
     # Setup mock to raise exception
     mock_fetch.side_effect = Exception("Connection error")

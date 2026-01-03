@@ -13,7 +13,7 @@ def test_send_reminders_command_success(app):
     runner = CliRunner()
 
     # Patch the import inside the CLI command
-    with patch('tasks.send_event_reminders') as mock_send:
+    with patch('services.tasks.send_event_reminders') as mock_send:
         mock_send.return_value = {
             'events_processed': 2,
             'emails_sent': 5,
@@ -35,7 +35,7 @@ def test_send_reminders_command_with_errors(app):
 
     runner = CliRunner()
 
-    with patch('tasks.send_event_reminders') as mock_send:
+    with patch('services.tasks.send_event_reminders') as mock_send:
         mock_send.return_value = {
             'events_processed': 2,
             'emails_sent': 3,
@@ -55,7 +55,7 @@ def test_update_prices_command_success(app):
 
     runner = CliRunner()
 
-    with patch('price_service.update_stale_prices') as mock_update:
+    with patch('services.price_service.update_stale_prices') as mock_update:
         mock_update.return_value = {
             'items_processed': 10,
             'prices_updated': 5,
@@ -78,7 +78,7 @@ def test_update_prices_command_with_force_flag(app):
 
     runner = CliRunner()
 
-    with patch('price_service.update_stale_prices') as mock_update:
+    with patch('services.price_service.update_stale_prices') as mock_update:
         mock_update.return_value = {
             'items_processed': 20,
             'prices_updated': 15,

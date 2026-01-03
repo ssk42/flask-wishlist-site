@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**📋 Important:** See [IMPROVEMENTS.md](IMPROVEMENTS.md) for a comprehensive tracking document of all planned and completed improvements (32 items total, 6 completed).
+**📋 Important:** See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for a comprehensive tracking document of all planned and completed improvements (32 items total, 6 completed).
 
 ## Development Commands
 
@@ -64,11 +64,16 @@ flask db migrate -m "Description of changes"
 ## Architecture Overview
 
 ### Application Structure
-This is a **monolithic Flask application** where all code lives in a single `app.py` file:
-- All routes, database models, and configuration are in [app.py](app.py)
-- No separate blueprints or modules
-- Templates are in `templates/` directory
+This is a **Flask application** with routes and models in `app.py` and services organized in `services/`:
+- Routes, database models, and configuration in [app.py](app.py)
+- Service modules in `services/`:
+  - `price_service.py` - Product price fetching and metadata extraction
+  - `email_service.py` - Email sending via Flask-Mail
+  - `tasks.py` - Background tasks (event reminders)
+  - `logging_config.py` - Structured logging setup
+- Templates in `templates/` directory
 - Database migrations managed by Flask-Migrate in `migrations/` directory
+- Documentation in `docs/` directory
 
 ### Database Models
 - **User**: Simple model with name and email (no password - uses email-based login only)

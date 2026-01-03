@@ -1,5 +1,5 @@
 
-from price_service import fetch_metadata
+from services.price_service import fetch_metadata
 import logging
 
 logging.basicConfig(level=logging.INFO)

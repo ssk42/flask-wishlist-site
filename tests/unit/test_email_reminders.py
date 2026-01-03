@@ -40,12 +40,12 @@ class TestEventReminderTask:
 
     def test_task_module_exists(self, app):
         """Task module should be importable."""
-        from tasks import send_event_reminders
+        from services.tasks import send_event_reminders
         assert callable(send_event_reminders)
 
     def test_finds_events_seven_days_out(self, app, event_creator):
         """Task should find events that are exactly 7 days away."""
-        from tasks import send_event_reminders
+        from services.tasks import send_event_reminders
 
         # Setup: create events within app context
         with app.app_context():
@@ -74,7 +74,7 @@ class TestEventReminderTask:
             db.session.commit()
 
         # Run the task with mocking
-        with patch('email_service.send_event_reminder') as mock_send:
+        with patch('services.email_service.send_event_reminder') as mock_send:
             mock_send.return_value = True
             stats = send_event_reminders(app, db, Event, Item, User)
 
@@ -83,7 +83,7 @@ class TestEventReminderTask:
 
     def test_skips_already_sent_reminders(self, app, event_creator):
         """Task should skip events that already had reminders sent."""
-        from tasks import send_event_reminders
+        from services.tasks import send_event_reminders
 
         with app.app_context():
             today = datetime.date.today()
@@ -97,7 +97,7 @@ class TestEventReminderTask:
             db.session.add(event)
             db.session.commit()
 
-        with patch('email_service.send_event_reminder') as mock_send:
+        with patch('services.email_service.send_event_reminder') as mock_send:
             stats = send_event_reminders(app, db, Event, Item, User)
 
             # Should not process any events
@@ -106,7 +106,7 @@ class TestEventReminderTask:
 
     def test_handles_no_claimed_items(self, app, event_creator):
         """Task should handle events with no claimed items gracefully."""
-        from tasks import send_event_reminders
+        from services.tasks import send_event_reminders
 
         with app.app_context():
             today = datetime.date.today()
@@ -120,7 +120,7 @@ class TestEventReminderTask:
             db.session.add(event)
             db.session.commit()
 
-        with patch('email_service.send_event_reminder') as mock_send:
+        with patch('services.email_service.send_event_reminder') as mock_send:
             stats = send_event_reminders(app, db, Event, Item, User)
 
             # Should process the event but send no emails
@@ -134,7 +134,7 @@ class TestEmailService:
 
     def test_email_service_module_exists(self, app):
         """Email service module should be importable."""
-        from email_service import send_event_reminder, send_email
+        from services.email_service import send_event_reminder, send_email
         assert callable(send_event_reminder)
         assert callable(send_email)
 

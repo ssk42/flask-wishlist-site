@@ -38,10 +38,10 @@ def price_drop_setup(app):
         return owner.id, claimer.id, item.id
 
 
-@patch('price_service.fetch_price')
+@patch('services.price_service.fetch_price')
 def test_price_drop_creates_owner_notification(mock_fetch, app, price_drop_setup):
     """When price drops ≥10%, owner gets a notification."""
-    from price_service import update_stale_prices
+    from services.price_service import update_stale_prices
     from app import db, Item, Notification
     
     owner_id, claimer_id, item_id = price_drop_setup
@@ -61,10 +61,10 @@ def test_price_drop_creates_owner_notification(mock_fetch, app, price_drop_setup
         assert "Nintendo Switch" in owner_notif.message
 
 
-@patch('price_service.fetch_price')
+@patch('services.price_service.fetch_price')
 def test_price_drop_creates_claimer_notification(mock_fetch, app, price_drop_setup):
     """When price drops ≥10%, claimer also gets a notification."""
-    from price_service import update_stale_prices
+    from services.price_service import update_stale_prices
     from app import db, Item, Notification
     
     owner_id, claimer_id, item_id = price_drop_setup
@@ -80,10 +80,10 @@ def test_price_drop_creates_claimer_notification(mock_fetch, app, price_drop_set
         assert "you claimed" in claimer_notif.message
 
 
-@patch('price_service.fetch_price')
+@patch('services.price_service.fetch_price')
 def test_small_price_drop_no_notification(mock_fetch, app, price_drop_setup):
     """When price drops <10%, no notification is created."""
-    from price_service import update_stale_prices
+    from services.price_service import update_stale_prices
     from app import db, Item, Notification
     
     owner_id, claimer_id, item_id = price_drop_setup
@@ -98,10 +98,10 @@ def test_small_price_drop_no_notification(mock_fetch, app, price_drop_setup):
         assert Notification.query.count() == 0
 
 
-@patch('price_service.fetch_price')
+@patch('services.price_service.fetch_price')
 def test_price_increase_no_notification(mock_fetch, app, price_drop_setup):
     """When price increases, no notification is created."""
-    from price_service import update_stale_prices
+    from services.price_service import update_stale_prices
     from app import db, Item, Notification
     
     mock_fetch.return_value = 349.99  # Price went up

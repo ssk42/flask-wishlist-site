@@ -69,7 +69,7 @@ class TestCoverageGaps:
         assert response.status_code == 200
         assert response.headers['Content-Disposition'] == 'attachment; filename=allWishlistItems.xlsx'
     
-    @patch('price_service.refresh_item_price')
+    @patch('services.price_service.refresh_item_price')
     def test_refresh_price_success(self, mock_refresh, client, app):
         """Test successful price refresh."""
         mock_refresh.return_value = (True, 99.99, "Price updated")
@@ -91,7 +91,7 @@ class TestCoverageGaps:
         response = client.post(f'/item/{item_id}/refresh-price', follow_redirects=True)
         assert b'Price updated' in response.data
 
-    @patch('price_service.refresh_item_price')
+    @patch('services.price_service.refresh_item_price')
     def test_refresh_price_amazon_failure(self, mock_refresh, client, app):
         """Test Amazon specific error message."""
         mock_refresh.return_value = (False, None, "Failed")
@@ -113,7 +113,7 @@ class TestCoverageGaps:
         response = client.post(f'/item/{item_id}/refresh-price', follow_redirects=True)
         assert b'Amazon blocks automated price fetching' in response.data
 
-    @patch('price_service.refresh_item_price')
+    @patch('services.price_service.refresh_item_price')
     def test_refresh_price_generic_failure(self, mock_refresh, client, app):
         """Test generic refresh failure."""
         mock_refresh.return_value = (False, None, "Failed")
