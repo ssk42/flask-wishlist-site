@@ -491,6 +491,9 @@ def login():
             login_user(user)
             app.logger.info(f'User logged in: {email} (user_id={user.id})')
             flash(f'Welcome back, {user.name}!', 'success')
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
             return redirect(url_for('index'))
         else:
             app.logger.warning(f'Failed login attempt for email: {email}')

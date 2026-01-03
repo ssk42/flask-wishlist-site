@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label for="link" class="form-label">Link</label>
                     <div class="input-group">
-                        <input type="url" class="form-control" id="link" name="link" value="{{ item.link }}">
+                        <input type="url" class="form-control" id="link" name="link" value="{{ item.link or '' }}">
                         <button class="btn btn-outline-secondary" type="button" id="autofill-btn"
                             title="Autofill details from URL">
                             🪄 Autofill
@@ -34,7 +34,7 @@
                     <div class="input-group">
                         <span class="input-group-text">$</span>
                         <input type="number" class="form-control" id="price" name="price" step="0.01" min="0"
-                            value="{{ item.price }}">
+                            value="{{ item.price or '' }}">
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -48,11 +48,13 @@
                 </div>
                 <div class="col-md-3">
                     <label for="category" class="form-label">Category</label>
-                    <input type="text" class="form-control" id="category" name="category" value="{{ item.category }}">
+                    <input type="text" class="form-control" id="category" name="category"
+                        value="{{ item.category or '' }}">
                 </div>
                 <div class="col-md-3">
                     <label for="image_url" class="form-label">Image URL</label>
-                    <input type="url" class="form-control" id="image_url" name="image_url" value="{{ item.image_url }}">
+                    <input type="url" class="form-control" id="image_url" name="image_url"
+                        value="{{ item.image_url or '' }}">
                 </div>
             </div>
 

@@ -206,6 +206,66 @@ class TestEditEvent:
         response = client.get('/events/99999/edit')
         assert response.status_code == 404
 
+    def test_edit_event_missing_name_shows_error(self, app, client, login_event_owner):
+        """Editing an event with empty name should show validation error."""
+        with app.app_context():
+            event = Event(
+                name="Original Name",
+                date=datetime.date(2025, 6, 15),
+                created_by_id=login_event_owner
+            )
+            db.session.add(event)
+            db.session.commit()
+            event_id = event.id
+
+        response = client.post(f'/events/{event_id}/edit', data={
+            'name': '',
+            'date': '2025-07-20'
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b'Event name is required' in response.data
+
+    def test_edit_event_missing_date_shows_error(self, app, client, login_event_owner):
+        """Editing an event with empty date should show validation error."""
+        with app.app_context():
+            event = Event(
+                name="Original Name",
+                date=datetime.date(2025, 6, 15),
+                created_by_id=login_event_owner
+            )
+            db.session.add(event)
+            db.session.commit()
+            event_id = event.id
+
+        response = client.post(f'/events/{event_id}/edit', data={
+            'name': 'Updated Name',
+            'date': ''
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b'Event date is required' in response.data
+
+    def test_edit_event_invalid_date_shows_error(self, app, client, login_event_owner):
+        """Editing an event with invalid date format should show validation error."""
+        with app.app_context():
+            event = Event(
+                name="Original Name",
+                date=datetime.date(2025, 6, 15),
+                created_by_id=login_event_owner
+            )
+            db.session.add(event)
+            db.session.commit()
+            event_id = event.id
+
+        response = client.post(f'/events/{event_id}/edit', data={
+            'name': 'Updated Name',
+            'date': 'not-a-valid-date'
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b'Invalid date format' in response.data
+
 
 class TestDeleteEvent:
     """Tests for deleting events."""
@@ -283,6 +343,11 @@ class TestDeleteEvent:
             item = Item.query.get(item_id)
             assert item is not None
             assert item.event_id is None
+
+    def test_delete_event_nonexistent_returns_404(self, client, login_event_owner):
+        """Deleting a non-existent event returns 404."""
+        response = client.post('/events/99999/delete')
+        assert response.status_code == 404
 
 
 class TestEventItemAssociation:

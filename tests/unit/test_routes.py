@@ -628,3 +628,203 @@ def test_claim_item_not_available_redirects(client, app, user, other_user):
     response = client.post(f"/claim_item/{item_id}", follow_redirects=False)
 
     assert response.status_code == 302
+
+
+def test_clear_filters_removes_all_session_filters(client, app, login, user):
+    """Test that ?clear_filters=true clears all filters from session."""
+    # First, set some filters in the session
+    with client.session_transaction() as sess:
+        sess['user_filter'] = user
+        sess['status_filter'] = 'Available'
+        sess['priority_filter'] = 'High'
+        sess['event_filter'] = 1
+        sess['q'] = 'search term'
+        sess['sort_by'] = 'price'
+        sess['sort_order'] = 'desc'
+
+    # Request with clear_filters=true
+    response = client.get("/items", query_string={"clear_filters": "true"})
+
+    # Should redirect to /items without filters
+    assert response.status_code == 302
+    assert response.location.endswith('/items')
+
+    # Verify all filters are cleared from session
+    with client.session_transaction() as sess:
+        assert sess.get('user_filter') is None
+        assert sess.get('status_filter') is None
+        assert sess.get('priority_filter') is None
+        assert sess.get('event_filter') is None
+        assert sess.get('q') is None
+        assert sess.get('sort_by') is None
+        assert sess.get('sort_order') is None
+
+
+def test_unclaim_item_nonexistent_returns_404(client, app, login, user):
+    """Test that unclaiming a non-existent item returns 404."""
+    response = client.post("/unclaim_item/99999")
+
+    assert response.status_code == 404
+
+
+def test_unclaim_item_not_claimed_by_user_shows_error(client, app, login, user, other_user):
+    """Test that a user cannot unclaim an item they did not claim."""
+    with app.app_context():
+        # Create an item owned by user, claimed by other_user
+        item = Item(
+            description="Claimed by Other",
+            status="Claimed",
+            priority="Medium",
+            user_id=user,
+            last_updated_by_id=other_user,  # other_user claimed this
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(f"/unclaim_item/{item_id}", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"cannot unclaim this item" in response.data
+
+
+def test_unclaim_item_available_status_shows_error(client, app, login, user):
+    """Test that a user cannot unclaim an item that is Available status."""
+    with app.app_context():
+        item = Item(
+            description="Available Item",
+            status="Available",
+            priority="Medium",
+            user_id=user,
+            last_updated_by_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(f"/unclaim_item/{item_id}", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"cannot unclaim this item" in response.data
+
+
+def test_item_modal_nonexistent_returns_404(client, app, login, user):
+    """Test that requesting a modal for a non-existent item returns 404."""
+    response = client.get("/items/99999/modal")
+
+    assert response.status_code == 404
+    assert b"Item not found" in response.data
+
+
+def test_unclaim_item_htmx_from_items_list(client, app, login, user, other_user):
+    """Test unclaiming an item via HTMX from items list returns partial HTML."""
+    with app.app_context():
+        item = Item(
+            description="HTMX Unclaim Item",
+            status="Claimed",
+            priority="Medium",
+            user_id=other_user,
+            last_updated_by_id=user,  # Current user claimed it
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    # POST with HX-Request header (HTMX) but no context param (items list)
+    response = client.post(
+        f"/unclaim_item/{item_id}",
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    # Should return partial HTML with item card
+    assert b"glass-card" in response.data or b"item-card" in response.data
+
+
+def test_unclaim_item_non_htmx_success(client, app, login, user, other_user):
+    """Test unclaiming an item without HTMX redirects with flash message."""
+    with app.app_context():
+        item = Item(
+            description="Non-HTMX Unclaim Item",
+            status="Claimed",
+            priority="Medium",
+            user_id=other_user,
+            last_updated_by_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(f"/unclaim_item/{item_id}", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"unclaimed" in response.data
+
+
+def test_items_preserves_all_session_filters(client, app, login, user):
+    """Test that items page preserves all session filter types."""
+    with app.app_context():
+        item = Item(
+            description="Session Filter Item",
+            status="Available",
+            priority="High",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+
+    # Apply various filters
+    response = client.get(
+        "/items?user_filter=1&status_filter=Available&priority_filter=High&q=test&sort_by=price&sort_order=asc"
+    )
+    assert response.status_code == 200
+
+    # Visit another page and come back - filters should be preserved in session
+    with client.session_transaction() as sess:
+        assert sess.get('user_filter') == 1
+        assert sess.get('status_filter') == 'Available'
+        assert sess.get('priority_filter') == 'High'
+        assert sess.get('q') == 'test'
+        assert sess.get('sort_by') == 'price'
+        assert sess.get('sort_order') == 'asc'
+
+
+def test_items_preserves_event_filter(client, app, login, user):
+    """Test that items page preserves event filter in session."""
+    from app import Event
+    import datetime
+
+    with app.app_context():
+        event = Event(
+            name="Test Event",
+            date=datetime.date.today(),
+            created_by_id=user,
+        )
+        db.session.add(event)
+        db.session.commit()
+        event_id = event.id
+
+    response = client.get(f"/items?event_filter={event_id}")
+    assert response.status_code == 200
+
+    with client.session_transaction() as sess:
+        assert sess.get('event_filter') == event_id
+
+
+def test_get_item_modal_success(client, app, login, user):
+    """Test that get_item_modal returns modal HTML for valid item."""
+    with app.app_context():
+        item = Item(
+            description="Modal Test Item",
+            status="Available",
+            priority="Medium",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.get(f"/items/{item_id}/modal")
+
+    assert response.status_code == 200
+    assert b"Modal Test Item" in response.data

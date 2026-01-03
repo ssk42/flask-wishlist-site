@@ -109,19 +109,86 @@ def test_mark_notification_read(client, app, test_data):
 
 def test_items_page_shows_comments_to_non_owner(client, app, test_data):
     user_a_id, user_b_id, _, item_id = test_data
-    
+
     # Add a comment
     with app.app_context():
         db.session.add(Comment(text="Secret", user_id=user_b_id, item_id=item_id))
         db.session.commit()
-        
+
     # View as Charlie (Non-owner)
     login_via_post(client, "charlie@example.com")
     response = client.get("/items")
     assert b"Secret" in response.data
     assert b"Comments (1)" in response.data
-    
+
     # View as Alice (Owner)
     login_via_post(client, "alice@example.com")
     response_owner = client.get("/items")
     assert b"Secret" not in response_owner.data
+
+
+def test_add_comment_empty_text_shows_warning(client, app, test_data):
+    """Test that empty comment text shows a warning flash message."""
+    user_a_id, user_b_id, user_c_id, item_id = test_data
+
+    # Login as Bob
+    login_via_post(client, "bob@example.com")
+
+    response = client.post(
+        f"/item/{item_id}/comment",
+        data={"text": ""},
+        follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert b"Comment cannot be empty" in response.data
+
+    with app.app_context():
+        assert Comment.query.count() == 0
+
+
+def test_add_comment_whitespace_only_shows_warning(client, app, test_data):
+    """Test that whitespace-only comment shows a warning flash message."""
+    user_a_id, user_b_id, user_c_id, item_id = test_data
+
+    # Login as Bob
+    login_via_post(client, "bob@example.com")
+
+    response = client.post(
+        f"/item/{item_id}/comment",
+        data={"text": "   "},
+        follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert b"Comment cannot be empty" in response.data
+
+    with app.app_context():
+        assert Comment.query.count() == 0
+
+
+def test_mark_notification_read_ajax_returns_json(client, app, test_data):
+    """Test that AJAX request to mark notification as read returns JSON."""
+    user_a_id, user_b_id, user_c_id, item_id = test_data
+
+    with app.app_context():
+        notif = Notification(message="Test notification", link="/", user_id=user_b_id)
+        db.session.add(notif)
+        db.session.commit()
+        notif_id = notif.id
+
+    login_via_post(client, "bob@example.com")
+
+    response = client.post(
+        f"/notifications/read/{notif_id}",
+        headers={"X-Requested-With": "XMLHttpRequest"}
+    )
+
+    assert response.status_code == 200
+    assert response.content_type == "application/json"
+    json_data = response.get_json()
+    assert json_data["success"] is True
+
+    with app.app_context():
+        notif = db.session.get(Notification, notif_id)
+        assert notif.is_read is True

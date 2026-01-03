@@ -102,3 +102,4 @@ alembic/versions/*.pyc
 
 # Local development
 *.local
+.claude/settings.local.json
