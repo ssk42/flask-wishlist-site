@@ -35,7 +35,7 @@ requests==2.32.3
 six==1.16.0
 sqlalchemy==2.0.23
 typing-extensions==4.8.0
-tzdata==2023.3
+tzdata==2025.3
 werkzeug==3.0.1
 whitenoise>=6.11.0
 sentry-sdk[flask]==1.39.1
