@@ -9,7 +9,7 @@ dependencies = [
     "blinker==1.7.0",
     "click==8.1.7",
     "docutils==0.20.1",
-    "et-xmlfile==1.1.0",
+    "et-xmlfile==2.0.0",
     "flask==3.0.0",
     "flask-compress>=1.23",
     "flask-login==0.6.3",
