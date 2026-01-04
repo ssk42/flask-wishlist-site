@@ -14,7 +14,7 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-from extensions import limiter
+from extensions import limiter, cache
 from config import get_config
 
 # Import db and models from models.py
@@ -85,6 +85,9 @@ def create_app(config_name=None):
         limiter_options = {"storage_options": {"socket_connect_timeout": 30, "ssl_cert_reqs": None}}
     
     limiter.init_app(app, **limiter_options)
+    
+    # Initialize caching
+    cache.init_app(app)
 
     # Initialize WhiteNoise for static files
     app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')

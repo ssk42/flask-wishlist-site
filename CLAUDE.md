@@ -2,7 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**📋 Important:** See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for a comprehensive tracking document of all planned and completed improvements (32 items total, 6 completed).
+## 📚 Key Documentation
+
+| Document | Purpose |
+|----------|--------|
+| [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) | **Project Roadmap** - Comprehensive tracking of all planned/completed improvements (43 items, ~65% complete). Use this to understand priorities and find your next task. |
+| [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md) | **Technical Gotchas** - Common pitfalls, environment quirks, and solutions discovered during development. Read this before diving into infrastructure or testing work. |
 
 ## Development Commands
 

@@ -24,10 +24,12 @@ class Config:
 
     # SQLAlchemy
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Database Connection Pooling (Item 13)
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),
-        'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '3600')),
-        'pool_pre_ping': True,  # Verify connections before using them
+        "pool_size": 10,
+        "pool_recycle": 280,
+        "pool_pre_ping": True,
     }
 
     # CSRF Protection
@@ -55,6 +57,11 @@ class Config:
 
     # Redis (for future caching)
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    
+    # Caching (Item 12)
+    CACHE_TYPE = 'RedisCache' if os.getenv('REDIS_URL') else 'SimpleCache'
+    CACHE_REDIS_URL = os.getenv('REDIS_URL')
+    CACHE_DEFAULT_TIMEOUT = 300
 
     # Rate Limiting
     @staticmethod
@@ -129,6 +136,10 @@ class TestingConfig(Config):
     
     # Disable Rate Limiting for testing
     RATELIMIT_ENABLED = False
+    
+    # Use SimpleCache (memory) for tests
+    CACHE_TYPE = 'SimpleCache'
+    CACHE_REDIS_URL = None
 
 
 class ProductionConfig(Config):

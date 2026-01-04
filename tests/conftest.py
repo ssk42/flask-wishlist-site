@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from app import create_app
 from models import db, User
+from extensions import cache
 
 
 @pytest.fixture(scope="session")
@@ -102,10 +103,12 @@ def browser_app(tmp_path_factory):
 @pytest.fixture(autouse=True)
 def _clean_database(app):
     with app.app_context():
+        cache.clear()
         yield
         for table in reversed(db.metadata.sorted_tables):
             db.session.execute(table.delete())
         db.session.commit()
+        cache.clear()
 
 
 @pytest.fixture()
@@ -165,7 +168,9 @@ def _clean_browser_database(browser_app, request):
         return
 
     with browser_app.app_context():
+        cache.clear()
         yield
         for table in reversed(db.metadata.sorted_tables):
             db.session.execute(table.delete())
         db.session.commit()
+        cache.clear()

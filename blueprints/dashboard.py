@@ -5,13 +5,22 @@ import pandas as pd
 from flask import Blueprint, render_template, send_file
 from flask_login import current_user
 from sqlalchemy.orm import joinedload
+from extensions import cache
 
 from models import db, User, Item, Event
 
 bp = Blueprint('dashboard', __name__)
 
 
+def make_cache_key():
+    """Create a unique cache key based on user ID."""
+    if current_user.is_authenticated:
+        return f"dashboard_{current_user.id}"
+    return "dashboard_guest"
+
+
 @bp.route('/')
+@cache.cached(timeout=60, key_prefix=make_cache_key)
 def index():
     """Render the dashboard/home page."""
     dashboard_data = None

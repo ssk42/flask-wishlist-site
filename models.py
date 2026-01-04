@@ -14,6 +14,8 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(50), unique=True, nullable=False)
     is_private = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
 
     @property
@@ -32,6 +34,8 @@ class Event(db.Model):
     date = db.Column(db.Date, nullable=False)
     created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_by = db.relationship('User', backref='events')
     items = db.relationship('Item', backref='event', lazy=True)
 
@@ -57,6 +61,8 @@ class Item(db.Model):
     last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True, index=True)
     price_updated_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     comments = db.relationship('Comment', backref='item', lazy=True, cascade='all, delete-orphan')
 
