@@ -1,6 +1,6 @@
 """Tests for forgot email functionality."""
 import pytest
-from app import User, db
+from models import User, db
 
 
 def test_forgot_email_page_loads(client):

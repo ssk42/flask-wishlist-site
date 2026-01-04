@@ -9,7 +9,7 @@
             <h1 class="h3 fw-bold mb-1">Welcome back, {{ current_user.name }}!</h1>
             <p class="text-muted mb-0">Here's what's happening in your family wishlist.</p>
         </div>
-        <a href="{{ url_for('submit_item') }}" class="btn btn-primary d-none d-md-inline-flex align-items-center">
+        <a href="{{ url_for('items.submit_item') }}" class="btn btn-primary d-none d-md-inline-flex align-items-center">
             <i class="bi bi-plus-lg me-2"></i> Add Item
         </a>
     </div>
@@ -42,11 +42,11 @@
         <div class="col-12 col-md-6">
             <!-- Action Buttons for Mobile/Tablet -->
             <div class="d-flex gap-2 h-100">
-                <a href="{{ url_for('items') }}"
+                <a href="{{ url_for('items.items_list') }}"
                     class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center">
                     <i class="bi bi-list-ul me-2"></i> View All Items
                 </a>
-                <a href="{{ url_for('submit_item') }}"
+                <a href="{{ url_for('items.submit_item') }}"
                     class="btn btn-primary w-100 d-flex align-items-center justify-content-center d-md-none">
                     <i class="bi bi-plus-lg me-2"></i> Add Item
                 </a>
@@ -60,7 +60,7 @@
         <div class="col-lg-8">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h2 class="h5 fw-bold mb-0">Recently Added Wishes</h2>
-                <a href="{{ url_for('items') }}" class="text-decoration-none small fw-bold">View All <i
+                <a href="{{ url_for('items.items_list') }}" class="text-decoration-none small fw-bold">View All <i
                         class="bi bi-arrow-right"></i></a>
             </div>
 
@@ -83,7 +83,7 @@
         <div class="col-lg-4">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h2 class="h5 fw-bold mb-0">Upcoming Events</h2>
-                <a href="{{ url_for('events') }}" class="text-decoration-none small fw-bold">Calendar <i
+                <a href="{{ url_for('events.events_list') }}" class="text-decoration-none small fw-bold">Calendar <i
                         class="bi bi-arrow-right"></i></a>
             </div>
 
@@ -107,7 +107,7 @@
             {% else %}
             <div class="glass-card p-4 text-center text-muted">
                 <p class="mb-0">No upcoming events.</p>
-                <a href="{{ url_for('new_event') }}" class="btn btn-sm btn-outline-primary mt-2">Add Event</a>
+                <a href="{{ url_for('events.new_event') }}" class="btn btn-sm btn-outline-primary mt-2">Add Event</a>
             </div>
             {% endif %}
         </div>
@@ -124,10 +124,10 @@
         wishlists, making gift-giving easier and more meaningful.</p>
 
     <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
-        <a class="btn btn-primary btn-lg px-5 py-3 shadow-lg" href="{{ url_for('login') }}" role="button">
+        <a class="btn btn-primary btn-lg px-5 py-3 shadow-lg" href="{{ url_for('auth.login') }}" role="button">
             Login to View Wishlists
         </a>
-        <a class="btn btn-outline-primary btn-lg px-5 py-3" href="{{ url_for('register') }}" role="button">
+        <a class="btn btn-outline-primary btn-lg px-5 py-3" href="{{ url_for('auth.register') }}" role="button">
             Create Account
         </a>
     </div>

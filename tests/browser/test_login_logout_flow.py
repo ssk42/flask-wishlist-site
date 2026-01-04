@@ -20,6 +20,7 @@ def test_login_with_valid_email(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_name)
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # After registration, we're on login page - go to logout to clear session
@@ -28,6 +29,7 @@ def test_login_with_valid_email(page, live_server):
     # Login
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Should redirect to dashboard and show welcome message with user name
@@ -40,6 +42,7 @@ def test_login_with_invalid_email(page, live_server):
     """Test login with unregistered email shows error."""
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', "nonexistent@example.com")
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Should show error message
@@ -54,6 +57,7 @@ def test_login_redirects_to_next_url(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Redirect User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/logout")
 
@@ -65,6 +69,7 @@ def test_login_redirects_to_next_url(page, live_server):
 
     # Login
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Wait for navigation to complete and verify redirect to events page
@@ -81,9 +86,11 @@ def test_logout_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_name)
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Verify logged in by checking the welcome message
@@ -112,6 +119,7 @@ def test_forgot_email_with_valid_name(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', unique_name)
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/logout")
 

@@ -1,7 +1,7 @@
 """Tests for the Events CRUD functionality."""
 import datetime
 import pytest
-from app import db, User, Event, Item
+from models import db, User, Event, Item
 
 
 @pytest.fixture

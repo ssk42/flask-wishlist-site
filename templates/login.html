@@ -13,7 +13,7 @@
                     <p class="text-muted">Enter the email you registered with to jump back into the wishlist.</p>
                 </div>
                 <form
-                    action="{{ url_for('login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') | urlencode }}{% endif %}"
+                    action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') | urlencode }}{% endif %}"
                     method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <div class="mb-4">
@@ -21,8 +21,11 @@
                         <input type="email" class="form-control form-control-lg" id="email" name="email"
                             placeholder="you@example.com" required value="{{ email or '' }}" autofocus
                             aria-describedby="emailHelp">
-                        <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone
-                            else.</small>
+                    </div>
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Family Code</label>
+                        <input type="password" class="form-control form-control-lg" id="password" name="password"
+                            placeholder="Enter the family code" required>
                     </div>
                     <div class="d-grid gap-2 mb-3">
                         <button type="submit" class="btn btn-primary btn-lg">
@@ -39,10 +42,10 @@
                     </div>
                     <div class="text-center">
                         <span class="text-muted">Don't have an account?</span>
-                        <a href="{{ url_for('register') }}" class="text-decoration-none ms-1">Sign up</a>
+                        <a href="{{ url_for('auth.register') }}" class="text-decoration-none ms-1">Sign up</a>
                     </div>
                     <div class="text-center mt-2">
-                        <a href="{{ url_for('forgot_email') }}" class="text-muted text-decoration-none small">
+                        <a href="{{ url_for('auth.forgot_email') }}" class="text-muted text-decoration-none small">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
                                 class="bi bi-question-circle me-1" viewBox="0 0 16 16"
                                 style="vertical-align: text-bottom;">

@@ -110,3 +110,9 @@ lima_extract/
 colima
 convert_reqs.py
 requirements.txt
+
+# Test artifacts
+test_output.txt
+test_run.log
+coverage.xml
+.coverage

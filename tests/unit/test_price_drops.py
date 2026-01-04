@@ -5,13 +5,13 @@ import datetime
 
 
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email}, follow_redirects=True)
+    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
 
 
 @pytest.fixture
 def price_drop_setup(app):
     """Create test data for price drop tests."""
-    from app import db, User, Item, Notification
+    from models import db, User, Item, Notification
     
     with app.app_context():
         # Owner
@@ -42,7 +42,7 @@ def price_drop_setup(app):
 def test_price_drop_creates_owner_notification(mock_fetch, app, price_drop_setup):
     """When price drops ≥10%, owner gets a notification."""
     from services.price_service import update_stale_prices
-    from app import db, Item, Notification
+    from models import db, Item, Notification
     
     owner_id, claimer_id, item_id = price_drop_setup
     
@@ -65,7 +65,7 @@ def test_price_drop_creates_owner_notification(mock_fetch, app, price_drop_setup
 def test_price_drop_creates_claimer_notification(mock_fetch, app, price_drop_setup):
     """When price drops ≥10%, claimer also gets a notification."""
     from services.price_service import update_stale_prices
-    from app import db, Item, Notification
+    from models import db, Item, Notification
     
     owner_id, claimer_id, item_id = price_drop_setup
     
@@ -84,7 +84,7 @@ def test_price_drop_creates_claimer_notification(mock_fetch, app, price_drop_set
 def test_small_price_drop_no_notification(mock_fetch, app, price_drop_setup):
     """When price drops <10%, no notification is created."""
     from services.price_service import update_stale_prices
-    from app import db, Item, Notification
+    from models import db, Item, Notification
     
     owner_id, claimer_id, item_id = price_drop_setup
     
@@ -102,7 +102,7 @@ def test_small_price_drop_no_notification(mock_fetch, app, price_drop_setup):
 def test_price_increase_no_notification(mock_fetch, app, price_drop_setup):
     """When price increases, no notification is created."""
     from services.price_service import update_stale_prices
-    from app import db, Item, Notification
+    from models import db, Item, Notification
     
     mock_fetch.return_value = 349.99  # Price went up
     

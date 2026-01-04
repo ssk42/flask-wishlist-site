@@ -1,9 +1,9 @@
 
 import pytest
-from app import db, User, Item, Comment, Notification
+from models import db, User, Item, Comment, Notification
 
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email}, follow_redirects=True)
+    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
 
 @pytest.fixture
 def test_data(app):

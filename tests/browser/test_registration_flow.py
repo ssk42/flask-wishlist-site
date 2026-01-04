@@ -11,6 +11,7 @@ def test_registration_flow(page, live_server):
 
     page.fill('input[name="name"]', "Browser Tester")
     page.fill('input[name="email"]', unique_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     expect(page).to_have_url(f"{live_server}/login")

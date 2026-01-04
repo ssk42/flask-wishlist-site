@@ -13,9 +13,11 @@ def test_filter_items_by_user(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Alice")
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -28,9 +30,11 @@ def test_filter_items_by_user(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Bob")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -64,9 +68,11 @@ def test_filter_items_by_status(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Owner")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -84,9 +90,11 @@ def test_filter_items_by_status(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Claimer")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Claim the second item from dashboard
@@ -116,9 +124,11 @@ def test_search_items(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Searcher")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create items with distinct descriptions
@@ -151,9 +161,11 @@ def test_clear_filters(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Filter Clearer")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create two items
@@ -192,9 +204,11 @@ def test_sort_items_by_price(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Sorter")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create items with different prices
@@ -230,9 +244,11 @@ def test_filter_by_priority(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Priority User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create high priority item

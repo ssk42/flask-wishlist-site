@@ -17,9 +17,11 @@ def test_modal_claim_flow_and_flash(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_a_name)
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     
     page.goto(f"{live_server}/submit_item")
@@ -32,9 +34,11 @@ def test_modal_claim_flow_and_flash(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_b_name)
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # 3. Open Quick View
@@ -81,9 +85,11 @@ def test_unclaim_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_a_name)
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/submit_item")
     item_desc = f"Unclaim Item {uuid.uuid4().hex[:8]}"
@@ -95,9 +101,11 @@ def test_unclaim_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_b_name)
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # 3. Claim Item (Quick Claim)

@@ -11,9 +11,11 @@ def test_submit_item_page_renders(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Item Creator")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Navigate to submit item
@@ -29,9 +31,11 @@ def test_submit_item_with_all_fields(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Full Item Creator")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -56,9 +60,11 @@ def test_submit_item_minimal_fields(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Minimal Creator")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -83,9 +89,11 @@ def test_edit_item_page_renders(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Editor")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create item
@@ -112,9 +120,11 @@ def test_edit_item_updates_fields(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Updater")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create item
@@ -166,9 +176,11 @@ def test_edit_item_other_user_cannot_edit_unless_claimed(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -181,9 +193,11 @@ def test_edit_item_other_user_cannot_edit_unless_claimed(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Other")
     page.fill('input[name="email"]', other_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', other_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # View items - should not see Edit button on other's item
@@ -200,9 +214,11 @@ def test_delete_item_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Deleter")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create item
@@ -234,9 +250,11 @@ def test_delete_item_other_user_cannot_delete(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -249,9 +267,11 @@ def test_delete_item_other_user_cannot_delete(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Other")
     page.fill('input[name="email"]', other_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', other_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # View items - should not see Delete button
@@ -268,9 +288,11 @@ def test_item_with_image_url(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Image User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")

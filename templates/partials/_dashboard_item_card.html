@@ -16,13 +16,13 @@
     <div class="mt-auto pt-2 border-top border-light-subtle d-flex justify-content-between align-items-center">
         {% if item.status == 'Available' %}
         <button class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill"
-            hx-post="{{ url_for('claim_item', item_id=item.id, context='dashboard') }}"
+            hx-post="{{ url_for('items.claim_item', item_id=item.id, context='dashboard') }}"
             hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML">
             <i class="bi bi-check2"></i> Claim
         </button>
         {% elif item.status == 'Claimed' and item.last_updated_by_id == current_user.id %}
         <button class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill"
-            hx-post="{{ url_for('unclaim_item', item_id=item.id, context='dashboard') }}"
+            hx-post="{{ url_for('items.unclaim_item', item_id=item.id, context='dashboard') }}"
             hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML">
             <i class="bi bi-x-circle"></i> Unclaim
         </button>
@@ -34,7 +34,7 @@
 
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-link p-0 text-decoration-none text-muted hover-primary"
-                hx-get="{{ url_for('get_item_modal', item_id=item.id) }}" hx-target="#quick-view-content"
+                hx-get="{{ url_for('items.get_item_modal', item_id=item.id) }}" hx-target="#quick-view-content"
                 hx-trigger="click" data-bs-toggle="modal" data-bs-target="#quickViewModal" title="Quick View">
                 <i class="bi bi-eye"></i>
             </button>

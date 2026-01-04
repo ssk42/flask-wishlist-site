@@ -1,6 +1,7 @@
 
 import pytest
-from app import app, db, User, Item, Event, Notification
+from app import app
+from models import db, User, Item, Event, Notification
 from unittest.mock import patch, MagicMock
 
 class TestCoverageGaps:

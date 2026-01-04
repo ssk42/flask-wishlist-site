@@ -10,9 +10,11 @@ def test_notifications_page_renders(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Notif User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/notifications")
@@ -35,9 +37,11 @@ def test_notification_generated_on_comment(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -50,9 +54,11 @@ def test_notification_generated_on_comment(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Commenter One")
     page.fill('input[name="email"]', commenter1_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', commenter1_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/items")
@@ -68,9 +74,11 @@ def test_notification_generated_on_comment(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Commenter Two")
     page.fill('input[name="email"]', commenter2_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', commenter2_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/items")
@@ -85,6 +93,7 @@ def test_notification_generated_on_comment(page, live_server):
     # Commenter 1 should have a notification about commenter 2's comment
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', commenter1_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/notifications")
@@ -103,9 +112,11 @@ def test_notifications_empty_state(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Empty Notif User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/notifications")

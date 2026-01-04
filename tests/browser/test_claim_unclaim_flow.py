@@ -12,9 +12,11 @@ def test_claim_and_unclaim_item(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -27,9 +29,11 @@ def test_claim_and_unclaim_item(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Claimer")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Claim the item from dashboard
@@ -59,9 +63,11 @@ def test_cannot_claim_own_item(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Self Claimer")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create an item
@@ -86,9 +92,11 @@ def test_mark_as_purchased_via_edit(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Gift Receiver")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -101,9 +109,11 @@ def test_mark_as_purchased_via_edit(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Gift Giver")
     page.fill('input[name="email"]', purchaser_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', purchaser_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Claim item from dashboard
@@ -138,9 +148,11 @@ def test_claim_from_items_list(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "List Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -153,9 +165,11 @@ def test_claim_from_items_list(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "List Claimer")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Go to items list and claim (uses glass-card, not table rows)

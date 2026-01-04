@@ -36,11 +36,12 @@
     async function markRead(notifId, event) {
         // Determine if we should stop navigation (if clicking a specific mark-read button, which we don't have here, we click the whole row)
         // Actually, we want to Fire-and-Forget the read status, then let the browser navigate
+        const markReadUrl = "{{ url_for('social.mark_notification_read', notif_id=0) }}".slice(0, -1) + notifId;
         try {
-            navigator.sendBeacon(`/notifications/read/${notifId}`);
+            navigator.sendBeacon(markReadUrl);
         } catch (e) {
             // Fallback for older browsers
-            fetch(`/notifications/read/${notifId}`, {
+            fetch(markReadUrl, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });

@@ -12,9 +12,11 @@ def test_add_comment_to_item(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Item Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -27,9 +29,11 @@ def test_add_comment_to_item(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Commenter")
     page.fill('input[name="email"]', commenter_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', commenter_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Go to items list and find the item card
@@ -59,9 +63,11 @@ def test_cannot_comment_on_own_item(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Self Commenter")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create an item

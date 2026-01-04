@@ -50,7 +50,7 @@
 
                 {% if item.status == 'Available' and item.user_id != current_user.id %}
                 <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2"
-                    hx-post="{{ url_for('claim_item', item_id=item.id, context='dashboard') }}"
+                    hx-post="{{ url_for('items.claim_item', item_id=item.id, context='dashboard') }}"
                     hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML"
                     hx-on:htmx:after-request="bootstrap.Modal.getInstance(document.getElementById('quickViewModal')).hide()">
                     <i class="bi bi-check2-circle"></i> Claim This Item
@@ -61,7 +61,7 @@
                 </small>
                 {% elif item.status == 'Claimed' and item.last_updated_by_id == current_user.id %}
                 <button class="btn btn-warning d-flex align-items-center justify-content-center gap-2"
-                    hx-post="{{ url_for('unclaim_item', item_id=item.id, context='dashboard') }}"
+                    hx-post="{{ url_for('items.unclaim_item', item_id=item.id, context='dashboard') }}"
                     hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML"
                     hx-on:htmx:after-request="bootstrap.Modal.getInstance(document.getElementById('quickViewModal')).hide()">
                     <i class="bi bi-x-circle"></i> Unclaim This Item

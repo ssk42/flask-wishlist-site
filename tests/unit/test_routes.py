@@ -2,11 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from app import db, User, Item, STATUS_CHOICES, PRIORITY_CHOICES
+from models import db, User, Item
+from config import STATUS_CHOICES, PRIORITY_CHOICES
 
 
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email}, follow_redirects=True)
+    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
 
 
 def test_register_creates_user(client, app):
@@ -522,7 +523,7 @@ def test_submit_item_database_error_shows_message(client, user, monkeypatch):
     )
 
     assert response.status_code == 200
-    assert b"problem saving your item" in response.data
+    assert b"Failed to create item" in response.data
 
 
 def test_items_preserves_nonexistent_event_filter(client, app, login, user):
@@ -791,7 +792,7 @@ def test_items_preserves_all_session_filters(client, app, login, user):
 
 def test_items_preserves_event_filter(client, app, login, user):
     """Test that items page preserves event filter in session."""
-    from app import Event
+    from models import Event
     import datetime
 
     with app.app_context():

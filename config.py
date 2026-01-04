@@ -6,6 +6,10 @@ Supports multiple environments: development, testing, production.
 import os
 from dotenv import load_dotenv
 
+# Application constants
+PRIORITY_CHOICES = ['High', 'Medium', 'Low']
+STATUS_CHOICES = ['Available', 'Claimed', 'Purchased', 'Received']
+
 # Load environment variables from .env file (skip if in pytest to allow test overrides)
 if 'pytest' not in os.getenv('_', '').lower():
     load_dotenv()
@@ -16,6 +20,7 @@ class Config:
 
     # Flask
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    FAMILY_PASSWORD = os.getenv('FAMILY_PASSWORD', 'wishlist2025')
 
     # SQLAlchemy
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -51,10 +56,22 @@ class Config:
     # Redis (for future caching)
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
+    # Rate Limiting
+    @staticmethod
+    def get_ratelimit_storage_uri():
+        """Get rate limit storage URI, defaulting to Heroku Redis if available."""
+        if os.getenv('RATELIMIT_STORAGE_URI'):
+            return os.getenv('RATELIMIT_STORAGE_URI')
+        # Fallback to Heroku Redis (TLS preferred)
+        return os.getenv('REDIS_TLS_URL') or os.getenv('REDIS_URL') or 'memory://'
+
+    RATELIMIT_STORAGE_URI = get_ratelimit_storage_uri.__func__()
+
     # Email (for future notifications)
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.getenv('MAIL_PORT', '587'))
     MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@wishlist.app')
@@ -103,6 +120,9 @@ class TestingConfig(Config):
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
     }
+    
+    # Disable Rate Limiting for testing
+    RATELIMIT_ENABLED = False
 
 
 class ProductionConfig(Config):

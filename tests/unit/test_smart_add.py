@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email}, follow_redirects=True)
+    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
 
 def test_fetch_metadata_requires_login(client):
     response = client.post("/api/fetch-metadata", json={"url": "https://example.com"})

@@ -3,12 +3,13 @@ Tests for surprise protection - ensuring users can't see who claimed their own i
 """
 
 import pytest
-from app import db, User, Item, STATUS_CHOICES, PRIORITY_CHOICES
+from models import db, User, Item
+from config import STATUS_CHOICES, PRIORITY_CHOICES
 
 
 def login_via_post(client, email):
     """Helper to login via POST request."""
-    return client.post("/login", data={"email": email}, follow_redirects=True)
+    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
 
 
 class TestSurpriseProtection:

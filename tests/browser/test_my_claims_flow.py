@@ -12,10 +12,12 @@ def test_my_claims_page_loads_when_empty(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Test User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Navigate to My Claims page
@@ -34,10 +36,12 @@ def test_my_claims_navbar_link_visible_when_logged_in(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Test User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Check navbar has My Claims link

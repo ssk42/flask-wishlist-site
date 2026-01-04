@@ -10,9 +10,11 @@ def test_export_items_link_visible(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Export User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create an item first
@@ -35,9 +37,11 @@ def test_export_items_downloads_csv(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_name)
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Create items with known data
@@ -95,9 +99,11 @@ def test_export_my_status_updates_link_visible(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Status User")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # Export link is on items page, not my-claims
@@ -116,9 +122,11 @@ def test_export_my_status_updates_downloads_csv(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Owner")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', owner_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/submit_item")
@@ -130,9 +138,11 @@ def test_export_my_status_updates_downloads_csv(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Claimer")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', claimer_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/")

@@ -17,9 +17,11 @@ def test_quick_claim_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_a_name)
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # User A creates an item
@@ -34,9 +36,11 @@ def test_quick_claim_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_b_name)
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # 3. User B views dashboard and sees User A's item
@@ -71,9 +75,11 @@ def test_quick_view_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_a_name)
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_a_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     
     page.goto(f"{live_server}/submit_item")
@@ -88,9 +94,11 @@ def test_quick_view_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "User B")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
     page.fill('input[name="email"]', user_b_email)
+    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # 3. Open Quick View

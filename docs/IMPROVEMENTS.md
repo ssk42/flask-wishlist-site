@@ -111,12 +111,13 @@ The following improvements were identified from a Flask best practices analysis.
 
 | # | Improvement | Effort | Priority | Status | Notes |
 |---|-------------|--------|----------|--------|-------|
-| 37 | Refactor to Blueprints | 4-6 hours | 🔴 Critical | ⏳ Pending | Split 1,083-line app.py into logical modules |
-| 38 | Application Factory Pattern | 2-3 hours | 🟡 High | ⏳ Pending | `create_app()` for better testing & config |
-| 39 | Integrate config.py | 1 hour | 🟡 High | ⏳ Pending | config.py exists but isn't loaded |
-| 40 | Global Error Handlers | 1-2 hours | 🟡 High | ⏳ Pending | Add 404/500 handlers with templates |
-| 41 | Extract Models to models.py | 1-2 hours | 🟢 Medium | ⏳ Pending | Move 5 models out of app.py |
-| 42 | Rate Limiting on Auth | 1 hour | 🟢 Medium | ⏳ Pending | Protect login/register endpoints |
+| 37 | Refactor to Blueprints | 4-6 hours | 🔴 Critical | ✅ Complete | 2026-01-03 | Split 1,083-line app.py into logical modules |
+| 38 | Application Factory Pattern | 2-3 hours | 🟡 High | ✅ Complete | 2026-01-03 | `create_app()` for better testing & config |
+| 39 | Integrate config.py | 1 hour | 🟡 High | ✅ Complete | 2026-01-03 | config.py exists but isn't loaded |
+| 40 | Global Error Handlers | 1-2 hours | 🟡 High | ✅ Complete | 2026-01-03 | Add 404/500 handlers with templates |
+| 41 | Extract Models to models.py | 1-2 hours | 🟢 Medium | ✅ Complete | 2026-01-03 | Move 5 models out of app.py |
+| 42 | Rate Limiting on Auth | 1 hour | 🟢 Medium | ✅ Complete | 2026-01-03 | Protect login/register endpoints |
+| 43 | Configure Heroku Redis | 0.5 hours | 🟢 Medium | ✅ Complete | 2026-01-03 | Auto-configure Redis on Heroku |
 
 ### Detailed Analysis
 
@@ -338,21 +339,21 @@ def login():
 
 ## 📊 Progress Summary
 
-**Total Items:** 42
-**Completed:** 18 (43%)
+**Total Items:** 43
+**Completed:** 26 (60%)
 **In Progress:** 0 (0%)
-**Pending:** 24 (57%)
+**Pending:** 17 (40%)
 
 ### By Priority
-- 🔴 Critical: 1 pending (Blueprints refactor) (1 complete)
-- 🟡 High: 5 pending (Auth, Privacy, App Factory, Config, Error Handlers) (9 complete)
+- 🔴 Critical: 0 pending (2 complete)
+- 🟡 High: 4 pending (Auth, Privacy, Config, Error Handlers) (10 complete)
 - 🟢 Medium: 10 pending (8 complete)
 - 🟢 Low: 7 pending (0 complete)
 
 ### By Category
 - ✅ **Quick Wins:** 6/6 complete (100%)
 - ✅ **Infrastructure:** 7/13 complete (54%)
-- ⏳ **Flask Architecture:** 0/6 complete (0%) - NEW
+- 🏗️ **Flask Architecture:** 2/6 complete (33%)
 - ✅ **User Features:** 5/16 complete (31%)
 
 ---
@@ -360,9 +361,9 @@ def login():
 ## 🎯 Recommended Next Steps
 
 ### Immediate (This Week)
-1. **Refactor to Blueprints** (#37) - 🔴 CRITICAL - Split monolithic app.py into maintainable modules.
-2. **Global Error Handlers** (#40) - Quick win for better UX and error handling.
-3. **Integrate config.py** (#39) - Stop duplicating configuration.
+### Immediate (This Week)
+1. **Review Pending Tasks** - We have completed all immediate security items.
+2. **Consider 'User Profiles'** - Allow users to change their name/email?
 
 ### Short Term (Next 2 Weeks)
 4. **Application Factory Pattern** (#38) - Enable proper testing and configuration.
@@ -373,6 +374,14 @@ def login():
 7. **Rate Limiting** (#42) - Protect auth endpoints from abuse.
 8. **Privacy Controls** (#11) - Essential for family usage (private lists).
 9. **Async Task Queue (Celery)** (#36) - Background emails and price checks.
+
+### Long Term / New Ideas (Low Priority)
+10. **User Profiles** - Allow users to edit name, email, and avatar.
+11. **Event Filtering** - Filter "All Gifts" by specific event (Christmas, Birthday).
+12. **Wishlist Item Priority** - Mark items as High/Medium/Low priority.
+13. **Secret Santa Mode** - Randomly assign gift givers for an event.
+14. **Calendar View** - Visual calendar for upcoming events.
+15. **Budget Tracking** - Track spending per event or person.
 
 ---
 
@@ -422,13 +431,40 @@ def login():
   - Moved utility scripts to `scripts/`
   - Updated all imports across app.py and test files
   - Root directory reduced from 42 → 28 items
-- 🔍 **Flask Best Practices Audit**
+- 🏗️ **Flask Best Practices Audit**
   - Analyzed app.py against Flask conventions (~65% compliance)
   - Added 6 new improvement items (#37-42) for architecture
   - Identified critical need for blueprints refactoring
   - Updated technical debt and recommended next steps
-- ✅ All 151 tests passing, 97% coverage
-- 📈 Progress: 18/42 items complete (43%)
+- ✅ **Blueprint Refactoring (#37, #38)**
+  - Split monolithic `app.py` into 6 blueprints: `auth`, `items`, `events`, `dashboard`, `social`, `api`.
+  - Implemented Application Factory pattern with `create_app()`.
+  - Updated all templates to use blueprint-prefixed `url_for` calls.
+  - Verified with full unit test suite (151 tests passed) and browser tests.
+- ✅ **Config Integration (#39)**
+  - Updated `app.py` to centralized configuration via `config.py`.
+  - Added dynamic `DATABASE_URL` handling for Heroku compatibility.
+  - Verified Sentry DSN integration.
+- ✅ **Global Error Handlers (#40)**
+  - Added custom `404`, `500`, and `403` error pages.
+  - Implemented automatic database rollback on 500 errors.
+  - Added explicit Sentry capture for exceptions.
+- ✅ **Extract Models (#41)**
+  - Confirmed all 5 models (`User`, `Event`, `Item`, `Comment`, `Notification`) are extracted to `models.py`.
+  - Verified `app.py` imports models cleanly.
+- ✅ **Rate Limiting on Auth (#42)**
+  - Added `Flask-Limiter` dependency.
+  - Implemented 5 requests/minute limit on `/login` and `/register`.
+  - Configured in-memory storage (with Redis support via env var).
+- ✅ **Configure Heroku Redis (#43)**
+  - Updated `config.py` to auto-detect Heroku Redis (`REDIS_TLS_URL`, `REDIS_URL`).
+  - Verified `Procfile` handles web and release processes.
+- ✅ **Proper Authentication (#10)**
+  - Implemented shared "Family Code" system (simple, secure shared password).
+  - Updated `config.py`, templates, and `auth` blueprint.
+  - Verified security with automated tests.
+- ✅ All 211 tests passing (151 unit, 60 browser), 96% coverage
+- 📈 Progress: 26/43 items complete (60%)
 
 ### 2025-10-16 (Session 2)
 - ✅ **Docker Containerization (#7)**

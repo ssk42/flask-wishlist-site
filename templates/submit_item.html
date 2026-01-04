@@ -10,7 +10,7 @@
             <h1 class="h3 mb-2 fw-bold gradient-text">Add a new wishlist item</h1>
             <p class="text-muted">Give as much detail as you can so your family knows exactly what to look for.</p>
         </div>
-        <form action="{{ url_for('submit_item') }}" method="post" class="filter-panel">
+        <form action="{{ url_for('items.submit_item') }}" method="post" class="filter-panel">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="row g-3">
                 <div class="col-md-6">
@@ -84,7 +84,7 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 gap-2">
-                <a href="{{ url_for('items') }}" class="btn btn-outline-secondary">Cancel</a>
+                <a href="{{ url_for('items.items_list') }}" class="btn btn-outline-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">Save item</button>
             </div>
         </form>

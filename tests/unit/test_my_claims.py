@@ -1,6 +1,6 @@
 """Tests for the My Claims page functionality."""
 import pytest
-from app import db, User, Item
+from models import db, User, Item
 
 
 @pytest.fixture
