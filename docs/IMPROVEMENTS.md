@@ -2,7 +2,7 @@
 
 This document tracks all planned and completed improvements to the Family Wishlist application.
 
-**Last Updated:** 2026-01-03 (Session 6)
+**Last Updated:** 2026-01-04 (Session 7)
 
 ---
 
@@ -17,56 +17,7 @@ This document tracks all planned and completed improvements to the Family Wishli
 | 5 | Create .env.example | 🟢 Medium | ✅ Complete | 2025-10-16 |
 | 6 | Add robots.txt | 🟢 Low | ✅ Complete | 2025-10-16 |
 
-### Completed Quick Wins Details
 
-#### 1. CSRF Protection ✅
-- **Files Changed:** `app.py`, `requirements.txt`, all form templates
-- **Implementation:**
-  - Added Flask-WTF dependency
-  - CSRF tokens in all POST forms
-  - Protection against Cross-Site Request Forgery attacks
-- **Impact:** Critical security vulnerability fixed
-
-#### 2. Database Indexes ✅
-- **Files Changed:** `app.py`, new migration file
-- **Implementation:**
-  - Indexes on `user_id`, `status`, `category`, `priority`
-  - Composite index on `(user_id, status)`
-  - Migration: `80bf6accc0b7_add_indexes_for_performance.py`
-- **Impact:** Faster queries, especially as data grows
-
-#### 3. Security Headers ✅
-- **Files Changed:** `app.py`
-- **Headers Added:**
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
-  - `X-XSS-Protection: 1; mode=block`
-  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-- **Impact:** Better security posture, protection against common attacks
-
-#### 4. Static CSS File ✅
-- **Files Created:** `static/css/main.css`
-- **Implementation:**
-  - Extracted all CSS from `base.html`
-  - Better browser caching
-  - CDN-ready
-- **Impact:** Faster page loads, better organization
-
-#### 5. .env.example ✅
-- **Files Created:** `.env.example`
-- **Implementation:**
-  - Template for all environment variables
-  - Documents required and optional config
-  - Safe to commit (no secrets)
-- **Impact:** Better developer onboarding, clear documentation
-
-#### 6. robots.txt ✅
-- **Files Created:** `static/robots.txt`
-- **Implementation:**
-  - SEO-friendly configuration
-  - Blocks admin/delete routes
-- **Impact:** Better search engine behavior
 
 ---
 
@@ -79,7 +30,7 @@ This document tracks all planned and completed improvements to the Family Wishli
 | 7 | Docker Containerization | 2-3 hours | 🟡 High | ✅ Complete | 2025-10-16 | Multi-stage Dockerfile, docker-compose, Makefile |
 | 8 | Environment Config Management | 1 hour | 🟡 High | ✅ Complete | 2025-10-16 | python-dotenv, config.py with env-based configs |
 | 9 | Logging & Error Tracking | 1-2 hours | 🟡 High | ✅ Complete | 2025-10-16 | Structured JSON logging, request/error tracking |
-| 10 | Proper Authentication | 4-6 hours | 🟡 High | ⏳ Pending | - | Password hashing OR OAuth OR magic links |
+| 10 | Proper Authentication | 4-6 hours | 🟡 High | ✅ Complete | 2026-01-04 | Shared Family Code (Simple + Secure) |
 | 11 | Privacy Controls | 2-3 hours | 🟡 High | ⏳ Pending | - | Private wishlists, family groups, sharing |
 
 ### Phase 2: Performance & Reliability (Medium Priority)
@@ -90,7 +41,7 @@ This document tracks all planned and completed improvements to the Family Wishli
 | 13 | Database Connection Pooling | 30 min | 🟢 Medium | ⏳ Pending | SQLAlchemy pool config |
 | 14 | Add Timestamps | 1 hour | 🟢 Medium | ⏳ Pending | created_at, updated_at fields |
 | 15 | Automated Backups | 1 hour | 🟢 Medium | ⏳ Pending | Database backup strategy |
-| 16 | Rate Limiting | 1 hour | 🟢 Low | ⏳ Pending | Flask-Limiter for API protection |
+| 16 | Rate Limiting | 1 hour | 🟢 Low | ✅ Complete | 2026-01-03 | Flask-Limiter for API protection |
 | 36 | Async Task Queue (Celery) | 3-4 hours | 🟡 High | ⏳ Pending | Background emails, price checks |
 
 ### Phase 3: DevOps & CI/CD (Medium Priority)
@@ -109,7 +60,7 @@ This document tracks all planned and completed improvements to the Family Wishli
 
 The following improvements were identified from a Flask best practices analysis. Currently the app follows ~65% of best practices.
 
-| # | Improvement | Effort | Priority | Status | Notes |
+| # | Improvement | Effort | Priority | Status | Date Completed | Notes |
 |---|-------------|--------|----------|--------|-------|
 | 37 | Refactor to Blueprints | 4-6 hours | 🔴 Critical | ✅ Complete | 2026-01-03 | Split 1,083-line app.py into logical modules |
 | 38 | Application Factory Pattern | 2-3 hours | 🟡 High | ✅ Complete | 2026-01-03 | `create_app()` for better testing & config |
@@ -119,186 +70,7 @@ The following improvements were identified from a Flask best practices analysis.
 | 42 | Rate Limiting on Auth | 1 hour | 🟢 Medium | ✅ Complete | 2026-01-03 | Protect login/register endpoints |
 | 43 | Configure Heroku Redis | 0.5 hours | 🟢 Medium | ✅ Complete | 2026-01-03 | Auto-configure Redis on Heroku |
 
-### Detailed Analysis
 
-#### 37. Refactor to Blueprints 🔴 CRITICAL
-
-**Current State:** 23 routes, 5 models, CLI commands, and helpers all in one 1,083-line `app.py` file.
-
-**Why It Matters:**
-- Difficult to maintain and navigate
-- Hard to test individual route groups in isolation
-- No separation of concerns
-- Makes onboarding new developers harder
-
-**Proposed Solution:**
-```
-app/
-├── __init__.py          # App factory
-├── models.py            # All 5 models
-├── blueprints/
-│   ├── auth.py          # register, login, logout, forgot_email
-│   ├── items.py         # CRUD, claim, export
-│   ├── events.py        # Event management
-│   ├── api.py           # /api/fetch-metadata
-│   └── notifications.py # Comments, notifications
-├── services/            # Already exists
-└── templates/           # Already exists
-```
-
-**Impact:** Reduces app.py from 1,083 → ~200 lines. Each blueprint becomes independently testable.
-
----
-
-#### 38. Application Factory Pattern 🟡 HIGH
-
-**Current State:** Flask app created at module level:
-```python
-app = Flask(__name__)
-db = SQLAlchemy(app)
-```
-
-**Why It Matters:**
-- Cannot create multiple app instances with different configs
-- Testing requires workarounds
-- Circular import issues as app grows
-- Configuration must happen at import time
-
-**Proposed Solution:**
-```python
-def create_app(config_name='development'):
-    app = Flask(__name__)
-    app.config.from_object(get_config(config_name))
-
-    db.init_app(app)
-    login_manager.init_app(app)
-    csrf.init_app(app)
-
-    from .blueprints import auth, items, events
-    app.register_blueprint(auth.bp)
-    app.register_blueprint(items.bp)
-    app.register_blueprint(events.bp)
-
-    return app
-```
-
-**Impact:** Enables proper test isolation, simplifies configuration, follows Flask conventions.
-
----
-
-#### 39. Integrate config.py 🟡 HIGH
-
-**Current State:** `config.py` exists with proper `DevelopmentConfig`, `TestingConfig`, `ProductionConfig` classes, but app.py ignores it and has hardcoded config:
-```python
-# app.py duplicates config.py
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-```
-
-**Why It Matters:**
-- Duplicate configuration in two places
-- Changes must be made in multiple files
-- config.py features (CSP, session security) not used
-
-**Proposed Solution:**
-```python
-from config import get_config
-app.config.from_object(get_config())
-```
-
-**Impact:** Single source of truth for configuration, enables environment-specific settings.
-
----
-
-#### 40. Global Error Handlers 🟡 HIGH
-
-**Current State:** No custom error handlers. Uses `abort(404)` which returns plain text.
-
-**Why It Matters:**
-- Poor user experience on errors
-- No branded error pages
-- Inconsistent error responses
-- 500 errors don't trigger database rollback
-
-**Proposed Solution:**
-```python
-@app.errorhandler(404)
-def not_found(error):
-    return render_template('errors/404.html'), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    db.session.rollback()
-    return render_template('errors/500.html'), 500
-
-@app.errorhandler(403)
-def forbidden(error):
-    return render_template('errors/403.html'), 403
-```
-
-Create templates:
-- `templates/errors/404.html` - "Page not found"
-- `templates/errors/500.html` - "Something went wrong"
-- `templates/errors/403.html` - "Access denied"
-
-**Impact:** Better UX, proper error handling, database safety.
-
----
-
-#### 41. Extract Models to models.py 🟢 MEDIUM
-
-**Current State:** 5 models (User, Event, Item, Comment, Notification) defined in app.py.
-
-**Why It Matters:**
-- Models mixed with routes obscures architecture
-- Harder to find model definitions
-- Cannot import models without importing entire app
-
-**Proposed Solution:**
-```python
-# models.py
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
-
-class User(db.Model):
-    ...
-
-class Item(db.Model):
-    ...
-```
-
-**Impact:** Cleaner separation, easier navigation, prerequisite for blueprints.
-
----
-
-#### 42. Rate Limiting on Auth 🟢 MEDIUM
-
-**Current State:** No rate limiting on login/register endpoints.
-
-**Why It Matters:**
-- Vulnerable to brute force attacks
-- Credential stuffing possible
-- No protection against automated abuse
-
-**Proposed Solution:**
-```python
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
-
-@app.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
-def login():
-    ...
-```
-
-**Impact:** Protection against automated attacks, security hardening.
 
 ---
 
@@ -319,10 +91,10 @@ def login():
 
 | # | Feature | Effort | Priority | Status | Notes |
 |---|---------|--------|----------|--------|-------|
-| 23 | PWA Features | 4-6 hours | 🟢 Medium | ⏳ Pending | Offline support, add to home screen |
+| 23 | PWA Features | 4-6 hours | 🟢 Medium | ✅ Complete | 2026-01-04 | Manifest, Service Worker, Offline support |
 | 24 | Advanced Search | 2-3 hours | 🟢 Low | ⏳ Pending | Fuzzy search, price range, multi-select |
 | 25 | Item Variants | 2 hours | 🟢 Medium | ⏳ Pending | Size, color, quantity fields |
-| 26 | Comments/Notes | 3-4 hours | 🟢 Medium | ⏳ Pending | Collaboration on items |
+| 26 | Comments/Notes | 3-4 hours | 🟢 Medium | ✅ Complete | - | Collaboration on items (Added in previous sessions) |
 | 27 | Accessibility (A11y) | 2-3 hours | 🟢 Medium | ⏳ Pending | ARIA labels, keyboard nav, screen readers |
 
 ### Phase 6: Nice to Have (Low Priority)
@@ -335,26 +107,38 @@ def login():
 | 31 | Internationalization | 6-8 hours | 🟢 Low | ⏳ Pending | Multi-language support |
 | 32 | Split Gifts | 3-4 hours | 🟢 Low | ⏳ Pending | Multiple contributors |
 
+### Phase 7: Advanced Features (New Ideas)
+
+| # | Feature | Effort | Priority | Status | Notes |
+|---|---------|--------|----------|--------|-------|
+| 44 | **Image Hosting (R2)** | 4-6 hours | 🟡 High | ⏳ Pending | Cloudflare R2 for cheaper storage & globally served assets |
+| 45 | **Multi-Tenant Support** | 20+ hours | 🔴 Critical | ⏳ Pending | Allow other families to sign up (SaaS) |
+| 46 | **Wishlist Archive** | 2-3 hours | 🟢 Low | ⏳ Pending | "Soft delete" or archive old/fulfilled items |
+| 47 | **External Share Links** | 3-4 hours | 🟡 High | ⏳ Pending | Public read-only link for non-family members (Grammy/friends) |
+| 48 | **Gift Registry Mode** | 4-5 hours | 🟢 Medium | ⏳ Pending | For weddings/showers (publicly claimable) |
+| 49 | **Drag-to-Reorder** | 2-3 hours | 🟢 Low | ⏳ Pending | Custom sort order for dashboard |
+
+
 ---
 
 ## 📊 Progress Summary
 
 **Total Items:** 43
-**Completed:** 26 (60%)
+**Completed:** 28 (65%)
 **In Progress:** 0 (0%)
-**Pending:** 17 (40%)
+**Pending:** 15 (35%)
 
 ### By Priority
-- 🔴 Critical: 0 pending (2 complete)
-- 🟡 High: 4 pending (Auth, Privacy, Config, Error Handlers) (10 complete)
-- 🟢 Medium: 10 pending (8 complete)
-- 🟢 Low: 7 pending (0 complete)
+- 🔴 Critical: 1 pending (Multi-Tenant) (3 complete)
+- 🟡 High: 4 pending (Privacy, Async Tasks, Image Hosting, Share Links) (11 complete)
+- 🟢 Medium: 12 pending (9 complete)
+- 🟢 Low: 11 pending (1 complete)
 
 ### By Category
 - ✅ **Quick Wins:** 6/6 complete (100%)
-- ✅ **Infrastructure:** 7/13 complete (54%)
-- 🏗️ **Flask Architecture:** 2/6 complete (33%)
-- ✅ **User Features:** 5/16 complete (31%)
+- ✅ **Infrastructure:** 8/13 complete (61%)
+- 🏗️ **Flask Architecture:** 6/6 complete (100%)
+- 🎨 **User Features:** 6/22 complete (27%)
 
 ---
 
@@ -404,12 +188,12 @@ def login():
 - ~~No structured logging~~ ✅ Complete (JSON logging added)
 
 ### Infrastructure Needs
-- Docker setup
-- Redis for caching
-- Email service (SendGrid/Mailgun)
-- Image storage (S3/Cloudinary)
-- Error tracking (Sentry)
-- Monitoring solution
+- ~~Docker setup~~ ✅ Complete
+- ~~Redis for caching~~ ✅ Complete (Ready for use)
+- ~~Error tracking (Sentry)~~ ✅ Complete
+- Email service (SendGrid/Mailgun) - Currently using Gmail SMTP
+- Image storage (Cloudflare R2) - **Next Priority**
+- Monitoring solution - Basic Heroku metrics available
 
 ---
 

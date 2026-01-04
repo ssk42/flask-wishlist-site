@@ -62,6 +62,7 @@ A clean, inviting landing page for new and returning users.
 | Backend | Flask (Python) |
 | Database | SQLite (dev) / PostgreSQL (prod) |
 | Frontend | Bootstrap 5.3, htmx |
+| Services | Redis (Rate Limiting), Sentry (Monitoring) |
 | Hosting | Heroku |
 | Testing | pytest, Playwright |
 | CI/CD | GitHub Actions |
@@ -115,7 +116,9 @@ Copy `.env.example` to `.env` and configure:
 
 ```bash
 SECRET_KEY=your-secret-key-here
+FAMILY_PASSWORD=your-shared-family-password  # Required for registration/login
 DATABASE_URL=postgresql://...  # For production
+SENTRY_DSN=https://...         # Optional: Error tracking
 ```
 
 ## Testing
@@ -153,6 +156,13 @@ heroku config:set SECRET_KEY=your-secret-key
 
 # Deploy
 git push heroku main
+
+# Configure Production Secrets
+heroku config:set SECRET_KEY=your-secret-key
+heroku config:set FAMILY_PASSWORD=your-secure-shared-password
+
+# Add Redis (Required for Rate Limiting)
+heroku addons:create heroku-redis:mini
 ```
 
 The `Procfile` handles automatic database migrations on each deploy.
@@ -206,7 +216,9 @@ All PRs must pass the test suite before merging.
 
 - CSRF protection on all forms and htmx requests
 - Security headers (X-Content-Type-Options, X-Frame-Options, HSTS)
-- Email-based authentication (no passwords stored)
+
+- **Shared Family Password**: A single shared code is required for all registrations and logins, preventing unauthorized public access.
+- Email-based user identity (passwords not stored per user)
 - Surprise protection prevents gift recipients from seeing claim status
 
 ## License
