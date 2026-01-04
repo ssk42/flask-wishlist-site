@@ -105,10 +105,14 @@ def _clean_database(app):
     with app.app_context():
         cache.clear()
         yield
-        for table in reversed(db.metadata.sorted_tables):
-            db.session.execute(table.delete())
-        db.session.commit()
-        cache.clear()
+        try:
+            for table in reversed(db.metadata.sorted_tables):
+                db.session.execute(table.delete())
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        finally:
+            cache.clear()
 
 
 @pytest.fixture()
