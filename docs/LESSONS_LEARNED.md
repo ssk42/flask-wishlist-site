@@ -48,3 +48,17 @@ This document is for and by Agents such as Claude and Gemini. It's goal is that 
 ### 5. Local vs Docker Database Conflicts
 - **Issue:** `FATAL: role "user" does not exist` when connecting to `localhost:5432` might mean you are connecting to a local system Postgres instead of the Docker container, especially on macOS where port 5432 might be taken.
 - **Solution:** Map the Docker container to a non-standard port (e.g., `5433:5432`) in `docker-compose.yml` and update connection strings to match.
+
+## ⚙️ Background Tasks
+
+### 1. Two Task Implementations Exist
+- **Gotcha:** This project has TWO implementations of background tasks:
+  - `services/tasks.py` - Synchronous, used by Flask CLI (`flask send-reminders`, `flask update-prices`)
+  - `services/celery_tasks.py` - Async Celery wrappers that call the sync versions
+- **Why:** The CLI commands work without Redis/Celery (useful for Heroku Scheduler or cron). Celery tasks provide true async execution when the worker is running.
+- **Which to use:** For scheduled jobs via Heroku Scheduler, use the CLI. For on-demand async processing, use Celery.
+
+### 2. Flask-Limiter `init_app()` API Changed
+- **Issue:** Heroku deploy failed with `TypeError: Limiter.init_app() got an unexpected keyword argument 'storage_options'`.
+- **Cause:** Local Flask-Limiter version accepted `storage_options` in `init_app()`, but Heroku's version (different Python/package version) did not.
+- **Solution:** Don't pass `storage_options` to `init_app()`. Configure via `RATELIMIT_STORAGE_URI` config key instead (already includes `?ssl_cert_reqs=none` for Heroku Redis).
