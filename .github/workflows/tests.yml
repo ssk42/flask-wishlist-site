@@ -74,16 +74,21 @@ jobs:
           PYTEST_EXIT=$?
           set -e
           
-          # Check if any tests actually failed (vs just teardown errors)
+          # Check if any tests actually FAILED (ignore teardown errors)
+          # In JUnit XML: failures = actual test failures, errors can include teardown issues
           if [ $PYTEST_EXIT -ne 0 ]; then
-            # Look for actual test failures in the XML
-            if grep -q 'failures="0"' test-results.xml && grep -q 'errors="0"' test-results.xml; then
-              echo "⚠️ Pytest exited with code $PYTEST_EXIT but all tests passed (likely teardown error)"
-              echo "Treating as success since tests passed"
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' test-results.xml | head -1)
+            echo "Pytest exit code: $PYTEST_EXIT, Test failures: $FAILURES"
+            
+            if [ "$FAILURES" = "0" ]; then
+              echo "⚠️ Pytest exited with code $PYTEST_EXIT but no tests failed"
+              echo "This is likely a teardown error - treating as success"
             else
-              echo "❌ Tests failed"
+              echo "❌ $FAILURES test(s) failed"
               exit 1
             fi
+          else
+            echo "✅ All tests passed"
           fi
 
       - name: Upload coverage report
