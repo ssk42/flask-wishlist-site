@@ -79,7 +79,12 @@ def create_app(config_name=None):
     CSRFProtect(app)
     Mail(app)
     Compress(app)
-    limiter.init_app(app)
+    # Configure Limiter with SSL context for Heroku Redis
+    limiter_options = {}
+    if app.config.get('RATELIMIT_STORAGE_URI', '').startswith('rediss://'):
+        limiter_options = {"storage_options": {"socket_connect_timeout": 30, "ssl_cert_reqs": None}}
+    
+    limiter.init_app(app, **limiter_options)
 
     # Initialize WhiteNoise for static files
     app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
