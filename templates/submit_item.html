@@ -83,6 +83,27 @@
                 <small class="form-text text-muted">Optional, but it helps others know they're looking at the right thing.</small>
             </div>
 
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <label class="form-label text-muted">Variants (optional)</label>
+                </div>
+                <div class="col-md-4">
+                    <label for="size" class="form-label">Size</label>
+                    <input type="text" class="form-control" id="size" name="size" maxlength="50" placeholder="M, L, XL..." value="{{ form_data.size or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="color" class="form-label">Color</label>
+                    <input type="text" class="form-control" id="color" name="color" maxlength="50" placeholder="Blue, Red..." value="{{ form_data.color or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="quantity" class="form-label">Quantity</label>
+                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" max="99" placeholder="1" value="{{ form_data.quantity or '' }}">
+                </div>
+                <div class="col-12">
+                    <small class="form-text text-muted">Specify size, color, or quantity if it matters for this item.</small>
+                </div>
+            </div>
+
             <div class="d-flex justify-content-end mt-4 gap-2">
                 <a href="{{ url_for('items.items_list') }}" class="btn btn-outline-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">Save item</button>

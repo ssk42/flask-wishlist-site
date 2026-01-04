@@ -82,7 +82,7 @@ The following improvements were identified from a Flask best practices analysis.
 |---|---------|--------|----------|--------|----------------|-------|
 | 20 | Email Notifications | 3-4 hours | 🟡 High | ✅ Complete | 2025-12-28 | Event reminders 7 days before |
 | 21 | Image Upload | 3-4 hours | 🟢 Medium | ⏳ Pending | - | Direct upload to S3/Cloudinary |
-| 22 | Wishlist Sharing Links | 2-3 hours | 🟡 High | ⏳ Pending | - | Public/private, guest access |
+| 22 | Wishlist Sharing Links | 2-3 hours | 🟡 High | ⏳ Pending | - | 📋 [PRD](PRD_WISHLIST_SHARING.md) - Public/private, guest access |
 | 33 | My Claims Page | 2-3 hours | 🟡 High | ✅ Complete | 2025-12-28 | Track claimed/purchased items for others |
 | 34 | Events Management | 3-4 hours | 🟡 High | ✅ Complete | 2025-12-28 | CRUD for events, item associations |
 | 35 | Price Tracking | 2-3 hours | 🟢 Medium | ✅ Complete | 2025-12-28 | Auto-fetch prices, refresh buttons |
@@ -93,7 +93,7 @@ The following improvements were identified from a Flask best practices analysis.
 |---|---------|--------|----------|--------|-------|
 | 23 | PWA Features | 4-6 hours | 🟢 Medium | ✅ Complete | 2026-01-04 | Manifest, Service Worker, Offline support |
 | 24 | Advanced Search | 2-3 hours | 🟢 Low | ⏳ Pending | Fuzzy search, price range, multi-select |
-| 25 | Item Variants | 2 hours | 🟢 Medium | ⏳ Pending | Size, color, quantity fields |
+| 25 | Item Variants | 2 hours | 🟢 Medium | ✅ Complete | 2026-01-04 | 📋 [PRD](PRD_ITEM_VARIANTS.md) - Size, color, quantity fields |
 | 26 | Comments/Notes | 3-4 hours | 🟢 Medium | ✅ Complete | - | Collaboration on items (Added in previous sessions) |
 | 27 | Accessibility (A11y) | 2-3 hours | 🟢 Medium | ⏳ Pending | ARIA labels, keyboard nav, screen readers |
 
@@ -105,7 +105,7 @@ The following improvements were identified from a Flask best practices analysis.
 | 29 | Export Enhancements | 2 hours | 🟢 Low | ⏳ Pending | PDF with images, CSV |
 | 30 | Keyboard Shortcuts | 1-2 hours | 🟢 Low | ⏳ Pending | N for new, / for search |
 | 31 | Internationalization | 6-8 hours | 🟢 Low | ⏳ Pending | Multi-language support |
-| 32 | Split Gifts | 3-4 hours | 🟢 Low | ⏳ Pending | Multiple contributors |
+| 32 | Split Gifts | 3-4 hours | 🟢 Low | ⏳ Pending | 📋 [PRD](PRD_SPLIT_GIFTS.md) - Multiple contributors |
 
 ### Phase 7: Advanced Features (New Ideas)
 
@@ -114,58 +114,57 @@ The following improvements were identified from a Flask best practices analysis.
 | 44 | **Image Hosting (R2)** | 4-6 hours | 🟡 High | ⏳ Pending | Cloudflare R2 for cheaper storage & globally served assets |
 | 45 | **Multi-Tenant Support** | 20+ hours | 🔴 Critical | ⏳ Pending | Allow other families to sign up (SaaS) |
 | 46 | **Wishlist Archive** | 2-3 hours | 🟢 Low | ⏳ Pending | "Soft delete" or archive old/fulfilled items |
-| 47 | **External Share Links** | 3-4 hours | 🟡 High | ⏳ Pending | Public read-only link for non-family members (Grammy/friends) |
-| 48 | **Gift Registry Mode** | 4-5 hours | 🟢 Medium | ⏳ Pending | For weddings/showers (publicly claimable) |
+| 47 | **External Share Links** | 3-4 hours | 🟡 High | ⏳ Pending | 📋 [PRD](PRD_WISHLIST_SHARING.md) - Public read-only link for non-family (Grammy/friends) |
+| 48 | **Gift Registry Mode** | 4-5 hours | 🟢 Medium | ⏳ Pending | 📋 [PRD](PRD_WISHLIST_SHARING.md#83-gift-registry-mode-48) - V2 extension of sharing |
 | 49 | **Drag-to-Reorder** | 2-3 hours | 🟢 Low | ⏳ Pending | Custom sort order for dashboard |
+| 50 | **Secret Santa Mode** | 6-8 hours | 🟢 Medium | ⏳ Pending | 📋 [PRD](PRD_SECRET_SANTA.md) - Random gift assignments for events |
 
 
 ---
 
 ## 📊 Progress Summary
 
-**Total Items:** 43
-**Completed:** 28 (65%)
+**Total Items:** 50
+**Completed:** 28 (56%)
 **In Progress:** 0 (0%)
-**Pending:** 15 (35%)
+**Pending:** 22 (44%)
 
 ### By Priority
-- 🔴 Critical: 1 pending (Multi-Tenant) (3 complete)
-- 🟡 High: 4 pending (Privacy, Async Tasks, Image Hosting, Share Links) (11 complete)
-- 🟢 Medium: 12 pending (9 complete)
-- 🟢 Low: 11 pending (1 complete)
+- 🔴 Critical: 1 pending (Multi-Tenant), 3 complete
+- 🟡 High: 4 pending (Privacy, Image Hosting, Share Links ×2), 11 complete
+- 🟢 Medium: 8 pending (Variants, A11y, Registry, Secret Santa, etc.), 9 complete
+- 🟢 Low: 9 pending, 5 complete
 
 ### By Category
 - ✅ **Quick Wins:** 6/6 complete (100%)
-- ✅ **Infrastructure:** 8/13 complete (61%)
-- 🏗️ **Flask Architecture:** 6/6 complete (100%)
-- 🎨 **User Features:** 6/22 complete (27%)
+- ✅ **Infrastructure:** 10/11 complete (91%)
+- ✅ **Flask Architecture:** 7/7 complete (100%)
+- 🎨 **User Features:** 5/26 complete (19%)
 
 ---
 
 ## 🎯 Recommended Next Steps
 
-### Immediate (This Week)
-### Immediate (This Week)
-1. **Review Pending Tasks** - We have completed all immediate security items.
-2. **Consider 'User Profiles'** - Allow users to change their name/email?
+### Ready for Implementation (PRDs Complete)
+1. **Item Variants** (#25) - Add size, color, quantity fields. [📋 PRD](PRD_ITEM_VARIANTS.md) ~2 hours
+2. **Wishlist Sharing** (#22, #47) - Privacy controls + external share links. [📋 PRD](PRD_WISHLIST_SHARING.md) 6-10 hours
+3. **Split Gifts** (#32) - Multiple contributors for expensive items. [📋 PRD](PRD_SPLIT_GIFTS.md) 3-4 hours
+4. **Secret Santa Mode** (#50) - Random gift assignments for events. [📋 PRD](PRD_SECRET_SANTA.md) 6-8 hours
 
-### Short Term (Next 2 Weeks)
-4. **Application Factory Pattern** (#38) - Enable proper testing and configuration.
-5. **Proper Authentication** (#10) - Fix critical security issue (currently email-only).
-6. **Extract Models** (#41) - Prerequisite for clean blueprints.
+### High Priority (No PRD Yet)
+5. **Image Hosting** (#44) - Cloudflare R2 for user-uploaded images
+6. **Accessibility** (#27) - ARIA labels, keyboard navigation, screen readers
 
-### Medium Term (Next Month)
-7. **Rate Limiting** (#42) - Protect auth endpoints from abuse.
-8. **Privacy Controls** (#11) - Essential for family usage (private lists).
-9. **Async Task Queue (Celery)** (#36) - Background emails and price checks.
+### Future Considerations
+7. **Multi-Tenant Support** (#45) - SaaS model for other families (major effort)
+8. **Gift Registry Mode** (#48) - Public claiming for weddings/showers
+9. **Advanced Search** (#24) - Fuzzy search, price range filters
 
-### Long Term / New Ideas (Low Priority)
-10. **User Profiles** - Allow users to edit name, email, and avatar.
-11. **Event Filtering** - Filter "All Gifts" by specific event (Christmas, Birthday).
-12. **Wishlist Item Priority** - Mark items as High/Medium/Low priority.
-13. **Secret Santa Mode** - Randomly assign gift givers for an event.
-14. **Calendar View** - Visual calendar for upcoming events.
-15. **Budget Tracking** - Track spending per event or person.
+### New Ideas (Not Yet Tracked)
+- **User Profiles** - Allow users to edit name, email, avatar
+- **Event Filtering** - Filter items by specific event
+- **Calendar View** - Visual calendar for upcoming events
+- **Budget Tracking** - Track spending per event or person
 
 ---
 
@@ -180,12 +179,13 @@ The following improvements were identified from a Flask best practices analysis.
 - ✅ Security headers configured
 
 ### Technical Debt
-- Email-only authentication (no passwords) - **Security Risk** → See #10
+- ~~Email-only authentication (no passwords)~~ ✅ Fixed - Family Code auth implemented (#10)
 - No input sanitization - **XSS Risk**
-- No rate limiting - **Abuse Risk** → See #42
-- Monolithic architecture (1,083-line app.py) → See #37-41 (Flask Architecture section)
+- ~~No rate limiting~~ ✅ Fixed - Flask-Limiter on auth endpoints (#42)
+- ~~Monolithic architecture~~ ✅ Fixed - Blueprints implemented (#37-41)
 - ~~No containerization~~ ✅ Complete (Docker added)
 - ~~No structured logging~~ ✅ Complete (JSON logging added)
+- `is_private` field on User model exists but unused (placeholder for #11, #22)
 
 ### Infrastructure Needs
 - ~~Docker setup~~ ✅ Complete
@@ -194,6 +194,19 @@ The following improvements were identified from a Flask best practices analysis.
 - Email service (SendGrid/Mailgun) - Currently using Gmail SMTP
 - Image storage (Cloudflare R2) - **Next Priority**
 - Monitoring solution - Basic Heroku metrics available
+
+---
+
+## 📋 Product Requirements Documents
+
+Detailed PRDs have been created for upcoming features:
+
+| PRD | Related Items | Status | Effort |
+|-----|---------------|--------|--------|
+| [PRD_ITEM_VARIANTS.md](PRD_ITEM_VARIANTS.md) | #25 (Item Variants) | Draft | ~2 hours |
+| [PRD_SPLIT_GIFTS.md](PRD_SPLIT_GIFTS.md) | #32 (Split Gifts) | Draft | 3-4 hours |
+| [PRD_WISHLIST_SHARING.md](PRD_WISHLIST_SHARING.md) | #11, #22, #47, #48 (Privacy, Sharing & Registry) | Draft | 6-10 hours |
+| [PRD_SECRET_SANTA.md](PRD_SECRET_SANTA.md) | #50 (Secret Santa Mode) | Draft | 6-8 hours |
 
 ---
 

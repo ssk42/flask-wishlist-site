@@ -64,6 +64,11 @@ class Item(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
+    # Item variants (size, color, quantity)
+    size = db.Column(db.String(50), nullable=True)
+    color = db.Column(db.String(50), nullable=True)
+    quantity = db.Column(db.Integer, nullable=True)
+
     comments = db.relationship('Comment', backref='item', lazy=True, cascade='all, delete-orphan')
 
     # Composite index for common query pattern (user_id + status)

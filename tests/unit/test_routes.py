@@ -829,3 +829,261 @@ def test_get_item_modal_success(client, app, login, user):
 
     assert response.status_code == 200
     assert b"Modal Test Item" in response.data
+
+
+# ==================== Item Variants Tests ====================
+
+
+def test_submit_item_with_all_variants(client, app, user):
+    """Test that submitting an item with size, color, and quantity stores them correctly."""
+    login_via_post(client, "test@example.com")
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Sweater with Variants",
+            "status": "Available",
+            "priority": "High",
+            "price": "49.99",
+            "size": "Medium",
+            "color": "Navy Blue",
+            "quantity": "2",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        item = Item.query.filter_by(description="Sweater with Variants").one()
+        assert item.size == "Medium"
+        assert item.color == "Navy Blue"
+        assert item.quantity == 2
+
+
+def test_submit_item_without_variants(client, app, user):
+    """Test that submitting an item without variants leaves fields as null."""
+    login_via_post(client, "test@example.com")
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Item Without Variants",
+            "status": "Available",
+            "priority": "Medium",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        item = Item.query.filter_by(description="Item Without Variants").one()
+        assert item.size is None
+        assert item.color is None
+        assert item.quantity is None
+
+
+def test_edit_item_add_variants(client, app, user):
+    """Test that editing an item can add variant values."""
+    login_via_post(client, "test@example.com")
+    with app.app_context():
+        item = Item(
+            description="No Variants Yet",
+            status="Available",
+            priority="High",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(
+        f"/edit_item/{item_id}",
+        data={
+            "description": "No Variants Yet",
+            "status": "Available",
+            "priority": "High",
+            "size": "Large",
+            "color": "Red",
+            "quantity": "3",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        updated = db.session.get(Item, item_id)
+        assert updated.size == "Large"
+        assert updated.color == "Red"
+        assert updated.quantity == 3
+
+
+def test_edit_item_remove_variants(client, app, user):
+    """Test that editing an item can remove variant values by leaving fields empty."""
+    login_via_post(client, "test@example.com")
+    with app.app_context():
+        item = Item(
+            description="Has Variants",
+            status="Available",
+            priority="High",
+            user_id=user,
+            size="XL",
+            color="Green",
+            quantity=5,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(
+        f"/edit_item/{item_id}",
+        data={
+            "description": "Has Variants",
+            "status": "Available",
+            "priority": "High",
+            "size": "",
+            "color": "",
+            "quantity": "",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        updated = db.session.get(Item, item_id)
+        assert updated.size is None
+        assert updated.color is None
+        assert updated.quantity is None
+
+
+def test_submit_item_quantity_below_minimum_shows_error(client, user):
+    """Test that quantity less than 1 shows validation error."""
+    login_via_post(client, "test@example.com")
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Invalid Quantity",
+            "status": "Available",
+            "priority": "High",
+            "quantity": "0",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Quantity must be between 1 and 99" in response.data
+
+
+def test_submit_item_quantity_above_maximum_shows_error(client, user):
+    """Test that quantity greater than 99 shows validation error."""
+    login_via_post(client, "test@example.com")
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Too Many",
+            "status": "Available",
+            "priority": "High",
+            "quantity": "100",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Quantity must be between 1 and 99" in response.data
+
+
+def test_submit_item_quantity_invalid_number_shows_error(client, user):
+    """Test that non-numeric quantity shows validation error."""
+    login_via_post(client, "test@example.com")
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Bad Quantity",
+            "status": "Available",
+            "priority": "High",
+            "quantity": "abc",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Quantity must be a valid number" in response.data
+
+
+def test_edit_item_quantity_validation_error(client, app, user):
+    """Test that editing with invalid quantity shows validation error."""
+    login_via_post(client, "test@example.com")
+    with app.app_context():
+        item = Item(
+            description="Edit Quantity Test",
+            status="Available",
+            priority="High",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(
+        f"/edit_item/{item_id}",
+        data={
+            "description": "Edit Quantity Test",
+            "status": "Available",
+            "priority": "High",
+            "quantity": "150",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Quantity must be between 1 and 99" in response.data
+
+
+def test_submit_item_size_truncated_to_50_chars(client, app, user):
+    """Test that size field is truncated to 50 characters."""
+    login_via_post(client, "test@example.com")
+
+    long_size = "X" * 100  # 100 characters
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Long Size Item",
+            "status": "Available",
+            "priority": "High",
+            "size": long_size,
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        item = Item.query.filter_by(description="Long Size Item").one()
+        assert len(item.size) == 50
+        assert item.size == "X" * 50
+
+
+def test_submit_item_color_truncated_to_50_chars(client, app, user):
+    """Test that color field is truncated to 50 characters."""
+    login_via_post(client, "test@example.com")
+
+    long_color = "B" * 100
+
+    response = client.post(
+        "/submit_item",
+        data={
+            "description": "Long Color Item",
+            "status": "Available",
+            "priority": "High",
+            "color": long_color,
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        item = Item.query.filter_by(description="Long Color Item").one()
+        assert len(item.color) == 50
+        assert item.color == "B" * 50

@@ -49,6 +49,20 @@
             </div>
             {% endif %}
 
+            {% if item.size or item.color or (item.quantity and item.quantity > 1) %}
+            <div class="d-flex flex-wrap gap-1 mb-1">
+                {% if item.size %}
+                <span class="badge bg-secondary bg-opacity-75"><i class="bi bi-rulers me-1"></i>{{ item.size }}</span>
+                {% endif %}
+                {% if item.color %}
+                <span class="badge bg-secondary bg-opacity-75"><i class="bi bi-palette me-1"></i>{{ item.color }}</span>
+                {% endif %}
+                {% if item.quantity and item.quantity > 1 %}
+                <span class="badge bg-info bg-opacity-75"><i class="bi bi-stack me-1"></i>&times;{{ item.quantity }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
             {% if item.last_updated_by and item.user_id != current_user.id and item.status == 'Claimed' %}
             <p class="text-xs text-muted fst-italic mb-0">Claimed by {{ item.last_updated_by.name }}</p>
             {% endif %}

@@ -30,6 +30,23 @@
             </div>
             {% endif %}
 
+            {% if item.size or item.color or (item.quantity and item.quantity > 1) %}
+            <div class="mb-3">
+                <span class="text-muted small text-uppercase fw-bold d-block mb-2">Variants</span>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if item.size %}
+                    <span class="badge bg-secondary bg-opacity-75 py-2 px-3"><i class="bi bi-rulers me-1"></i>{{ item.size }}</span>
+                    {% endif %}
+                    {% if item.color %}
+                    <span class="badge bg-secondary bg-opacity-75 py-2 px-3"><i class="bi bi-palette me-1"></i>{{ item.color }}</span>
+                    {% endif %}
+                    {% if item.quantity and item.quantity > 1 %}
+                    <span class="badge bg-info bg-opacity-75 py-2 px-3"><i class="bi bi-stack me-1"></i>&times;{{ item.quantity }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             {% if item.comment %}
             <div class="p-3 bg-light rounded mb-4 border border-light-subtle">
                 <div class="d-flex align-items-center gap-2 mb-2">

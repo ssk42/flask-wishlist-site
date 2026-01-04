@@ -223,6 +223,23 @@ def submit_item():
             return render_template('submit_item.html', status_choices=STATUS_CHOICES,
                                    priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
+        # Handle variant fields (size, color, quantity)
+        size = form_data.get('size', '').strip()[:50] or None
+        color = form_data.get('color', '').strip()[:50] or None
+        quantity_input = form_data.get('quantity', '').strip()
+        quantity = None
+        if quantity_input:
+            try:
+                quantity = int(quantity_input)
+                if quantity < 1 or quantity > 99:
+                    flash('Quantity must be between 1 and 99.', 'danger')
+                    return render_template('submit_item.html', status_choices=STATUS_CHOICES,
+                                           priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
+            except ValueError:
+                flash('Quantity must be a valid number.', 'danger')
+                return render_template('submit_item.html', status_choices=STATUS_CHOICES,
+                                       priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
+
         new_item = Item(
             description=description,
             link=link,
@@ -232,7 +249,10 @@ def submit_item():
             priority=priority,
             status=status,
             user_id=current_user.id,
-            event_id=event_id
+            event_id=event_id,
+            size=size,
+            color=color,
+            quantity=quantity
         )
 
         try:
@@ -308,6 +328,27 @@ def edit_item(item_id):
             # Handle event_id
             event_id_str = form_data.get('event_id', '').strip()
             item.event_id = int(event_id_str) if event_id_str else None
+
+            # Handle variant fields (size, color, quantity)
+            item.size = form_data.get('size', '').strip()[:50] or None
+            item.color = form_data.get('color', '').strip()[:50] or None
+            quantity_input = form_data.get('quantity', '').strip()
+            if quantity_input:
+                try:
+                    quantity = int(quantity_input)
+                    if quantity < 1 or quantity > 99:
+                        flash('Quantity must be between 1 and 99.', 'danger')
+                        return render_template('edit_item.html', item=item, current_user=current_user,
+                                               status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
+                                               events=upcoming_events)
+                    item.quantity = quantity
+                except ValueError:
+                    flash('Quantity must be a valid number.', 'danger')
+                    return render_template('edit_item.html', item=item, current_user=current_user,
+                                           status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
+                                           events=upcoming_events)
+            else:
+                item.quantity = None
 
             db.session.commit()
             flash('Item updated successfully.', 'success')

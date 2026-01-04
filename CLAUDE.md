@@ -6,8 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Document | Purpose |
 |----------|--------|
-| [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) | **Project Roadmap** - Comprehensive tracking of all planned/completed improvements (43 items, ~65% complete). Use this to understand priorities and find your next task. |
+| [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) | **Project Roadmap** - Comprehensive tracking of all planned/completed improvements (50 items, ~56% complete). Use this to understand priorities and find your next task. |
 | [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md) | **Technical Gotchas** - Common pitfalls, environment quirks, and solutions discovered during development. Read this before diving into infrastructure or testing work. |
+
+### 📋 Product Requirements Documents (PRDs)
+
+| PRD | Feature | Status |
+|-----|---------|--------|
+| [docs/PRD_ITEM_VARIANTS.md](docs/PRD_ITEM_VARIANTS.md) | Size, color, quantity fields for items (#25) | Draft |
+| [docs/PRD_SPLIT_GIFTS.md](docs/PRD_SPLIT_GIFTS.md) | Multiple contributors for expensive gifts (#32) | Draft |
+| [docs/PRD_WISHLIST_SHARING.md](docs/PRD_WISHLIST_SHARING.md) | Privacy controls & external share links (#22, #47, #48) | Draft |
+| [docs/PRD_SECRET_SANTA.md](docs/PRD_SECRET_SANTA.md) | Random gift assignments for events (#50) | Draft |
 
 ## Development Commands
 
@@ -69,22 +78,34 @@ flask db migrate -m "Description of changes"
 ## Architecture Overview
 
 ### Application Structure
-This is a **Flask application** with routes and models in `app.py` and services organized in `services/`:
-- Routes, database models, and configuration in [app.py](app.py)
-- Service modules in `services/`:
+This is a **Flask application** using the Application Factory pattern with Blueprints:
+- **App factory** in [app.py](app.py) - `create_app()` function, extensions initialization
+- **Blueprints** in `blueprints/`:
+  - `auth.py` - Login, registration, logout, forgot email
+  - `items.py` - Wishlist items CRUD, claiming, filtering
+  - `events.py` - Events CRUD for gift occasions
+  - `dashboard.py` - Home page, dashboard stats
+  - `social.py` - Comments, notifications
+  - `api.py` - JSON API endpoints (metadata fetching)
+- **Models** in [models.py](models.py) - User, Item, Event, Comment, Notification
+- **Services** in `services/`:
   - `price_service.py` - Product price fetching and metadata extraction
   - `email_service.py` - Email sending via Flask-Mail
   - `tasks.py` - Background tasks (event reminders)
+  - `celery_tasks.py` - Async Celery wrappers
   - `logging_config.py` - Structured logging setup
-- Templates in `templates/` directory
-- Database migrations managed by Flask-Migrate in `migrations/` directory
-- Documentation in `docs/` directory
+- **Templates** in `templates/` directory (partials in `templates/partials/`)
+- **Database migrations** managed by Flask-Migrate in `migrations/` directory
+- **Documentation** in `docs/` directory
 
 ### Database Models
-- **User**: Simple model with name and email (no password - uses email-based login only)
+- **User**: Model with name, email, and `is_private` flag (unused placeholder for future privacy controls)
 - **Item**: Wishlist items with relationships to User:
   - `user_id`: The owner of the wishlist item
   - `last_updated_by_id`: Tracks who last updated the item (important for claim/purchase tracking)
+- **Event**: Gift occasions (birthdays, holidays) with date and reminder tracking
+- **Comment**: Hidden coordination comments between gift-givers (invisible to item owner)
+- **Notification**: User alerts for claims, comments, etc.
 
 ### Key Features & Behaviors
 
@@ -102,9 +123,10 @@ The application prevents gift receivers from seeing who claimed/purchased their 
 - The protection is implemented in the items summary totals calculation
 
 #### Login System
-- Email-based authentication only (no passwords)
+- **Family Code authentication**: Shared secret code for family access (configured via `FAMILY_CODE` env var)
+- Email + Family Code required for login (no individual passwords)
 - Uses Flask-Login for session management
-- Login manager configured at [app.py:476-483](app.py#L476)
+- Rate limited: 5 requests/minute on auth endpoints
 
 #### Database Configuration
 - Local development: SQLite database stored in `instance/wishlist.sqlite`
@@ -128,24 +150,32 @@ The application prevents gift receivers from seeing who claimed/purchased their 
 - Environment variables: `DATABASE_URL`, `SECRET_KEY` (see `.env.example` for template)
 - CI/CD via GitHub Actions (`.github/workflows/tests.yml`) - tests must pass before merge
 
-## Recent Improvements (2025-10-16)
+## Current State (2026-01-04)
 
-### Security Enhancements ✅
-- **CSRF Protection**: Flask-WTF integrated with CSRF tokens on all POST forms
-- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS, Referrer-Policy
-- **Complete Surprise Protection**: Users cannot see status of their own items (preserves gift surprises)
+### Completed Features ✅
+- **Blueprint Architecture**: App split into 6 blueprints (auth, items, events, dashboard, social, api)
+- **Family Code Auth**: Secure shared authentication for family groups
+- **Events Management**: Create gift occasions, associate items with events
+- **Price Tracking**: Auto-fetch prices from URLs, refresh buttons
+- **My Claims Page**: Track items claimed/purchased for others
+- **Comments**: Hidden coordination between gift-givers
+- **PWA Support**: Installable app with offline capabilities
 
-### Performance Optimizations ✅
-- **Database Indexes**: Added indexes on `user_id`, `status`, `category`, `priority`, and composite `(user_id, status)`
-- **Static Assets**: CSS extracted to `static/css/main.css` for better caching
-- **Migration**: `80bf6accc0b7_add_indexes_for_performance.py`
+### Security ✅
+- CSRF protection on all forms
+- Security headers configured
+- Rate limiting on auth endpoints (Flask-Limiter)
+- Surprise protection (owners can't see claim status)
 
 ### Infrastructure ✅
-- **Configuration Template**: `.env.example` documents all environment variables
-- **SEO**: `robots.txt` added to control search engine crawling
-- **Modern UI**: Bootstrap 5.3.2 with custom CSS variables and Inter font
+- Docker + docker-compose setup
+- Redis caching layer
+- Celery for async tasks
+- Sentry error tracking
+- GitHub Actions CI/CD
+- Heroku deployment with auto-migrations
 
 ### Test Coverage
-- 60 tests passing (100% code coverage maintained)
-- Browser tests with Playwright
-- Comprehensive surprise protection test suite
+- 211 tests (151 unit + 60 browser)
+- 96% code coverage
+- Playwright browser tests
