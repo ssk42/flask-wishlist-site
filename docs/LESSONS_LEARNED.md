@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-04 (Session 7)
 
-This document captures key technical learnings, "gotchas," and architectural decisions encountered during the development of the Family Wishlist App.
+This document is for and by Agents such as Claude and Gemini. It's goal is that this document captures key technical learnings, "gotchas," and architectural decisions encountered during the development of the Family Wishlist App, so that Agents can avoid common pitfalls and make informed decisions.
 
 ## 🚀 Deployment & Infrastructure (Heroku)
 

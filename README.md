@@ -165,6 +165,24 @@ heroku config:set FAMILY_PASSWORD=your-secure-shared-password
 heroku addons:create heroku-redis:mini
 ```
 
+### Database Backups
+
+Daily automated backups are scheduled at 02:00 UTC.
+
+```bash
+# View backup schedule
+heroku pg:backups:schedules --app reitz-wishlist
+
+# Create manual backup
+heroku pg:backups:capture --app reitz-wishlist
+
+# List backups
+heroku pg:backups --app reitz-wishlist
+
+# Restore from backup
+heroku pg:backups:restore b001 DATABASE_URL --app reitz-wishlist
+```
+
 The `Procfile` handles automatic database migrations on each deploy.
 
 ## Project Structure

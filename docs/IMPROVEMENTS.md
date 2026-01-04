@@ -40,9 +40,9 @@ This document tracks all planned and completed improvements to the Family Wishli
 | 12 | Caching Layer (Redis) | 2-3 hours | 🟢 Medium | ✅ Complete | 2026-01-04 | Cache dashboard stats |
 | 13 | Database Connection Pooling | 30 min | 🟢 Medium | ✅ Complete | 2026-01-04 | SQLALCHEMY_ENGINE_OPTIONS |
 | 14 | Add Timestamps | 1 hour | 🟢 Medium | ✅ Complete | 2026-01-04 | created_at, updated_at fields |
-| 15 | Automated Backups | 1 hour | 🟢 Medium | ⏳ Pending | - | Database backup strategy |
+| 15 | Automated Backups | 1 hour | 🟢 Medium | ✅ Complete | 2026-01-04 | Heroku PG Backups at 02:00 UTC |
 | 16 | Rate Limiting | 1 hour | 🟢 Low | ✅ Complete | 2026-01-03 | Flask-Limiter for API protection |
-| 36 | Async Task Queue (Celery) | 3-4 hours | 🟡 High | ⏳ Pending | Background emails, price checks |
+| 36 | Async Task Queue (Celery) | 3-4 hours | 🟡 High | ✅ Complete | 2026-01-04 | Celery with Redis broker |
 
 ### Phase 3: DevOps & CI/CD (Medium Priority)
 
