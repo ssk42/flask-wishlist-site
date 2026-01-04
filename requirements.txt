@@ -40,3 +40,4 @@ werkzeug==3.0.1
 whitenoise>=6.11.0
 sentry-sdk[flask]==1.39.1
 Flask-Limiter==3.5.0
+redis>=3.0
