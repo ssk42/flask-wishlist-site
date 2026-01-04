@@ -2,6 +2,8 @@ import sys
 import os
 import threading
 import time
+import gc
+import atexit
 from pathlib import Path
 
 import pytest
@@ -57,6 +59,9 @@ def app(tmp_path_factory):
         yield flask_app
         db.session.remove()
         db.drop_all()
+        # Dispose engine to close all connections and prevent teardown errors
+        db.engine.dispose()
+        gc.collect()
 
 
 @pytest.fixture(scope="session")
@@ -98,6 +103,9 @@ def browser_app(tmp_path_factory):
         yield flask_app
         db.session.remove()
         db.drop_all()
+        # Dispose engine to close all connections and prevent teardown errors
+        db.engine.dispose()
+        gc.collect()
 
 
 @pytest.fixture(autouse=True)
