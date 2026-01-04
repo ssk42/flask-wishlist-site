@@ -79,12 +79,8 @@ def create_app(config_name=None):
     CSRFProtect(app)
     Mail(app)
     Compress(app)
-    # Configure Limiter with SSL context for Heroku Redis
-    limiter_options = {}
-    if app.config.get('RATELIMIT_STORAGE_URI', '').startswith('rediss://'):
-        limiter_options = {"storage_options": {"socket_connect_timeout": 30, "ssl_cert_reqs": None}}
-    
-    limiter.init_app(app, **limiter_options)
+    # Configure Limiter (storage options configured via RATELIMIT_STORAGE_URI in config)
+    limiter.init_app(app)
     
     # Initialize caching
     cache.init_app(app)
