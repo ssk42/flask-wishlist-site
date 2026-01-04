@@ -1,0 +1,32 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-22.04
+    needs: []  # We'll let Heroku's GitHub integration handle this instead
+    # This workflow is a placeholder - Heroku GitHub integration is preferred
+    # Enable at: https://dashboard.heroku.com/apps/reitz-wishlist/deploy/github
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: reitz-wishlist
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+
+# To enable this workflow:
+# 1. Go to Heroku Dashboard > Account Settings > API Key
+# 2. Add HEROKU_API_KEY to GitHub Secrets
+# 3. Add HEROKU_EMAIL to GitHub Secrets
+# 
+# Alternative (recommended): Use Heroku's built-in GitHub integration
+# at https://dashboard.heroku.com/apps/reitz-wishlist/deploy/github
