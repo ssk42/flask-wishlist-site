@@ -13,7 +13,7 @@ def login_via_post(client, email):
 def test_register_creates_user(client, app):
     response = client.post(
         "/register",
-        data={"name": "Alice", "email": "alice@example.com"},
+        data={"name": "Alice", "email": "alice@example.com", "password": "testsecret"},
         follow_redirects=True,
     )
 
@@ -130,7 +130,7 @@ def test_register_duplicate_email_shows_warning(client, app):
 
     response = client.post(
         "/register",
-        data={"name": "Someone", "email": "duplicate@example.com"},
+        data={"name": "Someone", "email": "duplicate@example.com", "password": "testsecret"},
         follow_redirects=True,
     )
 
@@ -141,7 +141,7 @@ def test_register_duplicate_email_shows_warning(client, app):
 def test_login_success_redirects_home(client, app, user):
     response = client.post(
         "/login",
-        data={"email": "test@example.com"},
+        data={"email": "test@example.com", "password": "testsecret"},
         follow_redirects=False,
     )
 
@@ -152,7 +152,7 @@ def test_login_success_redirects_home(client, app, user):
 def test_login_failure_renders_error(client):
     response = client.post(
         "/login",
-        data={"email": "missing@example.com"},
+        data={"email": "missing@example.com", "password": "testsecret"},
         follow_redirects=True,
     )
 
@@ -494,7 +494,7 @@ def test_register_commit_failure_rolls_back(client, monkeypatch):
 
     response = client.post(
         "/register",
-        data={"name": "Eve", "email": "eve@example.com"},
+        data={"name": "Eve", "email": "eve@example.com", "password": "testsecret"},
         follow_redirects=True,
     )
 
