@@ -37,7 +37,7 @@ dependencies = [
     "python-dotenv==1.1.1",
     "python-json-logger==4.0.0",
     "pytz==2023.3.post1",
-    "requests==2.32.3",
+    "requests==2.32.4",
     "six==1.16.0",
     "sqlalchemy==2.0.23",
     "typing-extensions==4.8.0",
