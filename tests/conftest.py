@@ -19,6 +19,23 @@ from models import db, User
 from extensions import cache
 
 
+# Hook to handle session teardown errors gracefully
+# This is a known pytest issue where ExceptionGroup errors occur during
+# session teardown even when all tests pass
+def pytest_sessionfinish(session, exitstatus):
+    """Clean up database connections at session end to prevent ExceptionGroup errors."""
+    try:
+        # Import db here to ensure it's available
+        from models import db as _db
+        if hasattr(_db, 'engine') and _db.engine:
+            _db.session.remove()
+            _db.engine.dispose()
+        # Force garbage collection to clean up any lingering connections
+        gc.collect()
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="session")
 def app(tmp_path_factory):
     """App fixture for unit tests - CSRF disabled for easier testing."""
