@@ -60,10 +60,16 @@ class Config:
     @staticmethod
     def get_ratelimit_storage_uri():
         """Get rate limit storage URI, defaulting to Heroku Redis if available."""
-        if os.getenv('RATELIMIT_STORAGE_URI'):
-            return os.getenv('RATELIMIT_STORAGE_URI')
-        # Fallback to Heroku Redis (TLS preferred)
-        return os.getenv('REDIS_TLS_URL') or os.getenv('REDIS_URL') or 'memory://'
+        uri = os.getenv('RATELIMIT_STORAGE_URI') or os.getenv('REDIS_TLS_URL') or os.getenv('REDIS_URL') or 'memory://'
+        
+        # Heroku Redis uses self-signed certificates, so we must ignore validition
+        if uri and uri.startswith('rediss://') and 'ssl_cert_reqs' not in uri:
+            if '?' in uri:
+                uri += '&ssl_cert_reqs=none'
+            else:
+                uri += '?ssl_cert_reqs=none'
+        
+        return uri
 
     RATELIMIT_STORAGE_URI = get_ratelimit_storage_uri.__func__()
 
