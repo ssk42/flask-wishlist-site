@@ -7,7 +7,7 @@ from flask_login import current_user
 from sqlalchemy.orm import joinedload
 from extensions import cache
 
-from models import db, User, Item, Event
+from models import Item, Event
 
 bp = Blueprint('dashboard', __name__)
 

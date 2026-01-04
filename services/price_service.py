@@ -5,7 +5,7 @@ import logging
 import random
 import re
 import time
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
