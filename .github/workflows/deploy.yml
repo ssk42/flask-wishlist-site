@@ -1,8 +1,9 @@
 name: Deploy to Heroku
 
+# Disabled: Using Heroku's built-in GitHub integration instead
+# To manually trigger, use workflow_dispatch
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   deploy:
