@@ -64,11 +64,26 @@
         });
     </script>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sparkline.js') }}"></script>
 
     <!-- Quick View Modal Container -->
     <div class="modal fade" id="quickViewModal" tabindex="-1" aria-hidden="true" style="z-index: 11000 !important;">
         <div class="modal-dialog modal-dialog-centered modal-lg" style="pointer-events: auto;">
             <div class="modal-content border-0 overflow-hidden" id="quick-view-content"
+                style="background-color: var(--surface-color); pointer-events: auto;">
+                <div class="modal-body text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Split Gift Modal Container -->
+    <div class="modal fade" id="splitModal" tabindex="-1" aria-hidden="true" style="z-index: 11000 !important;">
+        <div class="modal-dialog modal-dialog-centered" style="pointer-events: auto;">
+            <div class="modal-content" id="split-modal-content"
                 style="background-color: var(--surface-color); pointer-events: auto;">
                 <div class="modal-body text-center p-5">
                     <div class="spinner-border text-primary" role="status">

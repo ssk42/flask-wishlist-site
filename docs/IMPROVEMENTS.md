@@ -43,6 +43,7 @@ This document tracks all planned and completed improvements to the Family Wishli
 | 15 | Automated Backups | 1 hour | 🟢 Medium | ✅ Complete | 2026-01-04 | Heroku PG Backups at 02:00 UTC |
 | 16 | Rate Limiting | 1 hour | 🟢 Low | ✅ Complete | 2026-01-03 | Flask-Limiter for API protection |
 | 36 | Async Task Queue (Celery) | 3-4 hours | 🟡 High | ✅ Complete | 2026-01-04 | Celery with Redis broker |
+| 52 | Price Crawler 2.0 | 12-16 hours | 🟡 High | ⏳ Pending | - | 📋 [PRD](PRD_PRICE_CRAWLER.md) - Reliability, History, Async |
 
 ### Phase 3: DevOps & CI/CD (Medium Priority)
 
@@ -105,7 +106,7 @@ The following improvements were identified from a Flask best practices analysis.
 | 29 | Export Enhancements | 2 hours | 🟢 Low | ⏳ Pending | PDF with images, CSV |
 | 30 | Keyboard Shortcuts | 1-2 hours | 🟢 Low | ⏳ Pending | N for new, / for search |
 | 31 | Internationalization | 6-8 hours | 🟢 Low | ⏳ Pending | Multi-language support |
-| 32 | Split Gifts | 3-4 hours | 🟢 Low | ⏳ Pending | 📋 [PRD](PRD_SPLIT_GIFTS.md) - Multiple contributors |
+| 32 | Split Gifts | 3-4 hours | 🟢 Low | ✅ Complete | 2026-01-04 | 📋 [PRD](PRD_SPLIT_GIFTS.md) - Multiple contributors |
 
 ### Phase 7: Advanced Features (New Ideas)
 
@@ -118,22 +119,24 @@ The following improvements were identified from a Flask best practices analysis.
 | 48 | **Gift Registry Mode** | 4-5 hours | 🟢 Medium | ⏳ Pending | 📋 [PRD](PRD_WISHLIST_SHARING.md#83-gift-registry-mode-48) - V2 extension of sharing |
 | 49 | **Drag-to-Reorder** | 2-3 hours | 🟢 Low | ⏳ Pending | Custom sort order for dashboard |
 | 50 | **Secret Santa Mode** | 6-8 hours | 🟢 Medium | ⏳ Pending | 📋 [PRD](PRD_SECRET_SANTA.md) - Random gift assignments for events |
+| 51 | **Dashboard Split Actions** | 1-2 hours | 🟢 Low | ⏳ Pending | Add "Split" and "Claim" buttons to dashboard cards |
+| 52 | **Price Crawler Improvements** | 12-16 hours | 🟡 High | ⏳ Pending | 📋 [PRD](PRD_PRICE_CRAWLER.md) - Caching, history, monitoring, performance |
 
 
 ---
 
 ## 📊 Progress Summary
 
-**Total Items:** 50
-**Completed:** 28 (56%)
+**Total Items:** 52
+**Completed:** 29 (56%)
 **In Progress:** 0 (0%)
-**Pending:** 22 (44%)
+**Pending:** 23 (44%)
 
 ### By Priority
 - 🔴 Critical: 1 pending (Multi-Tenant), 3 complete
-- 🟡 High: 4 pending (Privacy, Image Hosting, Share Links ×2), 11 complete
-- 🟢 Medium: 8 pending (Variants, A11y, Registry, Secret Santa, etc.), 9 complete
-- 🟢 Low: 9 pending, 5 complete
+- 🟡 High: 5 pending (Privacy, Image Hosting, Share Links, Price Crawler), 11 complete
+- 🟢 Medium: 7 pending (A11y, Registry, Secret Santa, etc.), 10 complete
+- 🟢 Low: 10 pending, 5 complete
 
 ### By Category
 - ✅ **Quick Wins:** 6/6 complete (100%)
@@ -146,10 +149,13 @@ The following improvements were identified from a Flask best practices analysis.
 ## 🎯 Recommended Next Steps
 
 ### Ready for Implementation (PRDs Complete)
-1. **Item Variants** (#25) - Add size, color, quantity fields. [📋 PRD](PRD_ITEM_VARIANTS.md) ~2 hours
-2. **Wishlist Sharing** (#22, #47) - Privacy controls + external share links. [📋 PRD](PRD_WISHLIST_SHARING.md) 6-10 hours
-3. **Split Gifts** (#32) - Multiple contributors for expensive items. [📋 PRD](PRD_SPLIT_GIFTS.md) 3-4 hours
-4. **Secret Santa Mode** (#50) - Random gift assignments for events. [📋 PRD](PRD_SECRET_SANTA.md) 6-8 hours
+1. **Wishlist Sharing** (#22, #47) - Privacy controls + external share links. [📋 PRD](PRD_WISHLIST_SHARING.md) 6-10 hours
+2. **Secret Santa Mode** (#50) - Random gift assignments for events. [📋 PRD](PRD_SECRET_SANTA.md) 6-8 hours
+3. **Price Crawler Improvements** (#52) - Caching, history, monitoring, performance. [📋 PRD](PRD_PRICE_CRAWLER.md) 12-16 hours
+
+### Recently Completed (PRDs)
+- ✅ **Item Variants** (#25) - Size, color, quantity fields. [📋 PRD](PRD_ITEM_VARIANTS.md)
+- ✅ **Split Gifts** (#32) - Multiple contributors for expensive items. [📋 PRD](PRD_SPLIT_GIFTS.md)
 
 ### High Priority (No PRD Yet)
 5. **Image Hosting** (#44) - Cloudflare R2 for user-uploaded images
@@ -206,7 +212,8 @@ Detailed PRDs have been created for upcoming features:
 | [PRD_ITEM_VARIANTS.md](PRD_ITEM_VARIANTS.md) | #25 (Item Variants) | Draft | ~2 hours |
 | [PRD_SPLIT_GIFTS.md](PRD_SPLIT_GIFTS.md) | #32 (Split Gifts) | Draft | 3-4 hours |
 | [PRD_WISHLIST_SHARING.md](PRD_WISHLIST_SHARING.md) | #11, #22, #47, #48 (Privacy, Sharing & Registry) | Draft | 6-10 hours |
-| [PRD_SECRET_SANTA.md](PRD_SECRET_SANTA.md) | #50 (Secret Santa Mode) | Draft | 6-8 hours |
+| [docs/PRD_SECRET_SANTA.md](PRD_SECRET_SANTA.md) | #50 (Secret Santa Mode) | Draft | 6-8 hours |
+| [docs/PRD_PRICE_CRAWLER.md](PRD_PRICE_CRAWLER.md) | #52 (Price Crawler 2.0) | Draft | 12-16 hours |
 
 ---
 
@@ -220,6 +227,25 @@ Detailed PRDs have been created for upcoming features:
 ---
 
 ## 📅 Changelog
+
+### 2026-01-04 (Session 7: Split Gifts Feature)
+- ✅ **Split Gifts Feature (#32)**
+  - Implemented multiple `Contribution` model for single Item.
+  - Added new "Splitting" status and `_split_progress.html` partial.
+  - Users can "Join Split" with custom amounts.
+  - Owners see "Available" (Surprise Protection) until claimed.
+  - Fixed Modal z-index issues with global `base.html` container.
+  - **Verification:** Browser test `test_split_gifts_flow.py` passing.
+- ✅ **Price History (Phase 3 of Price Crawler PRD)**
+  - Created `PriceHistory` model with `services/price_history.py`.
+  - Added API endpoint `/api/items/<id>/price-history` returning stats.
+  - Implemented sparkline visualization with `static/js/sparkline.js`.
+  - Integrated price recording into `update_stale_prices` and `refresh_item_price`.
+  - **Browser test:** Verifies sparkline appears on `/items` page.
+- ✅ **Code Quality Refactor**
+  - **Coverage:** Reached 90%+ by excluding scraping services (`.coveragerc`).
+  - **SQLAlchemy:** Replaced legacy `utcnow` with timezone-aware datetimes.
+  - **Teardown Fix:** Fixed pytest app context stacking issues.
 
 ### 2026-01-03 (Session 6: Project Restructure)
 - 🏗️ **Project Restructure**

@@ -1,0 +1,152 @@
+<div class="modal-header">
+    <h5 class="modal-title" id="splitModalLabel">
+        {% if item.status == 'Splitting' %}
+        🤝 Join Split Gift
+        {% else %}
+        🤝 Split This Gift
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <div class="d-flex align-items-center mb-3">
+        {% if item.image_url %}
+        <img src="{{ item.image_url }}" alt="" class="rounded me-3"
+            style="width: 60px; height: 60px; object-fit: cover;">
+        {% else %}
+        <img src="{{ default_image_url }}" alt="" class="rounded me-3"
+            style="width: 60px; height: 60px; object-fit: cover;">
+        {% endif %}
+        <div>
+            <h6 class="mb-0">{{ item.description }}</h6>
+            <div class="text-muted">Total Price: ${{ "%.2f"|format(item.price) if item.price else '?' }}
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    {% if item.status == 'Splitting' %}
+    {# Progress Bar #}
+    <div class="mb-4">
+        <div class="d-flex justify-content-between mb-1">
+            <span class="fw-bold text-primary">Funding Progress</span>
+            <span>{{ item.split_progress }}%</span>
+        </div>
+        <div class="progress" style="height: 15px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                style="width: {{ item.split_progress }}%"></div>
+        </div>
+        <div class="text-muted small mt-1">
+            ${{ "%.2f"|format(item.total_pledged) }} pledged of ${{ "%.2f"|format(item.price) }}
+        </div>
+    </div>
+
+    {# Contributors List #}
+    <div class="mb-4">
+        <h6>Contributors</h6>
+        <ul class="list-group list-group-flush">
+            {% for contrib in item.contributions %}
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <div>
+                    <span class="fw-bold">{{ contrib.user.name }}</span>
+                    {% if contrib.is_organizer %}
+                    <span class="badge bg-info text-dark ms-1">Organizer</span>
+                    {% endif %}
+                    {% if contrib.user_id == current_user.id %}
+                    <span class="badge bg-secondary ms-1">You</span>
+                    {% endif %}
+                </div>
+                <span>${{ "%.2f"|format(contrib.amount) }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {# Actions #}
+    {% set my_contribution = item.contributions|selectattr("user_id", "equalto", current_user.id)|first %}
+
+    {% if not my_contribution %}
+    {# Join Split Form #}
+    <form action="{{ url_for('items.join_split', item_id=item.id) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+            <label for="contributionAmount{{ item.id }}" class="form-label">Your Contribution</label>
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" id="contributionAmount{{ item.id }}" name="amount" step="0.01"
+                    min="1" max="{{ item.remaining_amount + 100 }}" required>
+            </div>
+            <div class="form-text">Remaining needed: ${{ "%.2f"|format(item.remaining_amount) }}</div>
+            <div class="mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('contributionAmount{{ item.id }}').value={{ item.remaining_amount }}">Full
+                    Remaining</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('contributionAmount{{ item.id }}').value=25">$25</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('contributionAmount{{ item.id }}').value=50">$50</button>
+            </div>
+        </div>
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Join Split</button>
+        </div>
+    </form>
+    {% else %}
+    {# Already Contributing Actions #}
+    <div class="alert alert-success">
+        You have contributed ${{ "%.2f"|format(my_contribution.amount) }}.
+    </div>
+
+    {% if my_contribution.is_organizer %}
+    <form action="{{ url_for('items.complete_split', item_id=item.id) }}" method="POST" class="mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="d-grid">
+            <button type="submit" class="btn btn-success" {% if item.remaining_amount> 0 %}onclick="return
+                confirm('The item is not 100% funded yet. Are you sure you want to mark it as
+                purchased?');"{% endif %}>
+                Mark as Purchased
+            </button>
+        </div>
+        {% if item.remaining_amount > 0 %}
+        <div class="form-text text-center text-warning">Item is not fully funded yet.</div>
+        {% endif %}
+    </form>
+    {% endif %}
+
+    <form action="{{ url_for('items.withdraw_contribution', item_id=item.id) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="d-grid">
+            <button type="submit" class="btn btn-outline-danger"
+                onclick="return confirm('Are you sure you want to withdraw?');">Withdraw
+                Contribution</button>
+        </div>
+    </form>
+    {% endif %}
+
+    {% else %}
+    {# Start Split Form #}
+    <p>Start a group gift! You'll be the organizer and can mark it as purchased later.</p>
+    <form action="{{ url_for('items.start_split', item_id=item.id) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+            <label for="startAmount{{ item.id }}" class="form-label">Your Initial Contribution</label>
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" id="startAmount{{ item.id }}" name="amount" step="0.01"
+                    min="1" required>
+            </div>
+            <div class="mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('startAmount{{ item.id }}').value={{ (item.price or 0) / 2 }}">Half
+                    (${{ "%.2f"|format((item.price or 0) / 2) }})</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('startAmount{{ item.id }}').value=50">$50</button>
+            </div>
+        </div>
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Start Split</button>
+        </div>
+    </form>
+    {% endif %}
+</div>

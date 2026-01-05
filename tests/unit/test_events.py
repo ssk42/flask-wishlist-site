@@ -287,7 +287,7 @@ class TestDeleteEvent:
         assert b'deleted' in response.data
 
         with app.app_context():
-            assert Event.query.get(event_id) is None
+            assert db.session.get(Event, event_id) is None
 
     def test_delete_event_only_owner_can_delete(self, app, client, login_event_owner, login_other_user):
         """Only the event creator can delete."""
@@ -312,7 +312,7 @@ class TestDeleteEvent:
 
         # Event should still exist
         with app.app_context():
-            assert Event.query.get(event_id) is not None
+            assert db.session.get(Event, event_id) is not None
 
     def test_delete_event_clears_item_associations(self, app, client, login_event_owner):
         """Deleting an event should unlink items but not delete them."""
@@ -340,7 +340,7 @@ class TestDeleteEvent:
 
         # Item should still exist but no longer associated
         with app.app_context():
-            item = Item.query.get(item_id)
+            item = db.session.get(Item, item_id)
             assert item is not None
             assert item.event_id is None
 
@@ -408,5 +408,5 @@ class TestEventItemAssociation:
         assert response.status_code == 200
 
         with app.app_context():
-            item = Item.query.get(item_id)
+            item = db.session.get(Item, item_id)
             assert item.event_id == event_id

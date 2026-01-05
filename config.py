@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Application constants
 PRIORITY_CHOICES = ['High', 'Medium', 'Low']
-STATUS_CHOICES = ['Available', 'Claimed', 'Purchased', 'Received']
+STATUS_CHOICES = ['Available', 'Claimed', 'Purchased', 'Received', 'Splitting']
 
 # Load environment variables from .env file (skip if in pytest to allow test overrides)
 if 'pytest' not in os.getenv('_', '').lower():

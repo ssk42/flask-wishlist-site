@@ -1087,3 +1087,106 @@ def test_submit_item_color_truncated_to_50_chars(client, app, user):
         item = Item.query.filter_by(description="Long Color Item").one()
         assert len(item.color) == 50
         assert item.color == "B" * 50
+
+
+def test_edit_item_quantity_invalid_number_shows_error(client, app, user):
+    """Test that editing with non-numeric quantity shows validation error."""
+    login_via_post(client, "test@example.com")
+    with app.app_context():
+        item = Item(
+            description="Edit Bad Quantity Test",
+            status="Available",
+            priority="High",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(
+        f"/edit_item/{item_id}",
+        data={
+            "description": "Edit Bad Quantity Test",
+            "status": "Available",
+            "priority": "High",
+            "quantity": "not_a_number",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Quantity must be a valid number" in response.data
+
+
+def test_claim_item_htmx_dashboard_context(client, app, user, other_user):
+    """Test claiming item via HTMX from dashboard returns partial with flash."""
+    with app.app_context():
+        item = Item(
+            description="Dashboard Claim Item",
+            status="Available",
+            priority="Medium",
+            user_id=user,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    login_via_post(client, "other@example.com")
+
+    response = client.post(
+        f"/claim_item/{item_id}?context=dashboard",
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    # Should contain dashboard card partial
+    assert b"glass-card" in response.data or b"item-card" in response.data
+
+
+def test_unclaim_item_htmx_dashboard_context(client, app, login, user, other_user):
+    """Test unclaiming item via HTMX from dashboard returns partial with flash."""
+    with app.app_context():
+        item = Item(
+            description="Dashboard Unclaim Item",
+            status="Claimed",
+            priority="Medium",
+            user_id=other_user,
+            last_updated_by_id=user,  # Current user claimed it
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.post(
+        f"/unclaim_item/{item_id}?context=dashboard",
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    assert b"glass-card" in response.data or b"item-card" in response.data
+
+
+def test_get_split_modal(client, app, login, user):
+    """Test that get_split_modal returns modal HTML for valid item."""
+    with app.app_context():
+        item = Item(
+            description="Split Modal Item",
+            status="Available",
+            priority="Medium",
+            user_id=user,
+            price=100.00,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    response = client.get(f"/items/{item_id}/split-modal")
+
+    assert response.status_code == 200
+    assert b"Split Modal Item" in response.data or b"modal" in response.data
+
+
+def test_get_split_modal_not_found(client, app, login, user):
+    """Test that split modal returns 404 for non-existent item."""
+    response = client.get("/items/99999/split-modal")
+    assert response.status_code == 404

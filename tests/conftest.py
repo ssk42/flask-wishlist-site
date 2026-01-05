@@ -73,7 +73,10 @@ def app(tmp_path_factory):
 
     with flask_app.app_context():
         db.create_all()
-        yield flask_app
+        
+    yield flask_app
+    
+    with flask_app.app_context():
         db.session.remove()
         db.drop_all()
         # Dispose engine to close all connections and prevent teardown errors
@@ -117,7 +120,10 @@ def browser_app(tmp_path_factory):
 
     with flask_app.app_context():
         db.create_all()
-        yield flask_app
+        
+    yield flask_app
+    
+    with flask_app.app_context():
         db.session.remove()
         db.drop_all()
         # Dispose engine to close all connections and prevent teardown errors

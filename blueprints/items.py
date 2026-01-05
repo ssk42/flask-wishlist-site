@@ -14,7 +14,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import case
 from sqlalchemy.orm import joinedload
 
-from models import db, User, Item, Event, Comment
+from models import db, User, Item, Event, Comment, Contribution
 from config import PRIORITY_CHOICES, STATUS_CHOICES
 from services.utils import get_items_url_with_filters
 
@@ -72,7 +72,8 @@ def items_list():
         Item.query.options(
             joinedload(Item.user),
             joinedload(Item.last_updated_by),
-            joinedload(Item.comments).joinedload(Comment.author)
+            joinedload(Item.comments).joinedload(Comment.author),
+            joinedload(Item.contributions).joinedload(Contribution.user)
         )
         .join(User, Item.user_id == User.id)
     )
@@ -437,6 +438,18 @@ def get_item_modal(item_id):
     return render_template('partials/_item_quick_view.html', item=item)
 
 
+@bp.route('/items/<int:item_id>/split-modal')
+@login_required
+def get_split_modal(item_id):
+    """Get split gift modal content for dynamic loading."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        abort(404)
+    
+    default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
+    return render_template('partials/_split_modal.html', item=item, default_image_url=default_image_url)
+
+
 @bp.route('/item/<int:item_id>/refresh-price', methods=['POST'])
 @login_required
 def refresh_price(item_id):
@@ -497,6 +510,19 @@ def my_claims():
             Item.user_id != current_user.id  # Exclude own items
         )
         .order_by(Item.user_id, Item.description)
+        .order_by(Item.user_id, Item.description)
+        .all()
+    )
+
+    # Fetch split contributions
+    contributions = (
+        Contribution.query
+        .options(
+            joinedload(Contribution.item).joinedload(Item.user),
+            joinedload(Contribution.item).joinedload(Item.contributions)
+        )
+        .filter_by(user_id=current_user.id)
+        .order_by(Contribution.created_at.desc())
         .all()
     )
 
@@ -518,7 +544,8 @@ def my_claims():
         claimed_count=claimed_count,
         purchased_count=purchased_count,
         status_choices=STATUS_CHOICES,
-        default_image_url=default_image_url
+        default_image_url=default_image_url,
+        contributions=contributions
     )
 
 
@@ -540,3 +567,145 @@ def export_my_status_updates():
     df.to_excel(filename, index=False)
 
     return send_file(filename, as_attachment=True)
+
+
+@bp.route('/items/<int:item_id>/split', methods=['POST'])
+@login_required
+def start_split(item_id):
+    """Start a split on an available item."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        abort(404)
+
+    if item.user_id == current_user.id:
+        flash('You cannot split your own item.', 'warning')
+        return redirect(get_items_url_with_filters())
+
+    if item.status != 'Available':
+        flash('Item is not available for splitting.', 'warning')
+        return redirect(get_items_url_with_filters())
+
+    # Get amount from form
+    try:
+        amount = float(request.form.get('amount', 0))
+    except ValueError:
+        flash('Invalid contribution amount.', 'danger')
+        return redirect(get_items_url_with_filters())
+
+    if amount <= 0:
+        flash('Contribution amount must be positive.', 'danger')
+        return redirect(get_items_url_with_filters())
+
+    # Create contribution
+    contribution = Contribution(
+        item_id=item.id,
+        user_id=current_user.id,
+        amount=amount,
+        is_organizer=True
+    )
+    
+    item.status = 'Splitting'
+    db.session.add(contribution)
+    db.session.commit()
+
+    flash(f'You started a split for "{item.description}".', 'success')
+    return redirect(get_items_url_with_filters())
+
+
+@bp.route('/items/<int:item_id>/contribute', methods=['POST'])
+@login_required
+def join_split(item_id):
+    """Join an existing split."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        abort(404)
+
+    if item.status != 'Splitting':
+        flash('Item is not currently being split.', 'warning')
+        return redirect(get_items_url_with_filters())
+
+    # Check if already contributing
+    existing = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
+    if existing:
+        flash('You are already contributing to this split.', 'warning')
+        return redirect(get_items_url_with_filters())
+
+    try:
+        amount = float(request.form.get('amount', 0))
+    except ValueError:
+        flash('Invalid contribution amount.', 'danger')
+        return redirect(get_items_url_with_filters())
+
+    if amount <= 0:
+        flash('Contribution amount must be positive.', 'danger')
+        return redirect(get_items_url_with_filters())
+
+    contribution = Contribution(
+        item_id=item.id,
+        user_id=current_user.id,
+        amount=amount,
+        is_organizer=False
+    )
+    
+    db.session.add(contribution)
+    db.session.commit()
+
+    flash(f'You contributed ${amount:.2f} to "{item.description}".', 'success')
+    return redirect(get_items_url_with_filters())
+
+
+@bp.route('/items/<int:item_id>/withdraw', methods=['POST'])
+@login_required
+def withdraw_contribution(item_id):
+    """Withdraw contribution from a split."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        abort(404)
+
+    contribution = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
+    if not contribution:
+        flash('You are not contributing to this item.', 'warning')
+        return redirect(get_items_url_with_filters())
+
+    is_organizer = contribution.is_organizer
+    db.session.delete(contribution)
+    
+    # If this was the last contribution, reset item to Available
+    remaining_contributions = Contribution.query.filter(
+        Contribution.item_id == item.id, 
+        Contribution.id != contribution.id
+    ).order_by(Contribution.created_at).all()
+
+    if not remaining_contributions:
+        item.status = 'Available'
+    elif is_organizer:
+        # Reassign organizer role to the next oldest contributor
+        remaining_contributions[0].is_organizer = True
+
+    db.session.commit()
+    flash('Contribution withdrawn.', 'info')
+    return redirect(get_items_url_with_filters())
+
+
+@bp.route('/items/<int:item_id>/complete-split', methods=['POST'])
+@login_required
+def complete_split(item_id):
+    """Mark split gift as purchased (Organizer only)."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        abort(404)
+
+    contribution = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
+    
+    if not contribution or not contribution.is_organizer:
+        flash('Only the split organizer can mark this as purchased.', 'danger')
+        return redirect(get_items_url_with_filters())
+
+    item.status = 'Purchased'
+    item.last_updated_by_id = current_user.id  # Organizer gets the credit in last_updated_by
+    db.session.commit()
+
+    flash(f'"{item.description}" marked as purchased! All contributors will be notified.', 'success')
+    # TODO: Send notifications to other contributors
+    
+    return redirect(get_items_url_with_filters())

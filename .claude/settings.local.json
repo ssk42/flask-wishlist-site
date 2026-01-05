@@ -28,7 +28,10 @@
       "Bash(git push:*)",
       "Bash(ls:*)",
       "Bash(TEST_EMAIL=sthreitz@gmail.com python:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(FLASK_ENV=development flask db migrate:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh run list:*)"
     ],
     "deny": [],
     "ask": []

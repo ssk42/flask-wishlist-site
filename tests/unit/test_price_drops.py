@@ -30,84 +30,87 @@ def price_drop_setup(app):
             user_id=owner.id,
             status="Claimed",
             last_updated_by_id=claimer.id,
-            price_updated_at=datetime.datetime.now() - datetime.timedelta(days=8)
+            price_updated_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=8)
         )
         db.session.add(item)
         db.session.commit()
         
-        return owner.id, claimer.id, item.id
+        return owner.id, claimer.id, item.id, item.link
 
 
-@patch('services.price_service.fetch_price')
-def test_price_drop_creates_owner_notification(mock_fetch, app, price_drop_setup):
+def test_price_drop_creates_owner_notification(app, price_drop_setup):
     """When price drops ≥10%, owner gets a notification."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
     
-    owner_id, claimer_id, item_id = price_drop_setup
+    owner_id, claimer_id, item_id, item_link = price_drop_setup
     
-    # Simulate 15% price drop: $299.99 -> $254.99
-    mock_fetch.return_value = 254.99
-    
-    with app.app_context():
-        stats = update_stale_prices(app, db, Item, Notification)
+    # Mock asyncio.run to return our fake results
+    with patch('asyncio.run') as mock_asyncio_run:
+        # Simulate 15% price drop: $299.99 -> $254.99
+        mock_asyncio_run.return_value = {item_link: 254.99}
         
-        assert stats['price_drops'] == 1
-        
-        # Owner should have notification
-        owner_notif = Notification.query.filter_by(user_id=owner_id).first()
-        assert owner_notif is not None
-        assert "Price drop" in owner_notif.message
-        assert "Nintendo Switch" in owner_notif.message
+        with app.app_context():
+            stats = update_stale_prices(app, db, Item, Notification)
+            
+            assert stats['price_drops'] == 1
+            
+            # Owner should have notification
+            owner_notif = Notification.query.filter_by(user_id=owner_id).first()
+            assert owner_notif is not None
+            assert "price drop" in owner_notif.message.lower()
+            assert "Nintendo Switch" in owner_notif.message
 
 
-@patch('services.price_service.fetch_price')
-def test_price_drop_creates_claimer_notification(mock_fetch, app, price_drop_setup):
+def test_price_drop_creates_claimer_notification(app, price_drop_setup):
     """When price drops ≥10%, claimer also gets a notification."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
     
-    owner_id, claimer_id, item_id = price_drop_setup
+    owner_id, claimer_id, item_id, item_link = price_drop_setup
     
-    mock_fetch.return_value = 254.99  # 15% drop
-    
-    with app.app_context():
-        update_stale_prices(app, db, Item, Notification)
+    with patch('asyncio.run') as mock_asyncio_run:
+        mock_asyncio_run.return_value = {item_link: 254.99}  # 15% drop
         
-        # Claimer should have notification
-        claimer_notif = Notification.query.filter_by(user_id=claimer_id).first()
-        assert claimer_notif is not None
-        assert "you claimed" in claimer_notif.message
+        with app.app_context():
+            update_stale_prices(app, db, Item, Notification)
+            
+            # Claimer should have notification
+            claimer_notif = Notification.query.filter_by(user_id=claimer_id).first()
+            assert claimer_notif is not None
+            assert "you claimed" in claimer_notif.message.lower()
 
 
-@patch('services.price_service.fetch_price')
-def test_small_price_drop_no_notification(mock_fetch, app, price_drop_setup):
+def test_small_price_drop_no_notification(app, price_drop_setup):
     """When price drops <10%, no notification is created."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
     
-    owner_id, claimer_id, item_id = price_drop_setup
+    owner_id, claimer_id, item_id, item_link = price_drop_setup
     
-    # Simulate 5% drop: $299.99 -> $284.99
-    mock_fetch.return_value = 284.99
-    
-    with app.app_context():
-        stats = update_stale_prices(app, db, Item, Notification)
+    with patch('asyncio.run') as mock_asyncio_run:
+        # Simulate 5% drop: $299.99 -> $284.99
+        mock_asyncio_run.return_value = {item_link: 284.99}
         
-        assert stats['price_drops'] == 0
-        assert Notification.query.count() == 0
+        with app.app_context():
+            stats = update_stale_prices(app, db, Item, Notification)
+            
+            assert stats['price_drops'] == 0
+            assert Notification.query.count() == 0
 
 
-@patch('services.price_service.fetch_price')
-def test_price_increase_no_notification(mock_fetch, app, price_drop_setup):
+def test_price_increase_no_notification(app, price_drop_setup):
     """When price increases, no notification is created."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
     
-    mock_fetch.return_value = 349.99  # Price went up
+    owner_id, claimer_id, item_id, item_link = price_drop_setup
     
-    with app.app_context():
-        stats = update_stale_prices(app, db, Item, Notification)
+    with patch('asyncio.run') as mock_asyncio_run:
+        mock_asyncio_run.return_value = {item_link: 349.99}  # Price went up
         
-        assert stats['price_drops'] == 0
-        assert Notification.query.count() == 0
+        with app.app_context():
+            stats = update_stale_prices(app, db, Item, Notification)
+            
+            assert stats['price_drops'] == 0
+            assert Notification.query.count() == 0

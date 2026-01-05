@@ -38,8 +38,15 @@
                     item.price_updated_at.strftime('%b %d') }})</span>
                 {% endif %}
 
+                <!-- Price Sparkline -->
+                <div class="price-sparkline ms-auto" data-item-id="{{ item.id }}"
+                    style="display:none; width: 60px; height: 20px;">
+                    <canvas width="60" height="20"></canvas>
+                </div>
+
                 {% if item.link %}
-                <form action="{{ url_for('items.refresh_price', item_id=item.id) }}" method="post" class="d-inline">
+                <form action="{{ url_for('items.refresh_price', item_id=item.id) }}" method="post"
+                    class="d-inline ms-1">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <button type="submit" class="btn btn-link p-0 text-muted hover-primary" title="Refresh Price">
                         <i class="bi bi-arrow-clockwise" style="font-size: 0.8rem;"></i>
@@ -58,9 +65,14 @@
                 <span class="badge bg-secondary bg-opacity-75"><i class="bi bi-palette me-1"></i>{{ item.color }}</span>
                 {% endif %}
                 {% if item.quantity and item.quantity > 1 %}
-                <span class="badge bg-info bg-opacity-75"><i class="bi bi-stack me-1"></i>&times;{{ item.quantity }}</span>
+                <span class="badge bg-info bg-opacity-75"><i class="bi bi-stack me-1"></i>&times;{{ item.quantity
+                    }}</span>
                 {% endif %}
             </div>
+            {% endif %}
+
+            {% if item.status == 'Splitting' %}
+            {% include 'partials/_split_progress.html' %}
             {% endif %}
 
             {% if item.last_updated_by and item.user_id != current_user.id and item.status == 'Claimed' %}
@@ -82,11 +94,29 @@
                 {% else %}
                 <!-- Claim/Unclaim Buttons -->
                 {% if item.status == 'Available' %}
-                <button class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill"
-                    hx-post="{{ url_for('items.claim_item', item_id=item.id) }}" hx-target="#item-card-{{ item.id }}"
-                    hx-swap="outerHTML" hx-confirm="Are you sure you want to claim this item?">
-                    <i class="bi bi-check2"></i> Claim
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill"
+                        hx-post="{{ url_for('items.claim_item', item_id=item.id) }}"
+                        hx-target="#item-card-{{ item.id }}" hx-swap="outerHTML"
+                        hx-confirm="Are you sure you want to claim this item?">
+                        <i class="bi bi-check2"></i> Claim
+                    </button>
+                    <button class="btn btn-sm btn-outline-info py-0 px-2 rounded-pill"
+                        hx-get="{{ url_for('items.get_split_modal', item_id=item.id) }}"
+                        hx-target="#split-modal-content" hx-trigger="click" data-bs-toggle="modal"
+                        data-bs-target="#splitModal" title="Split the cost with others">
+                        <i class="bi bi-people"></i> Split
+                    </button>
+                </div>
+                {% elif item.status == 'Splitting' %}
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary py-0 px-3 rounded-pill"
+                        hx-get="{{ url_for('items.get_split_modal', item_id=item.id) }}"
+                        hx-target="#split-modal-content" hx-trigger="click" data-bs-toggle="modal"
+                        data-bs-target="#splitModal">
+                        <i class="bi bi-people"></i> Join Split
+                    </button>
+                </div>
                 {% elif item.status == 'Claimed' and item.last_updated_by_id == current_user.id %}
                 <div class="d-flex flex-column gap-2 w-100">
                     <button class="btn btn-sm btn-outline-warning py-0 px-3 rounded-pill w-100"
@@ -166,4 +196,7 @@
             {% endif %}
         </div>
     </div>
+</div>
+
+
 </div>

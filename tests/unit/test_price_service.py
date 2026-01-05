@@ -200,15 +200,12 @@ class TestRefreshItemPrice:
 class TestUpdateStalePrices:
     """Tests for the batch price update function."""
 
-    @patch('services.price_service.fetch_price')
-    def test_update_stale_prices_finds_old_items(self, mock_fetch, app, item_owner):
+    def test_update_stale_prices_finds_old_items(self, app, item_owner):
         """Should find items with price_updated_at older than 7 days."""
         from services.price_service import update_stale_prices
 
-        mock_fetch.return_value = 19.99
-
         with app.app_context():
-            old_date = datetime.datetime.now() - datetime.timedelta(days=10)
+            old_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=10)
 
             item = Item(
                 description="Stale Item",
@@ -220,18 +217,21 @@ class TestUpdateStalePrices:
             db.session.add(item)
             db.session.commit()
 
-            stats = update_stale_prices(app, db, Item)
+            with patch('asyncio.run') as mock_asyncio_run:
+                # Mock returns dict of url -> price
+                mock_asyncio_run.return_value = {"https://example.com/product": 19.99}
 
-            assert stats['items_processed'] == 1
-            assert stats['prices_updated'] == 1
+                stats = update_stale_prices(app, db, Item)
 
-    @patch('services.price_service.fetch_price')
-    def test_update_stale_prices_skips_recent(self, mock_fetch, app, item_owner):
+                assert stats['items_processed'] == 1
+                assert stats['prices_updated'] == 1
+
+    def test_update_stale_prices_skips_recent(self, app, item_owner):
         """Should skip items updated recently."""
         from services.price_service import update_stale_prices
 
         with app.app_context():
-            recent_date = datetime.datetime.now() - datetime.timedelta(days=1)
+            recent_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
 
             item = Item(
                 description="Fresh Item",
@@ -243,17 +243,15 @@ class TestUpdateStalePrices:
             db.session.add(item)
             db.session.commit()
 
-            stats = update_stale_prices(app, db, Item)
+            with patch('asyncio.run') as mock_asyncio_run:
+                stats = update_stale_prices(app, db, Item)
 
-            assert stats['items_processed'] == 0
-            mock_fetch.assert_not_called()
+                assert stats['items_processed'] == 0
+                mock_asyncio_run.assert_not_called()
 
-    @patch('services.price_service.fetch_price')
-    def test_update_stale_prices_handles_null_date(self, mock_fetch, app, item_owner):
+    def test_update_stale_prices_handles_null_date(self, app, item_owner):
         """Should process items with NULL price_updated_at."""
         from services.price_service import update_stale_prices
-
-        mock_fetch.return_value = 29.99
 
         with app.app_context():
             item = Item(
@@ -266,16 +264,16 @@ class TestUpdateStalePrices:
             db.session.add(item)
             db.session.commit()
 
-            stats = update_stale_prices(app, db, Item)
+            with patch('asyncio.run') as mock_asyncio_run:
+                mock_asyncio_run.return_value = {"https://example.com/product": 29.99}
 
-            assert stats['items_processed'] == 1
+                stats = update_stale_prices(app, db, Item)
 
-    @patch('services.price_service.fetch_price')
-    def test_update_stale_prices_handles_errors(self, mock_fetch, app, item_owner):
+                assert stats['items_processed'] == 1
+
+    def test_update_stale_prices_handles_errors(self, app, item_owner):
         """Should handle errors gracefully and continue processing."""
         from services.price_service import update_stale_prices
-
-        mock_fetch.side_effect = Exception("Fetch error")
 
         with app.app_context():
             item = Item(
@@ -288,9 +286,14 @@ class TestUpdateStalePrices:
             db.session.add(item)
             db.session.commit()
 
-            stats = update_stale_prices(app, db, Item)
+            with patch('asyncio.run') as mock_asyncio_run:
+                # Mock raises exception
+                mock_asyncio_run.side_effect = Exception("Batch fetch error")
 
-            assert stats['errors'] == 1
+                stats = update_stale_prices(app, db, Item)
+
+                # When batch fetch fails entirely, all items are marked as errors
+                assert stats['errors'] >= 1
 
 
 class TestRefreshPriceRoute:

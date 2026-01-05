@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | [docs/PRD_SPLIT_GIFTS.md](docs/PRD_SPLIT_GIFTS.md) | Multiple contributors for expensive gifts (#32) | Draft |
 | [docs/PRD_WISHLIST_SHARING.md](docs/PRD_WISHLIST_SHARING.md) | Privacy controls & external share links (#22, #47, #48) | Draft |
 | [docs/PRD_SECRET_SANTA.md](docs/PRD_SECRET_SANTA.md) | Random gift assignments for events (#50) | Draft |
+| [docs/PRD_PRICE_CRAWLER.md](docs/PRD_PRICE_CRAWLER.md) | Reliability, history & performance (#35+) | Draft |
 
 ## Development Commands
 
@@ -75,6 +76,17 @@ flask db upgrade
 flask db migrate -m "Description of changes"
 ```
 
+## Coding Standards
+
+### 1. DateTime Handling
+- **Deprecated:** `datetime.datetime.utcnow()` (Scheduled for removal)
+- **Use:** `datetime.datetime.now(datetime.timezone.utc)`
+- **Models:** Use lambda for defaults: `default=lambda: datetime.datetime.now(datetime.timezone.utc)`
+
+### 2. SQLAlchemy
+- **Deprecated:** `Model.query.get(id)`
+- **Use:** `db.session.get(Model, id)`
+
 ## Architecture Overview
 
 ### Application Structure
@@ -86,8 +98,8 @@ This is a **Flask application** using the Application Factory pattern with Bluep
   - `events.py` - Events CRUD for gift occasions
   - `dashboard.py` - Home page, dashboard stats
   - `social.py` - Comments, notifications
-  - `api.py` - JSON API endpoints (metadata fetching)
-- **Models** in [models.py](models.py) - User, Item, Event, Comment, Notification
+  - `api.py` - JSON API endpoints (metadata fetching, price history)
+- **Models** in [models.py](models.py) - User, Item, Event, Comment, Notification, PriceHistory, Contribution
 - **Services** in `services/`:
   - `price_service.py` - Product price fetching and metadata extraction
   - `email_service.py` - Email sending via Flask-Mail
@@ -98,6 +110,11 @@ This is a **Flask application** using the Application Factory pattern with Bluep
 - **Database migrations** managed by Flask-Migrate in `migrations/` directory
 - **Documentation** in `docs/` directory
 
+### Template Variants
+- `templates/partials/_item_card.html` - Full item card with price, sparkline, actions (used on `/items`)
+- `templates/partials/_dashboard_item_card.html` - Compact card for dashboard (used on `/`)
+- When adding UI features, consider which template(s) need the component
+
 ### Database Models
 - **User**: Model with name, email, and `is_private` flag (unused placeholder for future privacy controls)
 - **Item**: Wishlist items with relationships to User:
@@ -106,6 +123,8 @@ This is a **Flask application** using the Application Factory pattern with Bluep
 - **Event**: Gift occasions (birthdays, holidays) with date and reminder tracking
 - **Comment**: Hidden coordination comments between gift-givers (invisible to item owner)
 - **Notification**: User alerts for claims, comments, etc.
+- **PriceHistory**: Historical prices for items (for sparkline visualization)
+- **Contribution**: Split gift contributions from multiple users
 
 ### Key Features & Behaviors
 
@@ -143,6 +162,27 @@ The application prevents gift receivers from seeing who claimed/purchased their 
   - `login`: Automatically logs in a test user
   - `live_server`: Runs Flask app on localhost:5001 for browser tests
 - **Auto-cleanup**: Database is automatically cleaned between tests via `_clean_database` fixture
+
+### Test Coverage
+- **Total Tests:** 317 (224 unit + 93 browser)
+- **Overall Coverage:** 95.12%
+- **Enforced Minimum:** 90%
+
+#### Screen & Component Coverage
+| Screen / Blueprint | Coverage | Notes |
+|--------------------|----------|-------|
+| **Dashboard** | 100% | Home page stats, welcome screen |
+| **All Gifts / Items** | 96% | Filtering, CRUD, variants, sparklines |
+| **Auth** | 100% | Login, Registration, Forgot Email |
+| **Events** | 100% | Event CRUD, item associations |
+| **Social** | 100% | Comments, Notifications |
+| **API** | 88% | Price history, metadata endpoints |
+| **Models** | 92% | core logic and relationships |
+| **Email Service** | 100% | Reminders and notifications |
+| **Tasks** | 98% | Event reminders and price updates |
+| **Utils** | 100% | URL filters and helper functions |
+
+**Performance:** Browser tests use Playwright and hit a live local server. Total suite runtime is ~6 minutes.
 
 ### Deployment (Heroku)
 - `Procfile` defines web process (gunicorn) and release process (database migrations)

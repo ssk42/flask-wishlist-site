@@ -135,3 +135,77 @@ This document is for and by Agents such as Claude and Gemini. It's goal is that 
 - **Async layer:** `services/celery_tasks.py` - Celery wrappers that call sync functions
 - **Why both:** CLI commands work without Redis/Celery (good for Heroku Scheduler). Celery provides async when worker is running.
 - **When adding tasks:** Write sync version first in `tasks.py`, then add Celery wrapper in `celery_tasks.py`
+
+### 7. Global Modals & Z-Index
+- **Issue:** Bootstrap modals defined inside other components (like cards) can be obscured by backdrops or clipped by parent `overflow: hidden`.
+- **Solution:**
+  1. Define a global modal container (e.g., `#split-modal-container`) in `base.html` at the top level.
+  2. Use HTMX (`hx-get` targeting the container) to load modal content dynamically.
+  3. Ensure the global container has a high z-index (e.g., `1055` or higher) to sit above other UI elements.
+- **Testing implication:** When clicking buttons that open these modals, normal clicks might fail if the backdrop is animating. Use `force=True` in Playwright or better yet, assert the non-existence of `.modal-backdrop` before interaction.
+
+### 10. Dashboard vs All Items Template Variants
+- **Issue:** Browser tests for UI features may fail when testing on the wrong page.
+- **Example:** The dashboard (`/`) uses `_dashboard_item_card.html` (compact card), while the All Items page (`/items`) uses `_item_card.html` (full card with sparklines, refresh buttons, etc.).
+- **Solution:** Before writing a browser test for a UI component, verify which template(s) include that component:
+  - **Dashboard cards:** `templates/partials/_dashboard_item_card.html`
+  - **Full item cards:** `templates/partials/_item_card.html`
+- **Testing pattern:** Navigate to the correct page (`/items` for full features) rather than assuming the dashboard will have all elements.
+
+### 8. Surprise Protection Logic
+- **Gotcha:** Checking `current_user.id != item.user_id` is easy to get backwards or miss in complex logic (like split gifts).
+- **Pattern:** Always create a unified property or helper (e.g., `item.is_owner(user)`) or be extremely explicit. Test "Negative" cases (Owner should NOT see X) carefully.
+- **Testing:** Avoid generic text assertions like `expect(page.get_by_text("Available"))` because "Available" might appear in filters, stats, or logs. Use specific, unique badges like "Your Item" or `data-testid` attributes.
+
+### 9. Coverage Configuration
+- **Issue:** External scraping logic (e.g., `price_service.py`) is brittle and often untestable in CI without mocking the internet, skewing coverage ratios.
+- **Solution:** Exclude specific service files and test directories in `.coveragerc` or `pyproject.toml` to keep the coverage metric focused on business logic.
+
+### 7. Global Modals & Z-Index
+- **Issue:** Bootstrap modals defined inside other components (like cards) can be obscured by backdrops or clipped by parent .
+- **Solution:**
+  1. Define a global modal container (e.g., ) in  at the top level.
+  2. Use HTMX () to load modal content dynamically into this container.
+  3. Ensure the global container has a high z-index (e.g.,  or higher) to sit above other UI elements.
+- **Testing implication:** When clicking buttons that open these modals, normal clicks might fail if the backdrop is animating. Use  in Playwright or better yet, assert the non-existence of  before interaction.
+
+### 8. Surprise Protection Logic
+- **Gotcha:** Checking  is easy to get backwards or miss in complex logic (like split gifts).
+- **Pattern:** Always create a unified property or helper (e.g., ) or be extremely explicit. Test "Negative" cases (Owner should NOT see X) carefully.
+- **Testing:** Avoid generic text assertions like  because "Available" might appear in filters, stats, or logs. Use specific, unique badges like "Your Item" or  attributes.
+
+### 9. Coverage Configuration
+- **Issue:** External scraping logic (e.g., ) is brittle and often untestable in CI without mocking the internet, skewing coverage ratios.
+- **Solution:** Exclude specific service files and test directories in  or  to keep the coverage metric focused on business logic.
+
+---
+
+## 🖥️ Browser Testing (Playwright)
+
+### 1. HTML5 Form Validation Bypass
+- **Issue:** Browser-side validation (e.g., `max="99"` on quantity input) prevents form submission before server-side validation can be tested.
+- **Solution:** Use JavaScript to modify form attributes before submission:
+  ```python
+  page.evaluate("document.querySelector('input[name=\"quantity\"]').removeAttribute('max')")
+  page.evaluate("document.querySelector('input[name=\"quantity\"]').value = '100'")
+  ```
+
+### 2. Duplicate Navigation Elements
+- **Issue:** Responsive designs often have sidebar + mobile nav, causing strict selectors to fail with "resolved to 2 elements".
+- **Solution:** Use `.first` for common navigation links:
+  ```python
+  expect(page.locator('a:has-text("Home")').first).to_be_visible()
+  ```
+
+### 3. Owner vs Non-Owner UI Differences
+- **Issue:** The edit item page shows different fields based on ownership (owner sees priority, non-owner sees status).
+- **Solution:** Test the fields that ARE visible for the user role being tested. Don't assume all fields exist for all users.
+
+### 4. Conditional Picklists
+- **Issue:** Event picklist only appears when events exist; tests fail if no events are created first.
+- **Solution:** Create prerequisite data (events, items) before testing conditional UI elements.
+
+### 5. Network State Waits
+- **Issue:** Tests fail with "element not found" when page is still loading after navigation.
+- **Solution:** Always add `page.wait_for_load_state('networkidle')` after navigation and form submissions.
+

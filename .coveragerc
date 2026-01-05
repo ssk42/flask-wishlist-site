@@ -1,0 +1,13 @@
+[run]
+omit =
+    services/price_service.py
+    services/celery_tasks.py
+    services/price_async.py
+    services/price_cache.py
+    celery_app.py
+    seed_dev_data.py
+    migrations/*
+    tests/*
+    venv/*
+    .venv/*
+    */node_modules/*

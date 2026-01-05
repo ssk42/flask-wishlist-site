@@ -9,8 +9,10 @@
         <p class="text-muted mb-0">Filter, sort, and explore everyone's wishes in one place.</p>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="{{ url_for('items.export_my_status_updates') }}" class="btn btn-outline-primary btn-sm">Export my updates</a>
-        <a href="{{ url_for('items.submit_item') }}" class="btn btn-primary btn-sm ms-md-2 mt-2 mt-md-0">Add new item</a>
+        <a href="{{ url_for('items.export_my_status_updates') }}" class="btn btn-outline-primary btn-sm">Export my
+            updates</a>
+        <a href="{{ url_for('items.submit_item') }}" class="btn btn-primary btn-sm ms-md-2 mt-2 mt-md-0">Add new
+            item</a>
     </div>
 </div>
 
@@ -123,11 +125,14 @@
     </div>
     <div class="row g-3">
         {% set ns = namespace(available_count=0, available_total=0, claimed_count=0, claimed_total=0, purchased_count=0,
-        purchased_total=0) %}
+        purchased_total=0, splitting_count=0, splitting_total=0) %}
         {% for row in summary_rows %}
         {% if row.status == 'Available' %}
         {% set ns.available_count = ns.available_count + row.count %}
         {% set ns.available_total = ns.available_total + row.total %}
+        {% elif row.status == 'Splitting' %}
+        {% set ns.splitting_count = ns.splitting_count + row.count %}
+        {% set ns.splitting_total = ns.splitting_total + row.total %}
         {% elif row.status == 'Claimed' %}
         {% set ns.claimed_count = ns.claimed_count + row.count %}
         {% set ns.claimed_total = ns.claimed_total + row.total %}
@@ -137,7 +142,7 @@
         {% endif %}
         {% endfor %}
 
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="stat-card stat-card-available">
                 <div class="stat-icon">🎯</div>
                 <div class="stat-content">
@@ -148,7 +153,19 @@
             </div>
         </div>
 
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-card-splitting"
+                style="border-left: 4px solid #0d6efd; background-color: rgba(13, 110, 253, 0.05);">
+                <div class="stat-icon">🤝</div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ ns.splitting_count }}</div>
+                    <div class="stat-label">Splitting</div>
+                    <div class="stat-secondary">${{ '%.0f'|format(ns.splitting_total) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
             <div class="stat-card stat-card-claimed">
                 <div class="stat-icon">🙋</div>
                 <div class="stat-content">
@@ -159,7 +176,7 @@
             </div>
         </div>
 
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="stat-card stat-card-purchased">
                 <div class="stat-icon">✅</div>
                 <div class="stat-content">
@@ -178,7 +195,8 @@
 <section class="mb-5">
     <div class="d-flex align-items-center mb-3">
         <h2 class="h4 mb-0">{{ group.user.name }}</h2>
-        <span class="badge bg-light text-dark ms-3">{{ group.items|length }} item{{ 's' if group.items|length != 1 else '' }}</span>
+        <span class="badge bg-light text-dark ms-3">{{ group.items|length }} item{{ 's' if group.items|length != 1 else
+            '' }}</span>
     </div>
     <div class="row">
         {% for item in group.items %}
