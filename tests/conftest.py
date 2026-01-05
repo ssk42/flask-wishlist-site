@@ -132,7 +132,11 @@ def browser_app(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def _clean_database(app):
+def _clean_database(app, request):
+    # Skip for async tests to prevent event loop conflicts
+    if 'asyncio' in request.keywords or request.node.get_closest_marker('asyncio'):
+        yield
+        return
     with app.app_context():
         cache.clear()
         yield
