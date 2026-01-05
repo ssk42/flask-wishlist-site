@@ -10,6 +10,7 @@ from collections import defaultdict
 
 import requests
 from bs4 import BeautifulSoup
+from services import price_cache, price_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def _get_session():
     return session
 
 
-from services import price_cache, price_metrics
+
 
 class CachedResponse:
     """Mock response object for cached content."""
@@ -471,13 +472,8 @@ def _extract_walmart_price_from_soup(soup):
                 except (json.JSONDecodeError, TypeError, ValueError):
                     pass
         return None
-    except Exception:
-        return None
-
-        return None
-
     except Exception as e:
-        logger.warning(f'Walmart price fetch failed for {url}: {str(e)}')
+        logger.warning(f'Walmart price extraction failed: {str(e)}')
         return None
 
 
@@ -642,11 +638,11 @@ def _extract_generic_price_from_soup(soup):
                     logger.info(f'Found price from class {selector}: ${price}')
                     return price
 
-        logger.warning(f'Could not find price on page: {url}')
+        logger.warning('Could not find price on page')
         return None
 
     except Exception as e:
-        logger.warning(f'Generic price fetch failed for {url}: {str(e)}')
+        logger.warning(f'Generic price extraction failed: {str(e)}')
         return None
 
 

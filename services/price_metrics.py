@@ -35,7 +35,7 @@ def log_extraction_attempt(url, success, price=None, method=None, error_type=Non
             
         log = PriceExtractionLog(
             domain=domain,
-            url=url[:2048], # Truncate to fit column
+            url=url[:2048],  # Truncate to fit column
             success=success,
             price=price,
             extraction_method=method,

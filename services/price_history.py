@@ -4,7 +4,7 @@ import logging
 import datetime
 from sqlalchemy import func
 from app import db
-from models import PriceHistory, Item
+from models import PriceHistory
 
 logger = logging.getLogger(__name__)
 

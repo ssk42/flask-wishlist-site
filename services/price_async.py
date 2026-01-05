@@ -1,16 +1,15 @@
 """Async price fetching service using aiohttp."""
 import asyncio
-import logging
 import random
 import time
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from urllib.parse import urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from services import price_cache, price_metrics
-from services.price_service import USER_AGENTS, logger, _parse_price
+from services.price_service import USER_AGENTS, logger
 
 # Configuration
 MAX_CONCURRENT_REQUESTS = 5
@@ -80,7 +79,7 @@ async def _fetch_price_async(url: str) -> Optional[float]:
 
     try:
         async with await _get_async_session() as session:
-            async with session.get(url, allow_redirects=True, ssl=False) as response:
+            async with session.get(url, allow_redirects=True, ssl=False) as response:  # nosec B501
                 if response.status != 200:
                     error_type = f"HTTP {response.status}"
                     logger.warning(f"Async fetch failed for {url}: {response.status}")

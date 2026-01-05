@@ -1,7 +1,6 @@
 """Redis caching layer for price crawler."""
 import hashlib
 import logging
-from flask import current_app
 from extensions import cache
 
 logger = logging.getLogger(__name__)
@@ -45,5 +44,5 @@ def cache_response(url, content):
 def _make_cache_key(url):
     """Generate a consistent cache key for a URL."""
     # Use MD5 of URL to ensure safe key characters and fixed length
-    url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+    url_hash = hashlib.sha256(url.encode('utf-8')).hexdigest()
     return f"price:html:{url_hash}"
