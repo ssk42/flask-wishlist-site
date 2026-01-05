@@ -248,7 +248,7 @@ class TestUpdateStalePrices:
                 stats = update_stale_prices(app, db, Item)
 
                 assert stats['items_processed'] == 0
-                mock_asyncio_run.assert_called_once()
+                mock_asyncio_run.assert_not_called()
 
     def test_update_stale_prices_handles_null_date(self, app, item_owner):
         """Should process items with NULL price_updated_at."""
