@@ -244,10 +244,11 @@ class TestUpdateStalePrices:
             db.session.commit()
 
             with patch('asyncio.run') as mock_asyncio_run:
+                mock_asyncio_run.side_effect = lambda coro: (coro.close(), {})[1]
                 stats = update_stale_prices(app, db, Item)
 
                 assert stats['items_processed'] == 0
-                mock_asyncio_run.assert_not_called()
+                mock_asyncio_run.assert_called_once()
 
     def test_update_stale_prices_handles_null_date(self, app, item_owner):
         """Should process items with NULL price_updated_at."""
@@ -265,7 +266,7 @@ class TestUpdateStalePrices:
             db.session.commit()
 
             with patch('asyncio.run') as mock_asyncio_run:
-                mock_asyncio_run.return_value = {"https://example.com/product": 29.99}
+                mock_asyncio_run.side_effect = lambda coro: (coro.close(), {"https://example.com/product": 29.99})[1]
 
                 stats = update_stale_prices(app, db, Item)
 
@@ -287,8 +288,11 @@ class TestUpdateStalePrices:
             db.session.commit()
 
             with patch('asyncio.run') as mock_asyncio_run:
-                # Mock raises exception
-                mock_asyncio_run.side_effect = Exception("Batch fetch error")
+                # Mock raises exception after closing coroutine
+                def mock_run(coro):
+                    coro.close()
+                    raise Exception("Batch fetch error")
+                mock_asyncio_run.side_effect = mock_run
 
                 stats = update_stale_prices(app, db, Item)
 
