@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
-    "alembic==1.17.2",
+    "alembic==1.18.0",
     "beautifulsoup4==4.14.3",
     "blinker==1.9.0",
     "click==8.3.1",
@@ -42,7 +42,7 @@ dependencies = [
     "sqlalchemy==2.0.45",
     "typing-extensions==4.15.0",
     "tzdata==2023.3",
-    "werkzeug==3.1.4",
+    "werkzeug==3.1.5",
     "whitenoise>=6.11.0",
     "sentry-sdk[flask]==1.39.1",
     "Flask-Limiter==3.5.0",
