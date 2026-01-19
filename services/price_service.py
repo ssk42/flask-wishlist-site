@@ -14,6 +14,26 @@ from services import price_cache, price_metrics
 
 logger = logging.getLogger(__name__)
 
+# Feature flag for stealth extraction
+AMAZON_STEALTH_ENABLED = True
+
+# Singleton identity manager (lazy initialized)
+_identity_manager = None
+
+
+def _get_identity_manager():
+    """Get or create the identity manager singleton."""
+    global _identity_manager
+    if _identity_manager is None:
+        try:
+            from extensions import redis_client
+            from services.amazon_stealth import IdentityManager
+            _identity_manager = IdentityManager(redis_client)
+        except Exception as e:
+            logger.warning(f"Could not initialize IdentityManager: {e}")
+            return None
+    return _identity_manager
+
 # Rotating user agents to reduce blocking
 USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -239,6 +259,51 @@ def _fetch_with_playwright(url):
 
 def _fetch_amazon_price(url):
     """Fetch price from Amazon product page.
+
+    Uses stealth extraction when AMAZON_STEALTH_ENABLED is True and identity
+    manager is available. Falls back to legacy extraction otherwise.
+
+    Note: Amazon actively blocks scraping. Stealth mode uses browser fingerprinting
+    rotation to improve success rates.
+    """
+    # Try stealth extraction if enabled
+    if AMAZON_STEALTH_ENABLED:
+        manager = _get_identity_manager()
+        if manager:
+            identity = manager.get_healthy_identity()
+            if identity:
+                try:
+                    from services.amazon_stealth import (
+                        stealth_fetch_amazon_sync,
+                        AmazonFailureType,
+                    )
+
+                    result = stealth_fetch_amazon_sync(url, identity, manager)
+
+                    if result.success:
+                        manager.mark_success(identity)
+                        return result.price
+                    elif result.failure_type == AmazonFailureType.CAPTCHA:
+                        manager.mark_burned(identity)
+                        logger.warning(f"Stealth extraction hit CAPTCHA for {url}, identity burned")
+                        return None
+                    else:
+                        # Other failures (no price found, rate limited, etc.)
+                        logger.warning(f"Stealth extraction failed ({result.failure_type}): {url}")
+                        return None
+                except Exception as e:
+                    logger.error(f"Stealth extraction error for {url}: {e}")
+                    # Fall through to legacy on unexpected errors
+            else:
+                logger.warning(f"All Amazon identities burned, skipping: {url}")
+                return None
+
+    # Fall back to legacy extraction
+    return _fetch_amazon_price_legacy(url)
+
+
+def _fetch_amazon_price_legacy(url):
+    """Legacy price extraction using requests/Playwright fallback.
 
     Note: Amazon actively blocks scraping. This function tries multiple approaches
     but may fail due to CAPTCHAs, bot detection, or page structure changes.
