@@ -10,12 +10,13 @@ from collections import defaultdict
 
 import requests
 from bs4 import BeautifulSoup
+from config import Config
 from services import price_cache, price_metrics
 
 logger = logging.getLogger(__name__)
 
-# Feature flag for stealth extraction
-AMAZON_STEALTH_ENABLED = True
+# Feature flag for stealth extraction (from config/environment)
+AMAZON_STEALTH_ENABLED = Config.AMAZON_STEALTH_ENABLED
 
 # Singleton identity manager (lazy initialized)
 _identity_manager = None

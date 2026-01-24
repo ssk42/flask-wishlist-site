@@ -96,6 +96,9 @@ class Config:
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     LOG_FILE = os.getenv('LOG_FILE', 'wishlist.log')
 
+    # Amazon stealth extraction settings
+    AMAZON_STEALTH_ENABLED = os.environ.get('AMAZON_STEALTH_ENABLED', 'true').lower() == 'true'
+
     # Security Headers (configured in app.py)
     SECURITY_HEADERS = {
         'X-Content-Type-Options': 'nosniff',
