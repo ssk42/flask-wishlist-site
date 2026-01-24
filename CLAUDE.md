@@ -152,6 +152,14 @@ The application prevents gift receivers from seeing who claimed/purchased their 
 - Production (Heroku): PostgreSQL via `DATABASE_URL` environment variable
 - Automatic postgres:// to postgresql:// URI conversion for Heroku compatibility
 
+#### Amazon Stealth Extraction
+The application uses stealth Playwright techniques for Amazon price extraction:
+- **Browser Identity Rotation**: 12 realistic browser profiles rotated every 10-20 requests
+- **Human-like Behavior**: Mouse movements, scrolling, natural delays
+- **Identity Burn Tracking**: Identities that trigger CAPTCHA are disabled for 24 hours
+- **Feature Flag**: Controlled via `AMAZON_STEALTH_ENABLED` environment variable
+- **Implementation**: `services/amazon_stealth/` module
+
 ### Testing Architecture
 - **Unit tests** (`tests/unit/`): Use Flask test client with temporary SQLite database
 - **Browser tests** (`tests/browser/`): Playwright-based end-to-end tests with live test server on port 5001
