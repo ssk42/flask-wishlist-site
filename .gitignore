@@ -116,3 +116,6 @@ test_output.txt
 test_run.log
 coverage.xml
 .coverage
+
+# Git worktrees
+.worktrees/
