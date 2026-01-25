@@ -1,46 +1,46 @@
 /* Main Stylesheet for Family Wishlist App */
 
 :root {
-    /* New Design System - Light Mode */
-    --primary-color: #06b6d4;
-    /* Teal - main brand */
-    --primary-hover: #0891b2;
-    --secondary-color: #0ea5e9;
-    /* Sky blue */
-    --accent-color: #f97316;
-    /* Coral - CTAs */
-    --accent-hover: #ea580c;
+    /* Warm Plum & Gold Design System - Light Mode */
+    --primary-color: #7c3aed;
+    /* Plum - sophisticated, gift-oriented */
+    --primary-hover: #6d28d9;
+    --secondary-color: #ec4899;
+    /* Rose - warm accent */
+    --accent-color: #f59e0b;
+    /* Gold - CTAs, celebrations */
+    --accent-hover: #d97706;
     --success-color: #10b981;
     /* Emerald */
     --danger-color: #ef4444;
     --warning-color: #f59e0b;
-    --info-color: #3b82f6;
+    --info-color: #6366f1;
+    /* Indigo */
 
-    /* Surfaces */
-    --background-color: #f1f5f9;
-    /* Slate 100 */
+    /* Surfaces - Warm Cream */
+    --background-color: #faf8f5;
     --surface-color: #ffffff;
     --surface-elevated: #ffffff;
 
-    /* Text */
-    --text-primary: #0f172a;
-    /* Slate 900 */
-    --text-secondary: #64748b;
-    /* Slate 500 */
-    --text-muted: #94a3b8;
-    /* Slate 400 */
+    /* Text - Warm Neutrals */
+    --text-primary: #1c1917;
+    /* Stone 900 */
+    --text-secondary: #57534e;
+    /* Stone 600 */
+    --text-muted: #a8a29e;
+    /* Stone 400 */
 
     /* Borders & Effects */
-    --border-color: #e2e8f0;
-    --glass-bg: rgba(255, 255, 255, 0.8);
-    --glass-border: rgba(255, 255, 255, 0.3);
+    --border-color: #e7e5e4;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(124, 58, 237, 0.1);
     --glass-blur: 12px;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-glow: 0 0 20px rgba(6, 182, 212, 0.15);
+    /* Shadows with warm tint */
+    --shadow-sm: 0 1px 2px 0 rgba(28, 25, 23, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(28, 25, 23, 0.08), 0 2px 4px -1px rgba(28, 25, 23, 0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(28, 25, 23, 0.1), 0 4px 6px -2px rgba(28, 25, 23, 0.05);
+    --shadow-glow: 0 0 30px rgba(124, 58, 237, 0.15);
 
     /* Radii */
     --radius-sm: 0.375rem;
@@ -52,51 +52,79 @@
     /* Sidebar */
     --sidebar-width: 72px;
     --sidebar-expanded: 240px;
+
+    /* Typography */
+    --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
 }
 
-/* Dark Mode - The Primary Experience */
+/* Dark Mode - Warm Plum & Gold */
 [data-theme="dark"] {
-    --primary-color: #22d3ee;
-    /* Cyan 400 */
-    --primary-hover: #06b6d4;
-    --secondary-color: #38bdf8;
-    --accent-color: #fb923c;
-    /* Orange 400 */
-    --accent-hover: #f97316;
+    --primary-color: #a78bfa;
+    /* Light Plum */
+    --primary-hover: #8b5cf6;
+    --secondary-color: #f472b6;
+    /* Light Rose */
+    --accent-color: #fbbf24;
+    /* Bright Gold */
+    --accent-hover: #f59e0b;
     --success-color: #34d399;
     --danger-color: #f87171;
     --warning-color: #fbbf24;
-    --info-color: #60a5fa;
+    --info-color: #818cf8;
 
-    /* Surfaces - Deep Navy */
-    --background-color: #0f172a;
-    /* Slate 900 */
-    --surface-color: #1e293b;
-    /* Slate 800 */
-    --surface-elevated: #334155;
-    /* Slate 700 */
+    /* Surfaces - Deep Warm Gray */
+    --background-color: #1c1917;
+    /* Stone 900 */
+    --surface-color: #292524;
+    /* Stone 800 */
+    --surface-elevated: #44403c;
+    /* Stone 700 */
 
     /* Text */
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-primary: #fafaf9;
+    --text-secondary: #a8a29e;
+    --text-muted: #78716c;
 
     /* Borders & Effects */
-    --border-color: #334155;
-    --glass-bg: rgba(30, 41, 59, 0.8);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --border-color: #44403c;
+    --glass-bg: rgba(41, 37, 36, 0.85);
+    --glass-border: rgba(167, 139, 250, 0.15);
     --glass-blur: 16px;
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 30px rgba(34, 211, 238, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 40px rgba(167, 139, 250, 0.25);
 }
 
 /* Base Styles */
 * {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-body);
+}
+
+/* Display Typography for Headings */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6,
+.display-1, .display-2, .display-3, .display-4, .display-5, .display-6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+/* Hero and gradient text uses display font */
+.gradient-text,
+.hero-glass h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+/* Stat values use display font for impact */
+.stat-value {
+    font-family: var(--font-display);
 }
 
 html {
@@ -108,6 +136,47 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     transition: background-color 0.3s ease, color 0.3s ease;
+    position: relative;
+}
+
+/* Background Atmosphere - Gradient Mesh */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 58, 237, 0.06), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(245, 158, 11, 0.04), transparent);
+    pointer-events: none;
+    z-index: -2;
+}
+
+/* Background Atmosphere - Subtle Noise Texture */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.02;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Dark mode background adjustments */
+[data-theme="dark"] body::before {
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167, 139, 250, 0.1), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(251, 191, 36, 0.06), transparent);
+}
+
+[data-theme="dark"] body::after {
+    opacity: 0.03;
 }
 
 /* Skip to content link for accessibility */
@@ -516,7 +585,7 @@ body {
 
 /* Gradient Text */
 .gradient-text {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--accent-color) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -568,6 +637,220 @@ body {
 
     100% {
         background-position: 200% 0;
+    }
+}
+
+/* ============================================
+   ENTRANCE ANIMATIONS
+   ============================================ */
+
+/* Slide up with fade - primary entrance */
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scale up entrance */
+@keyframes scaleUp {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Pop entrance for CTAs */
+@keyframes popIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Stagger utility - uses CSS custom property for delay */
+.stagger-item {
+    animation: slideUpFade 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: calc(var(--stagger-index, 0) * 0.06s);
+    opacity: 0;
+}
+
+/* Pop animation for buttons */
+.animate-pop {
+    animation: popIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+/* Hero-specific animation */
+.hero-entrance {
+    animation: slideUpFade 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+.hero-entrance-delayed {
+    animation: slideUpFade 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+    opacity: 0;
+}
+
+/* Stat cards cascade */
+.stat-cascade {
+    animation: scaleUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+.stat-cascade:nth-child(1) { animation-delay: 0.1s; }
+.stat-cascade:nth-child(2) { animation-delay: 0.15s; }
+.stat-cascade:nth-child(3) { animation-delay: 0.2s; }
+.stat-cascade:nth-child(4) { animation-delay: 0.25s; }
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .stagger-item,
+    .animate-pop,
+    .hero-entrance,
+    .hero-entrance-delayed,
+    .stat-cascade {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ============================================
+   CELEBRATION EFFECTS
+   ============================================ */
+
+/* Confetti container */
+.confetti-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+/* Individual confetti pieces */
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    opacity: 0;
+}
+
+.confetti--animation {
+    animation: confetti-fall 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes confetti-fall {
+    0% {
+        opacity: 1;
+        transform: translateY(-20px) translateX(0) rotate(0deg) scale(1);
+    }
+    25% {
+        opacity: 1;
+        transform: translateY(25vh) translateX(calc(var(--confetti-drift, 0px) * 0.3)) rotate(180deg) scale(0.9);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(50vh) translateX(calc(var(--confetti-drift, 0px) * 0.6)) rotate(360deg) scale(0.8);
+    }
+    75% {
+        opacity: 0.5;
+        transform: translateY(75vh) translateX(calc(var(--confetti-drift, 0px) * 0.8)) rotate(540deg) scale(0.6);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(100vh) translateX(var(--confetti-drift, 0px)) rotate(720deg) scale(0.4);
+    }
+}
+
+/* Confetti shapes */
+.confetti--circle { border-radius: 50%; }
+.confetti--square { border-radius: 2px; }
+.confetti--triangle {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 10px solid currentColor;
+    background: transparent !important;
+}
+
+/* Success pulse on buttons */
+@keyframes successPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+.btn-success-pulse {
+    animation: successPulse 0.6s ease-out;
+}
+
+/* Card celebration glow */
+@keyframes celebrationGlow {
+    0% {
+        box-shadow: var(--shadow-lg);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.4), 0 0 60px rgba(16, 185, 129, 0.2);
+    }
+    100% {
+        box-shadow: var(--shadow-lg);
+    }
+}
+
+.card-celebrating {
+    animation: celebrationGlow 1s ease-out;
+}
+
+/* Status change micro-interaction */
+@keyframes statusChange {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.status-changed {
+    animation: statusChange 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .confetti--animation,
+    .btn-success-pulse,
+    .card-celebrating,
+    .status-changed {
+        animation: none;
     }
 }
 

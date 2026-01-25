@@ -142,7 +142,7 @@
         {% endif %}
         {% endfor %}
 
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-available">
                 <div class="stat-icon">🎯</div>
                 <div class="stat-content">
@@ -153,7 +153,7 @@
             </div>
         </div>
 
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-splitting"
                 style="border-left: 4px solid #0d6efd; background-color: rgba(13, 110, 253, 0.05);">
                 <div class="stat-icon">🤝</div>
@@ -165,7 +165,7 @@
             </div>
         </div>
 
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-claimed">
                 <div class="stat-icon">🙋</div>
                 <div class="stat-content">
@@ -176,7 +176,7 @@
             </div>
         </div>
 
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-purchased">
                 <div class="stat-icon">✅</div>
                 <div class="stat-content">
@@ -200,7 +200,9 @@
     </div>
     <div class="row">
         {% for item in group.items %}
-        {% include 'partials/_item_card.html' %}
+        <div style="--stagger-index: {{ loop.index0 }};">
+            {% include 'partials/_item_card.html' %}
+        </div>
         {% endfor %}
     </div>
 </section>
