@@ -61,7 +61,8 @@ async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
     """Fetch multiple prices concurrently using asyncio.
     
     Amazon URLs are routed through the stealth extractor when enabled.
-    Other URLs use standard aiohttp fetching.
+    Amazon stealth requests run SEQUENTIALLY (one at a time) to reduce memory usage.
+    Other URLs use standard aiohttp fetching concurrently.
     """
     results = {}
     
@@ -69,7 +70,7 @@ async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
     amazon_urls = [url for url in urls if url and _is_amazon_url(url)]
     other_urls = [url for url in urls if url and not _is_amazon_url(url)]
     
-    # We'll use a semaphore to limit concurrency
+    # We'll use a semaphore to limit concurrency for standard requests
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
     
     async def fetch_one_standard(url: str):
@@ -79,54 +80,55 @@ async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
             await asyncio.sleep(random.uniform(0.1, 1.0))
             price = await _fetch_price_async_standard(url)
             return url, price
-    
-    async def fetch_one_amazon(url: str, identity, manager):
-        """Fetch Amazon URL using stealth extractor."""
-        async with semaphore:
-            # Add more jitter for Amazon to avoid rate limits
-            await asyncio.sleep(random.uniform(0.5, 2.0))
-            price = await _fetch_amazon_stealth(url, identity, manager)
-            return url, price
 
     try:
-        # Handle non-Amazon URLs with standard fetching
+        # Handle non-Amazon URLs with standard fetching (concurrent)
         standard_tasks = [fetch_one_standard(url) for url in other_urls]
         
-        # Handle Amazon URLs with stealth extraction if enabled
-        amazon_tasks = []
+        if standard_tasks:
+            completed = await asyncio.gather(*standard_tasks, return_exceptions=True)
+            for result in completed:
+                if isinstance(result, Exception):
+                    logger.error(f"Async batch error: {result}")
+                    continue
+                if isinstance(result, tuple) and len(result) == 2:
+                    url, price = result
+                    results[url] = price
+        
+        # Handle Amazon URLs with stealth extraction SEQUENTIALLY (one at a time)
+        # This prevents memory exhaustion from multiple Playwright browsers
         if amazon_urls and AMAZON_STEALTH_ENABLED:
             manager = _get_identity_manager()
             if manager:
+                logger.info(f"Processing {len(amazon_urls)} Amazon URLs sequentially via stealth extraction")
                 for url in amazon_urls:
                     identity = manager.get_healthy_identity()
                     if identity:
-                        amazon_tasks.append(fetch_one_amazon(url, identity, manager))
+                        # Add jitter between requests
+                        await asyncio.sleep(random.uniform(1.0, 3.0))
+                        price = await _fetch_amazon_stealth(url, identity, manager)
+                        results[url] = price
                     else:
                         logger.warning(f"No healthy identity available for {url}")
-                        # Return None for this URL
                         results[url] = None
             else:
                 logger.warning("IdentityManager not available, skipping Amazon stealth extraction")
-                # Fall back to standard fetching for Amazon URLs
-                amazon_tasks = [fetch_one_standard(url) for url in amazon_urls]
+                # Fall back to standard fetching for Amazon URLs (likely to fail)
+                for url in amazon_urls:
+                    async with semaphore:
+                        await asyncio.sleep(random.uniform(0.1, 1.0))
+                        price = await _fetch_price_async_standard(url)
+                        results[url] = price
         elif amazon_urls:
             # Stealth not enabled, use standard fetching (likely to fail)
             logger.info("Amazon stealth disabled, using standard fetch for Amazon URLs")
-            amazon_tasks = [fetch_one_standard(url) for url in amazon_urls]
+            for url in amazon_urls:
+                async with semaphore:
+                    await asyncio.sleep(random.uniform(0.1, 1.0))
+                    price = await _fetch_price_async_standard(url)
+                    results[url] = price
         
-        all_tasks = standard_tasks + amazon_tasks
-        if not all_tasks:
-            return results
-            
-        completed = await asyncio.gather(*all_tasks, return_exceptions=True)
-        
-        for result in completed:
-            if isinstance(result, Exception):
-                logger.error(f"Async batch error: {result}")
-                continue
-            if isinstance(result, tuple) and len(result) == 2:
-                url, price = result
-                results[url] = price
+        return results
                 
     except Exception as e:
         logger.error(f"Global async batch failure: {e}")
