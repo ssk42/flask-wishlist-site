@@ -61,22 +61,19 @@ class Config:
     # Caching (Item 12)
     CACHE_TYPE = 'RedisCache' if os.getenv('REDIS_URL') else 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 300
+    CACHE_REDIS_URL = os.getenv('REDIS_URL')
 
+    # Heroku Redis uses self-signed certs - disable SSL verification for cache
     @staticmethod
-    def get_cache_redis_url():
-        """Get cache Redis URL with SSL fix for Heroku."""
-        uri = os.getenv('REDIS_URL')
-        if not uri:
-            return None
-        # Heroku Redis uses self-signed certificates, so we must ignore validation
-        if uri.startswith('rediss://') and 'ssl_cert_reqs' not in uri:
-            if '?' in uri:
-                uri += '&ssl_cert_reqs=none'
-            else:
-                uri += '?ssl_cert_reqs=none'
-        return uri
+    def get_cache_options():
+        """Get cache options with SSL fix for Heroku Redis."""
+        uri = os.getenv('REDIS_URL', '')
+        if uri.startswith('rediss://'):
+            import ssl
+            return {'ssl_cert_reqs': ssl.CERT_NONE}
+        return {}
 
-    CACHE_REDIS_URL = get_cache_redis_url.__func__()
+    CACHE_OPTIONS = get_cache_options.__func__()
 
     # Rate Limiting
     @staticmethod
