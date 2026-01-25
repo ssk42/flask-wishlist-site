@@ -41,7 +41,8 @@ class TestMyClaimsPage:
         assert response.status_code == 302
         assert '/login' in response.location
 
-    def test_my_claims_shows_claimed_items(self, app, client, login_claimer, recipient):
+    def test_my_claims_shows_claimed_items(
+            self, app, client, login_claimer, recipient):
         """My Claims page should show items the user has claimed for others."""
         with app.app_context():
             # Create an item owned by recipient and claimed by claimer
@@ -60,7 +61,8 @@ class TestMyClaimsPage:
         assert b'Test Claimed Item' in response.data
         assert b'For Recipient' in response.data
 
-    def test_my_claims_shows_purchased_items(self, app, client, login_claimer, recipient):
+    def test_my_claims_shows_purchased_items(
+            self, app, client, login_claimer, recipient):
         """My Claims page should show items the user has purchased for others."""
         with app.app_context():
             item = Item(
@@ -77,7 +79,8 @@ class TestMyClaimsPage:
         assert response.status_code == 200
         assert b'Test Purchased Item' in response.data
 
-    def test_my_claims_does_not_show_own_items(self, app, client, login_claimer):
+    def test_my_claims_does_not_show_own_items(
+            self, app, client, login_claimer):
         """My Claims page should not show user's own items even if claimed status."""
         with app.app_context():
             item = Item(
@@ -93,11 +96,14 @@ class TestMyClaimsPage:
         assert response.status_code == 200
         assert b'My Own Item' not in response.data
 
-    def test_my_claims_groups_by_recipient(self, app, client, login_claimer, recipient):
+    def test_my_claims_groups_by_recipient(
+            self, app, client, login_claimer, recipient):
         """Items should be grouped by recipient."""
         with app.app_context():
             # Create another recipient
-            recipient2 = User(name="Recipient2", email="recipient2@example.com")
+            recipient2 = User(
+                name="Recipient2",
+                email="recipient2@example.com")
             db.session.add(recipient2)
             db.session.commit()
             recipient2_id = recipient2.id
@@ -122,14 +128,31 @@ class TestMyClaimsPage:
         assert b'For Recipient' in response.data
         assert b'For Recipient2' in response.data
 
-    def test_my_claims_badge_count(self, app, client, login_claimer, recipient):
+    def test_my_claims_badge_count(
+            self,
+            app,
+            client,
+            login_claimer,
+            recipient):
         """Badge should show count of claimed (not purchased) items."""
         with app.app_context():
             # Create 2 claimed and 1 purchased items
             items = [
-                Item(description="Claimed 1", user_id=recipient, status="Claimed", last_updated_by_id=login_claimer),
-                Item(description="Claimed 2", user_id=recipient, status="Claimed", last_updated_by_id=login_claimer),
-                Item(description="Purchased", user_id=recipient, status="Purchased", last_updated_by_id=login_claimer),
+                Item(
+                    description="Claimed 1",
+                    user_id=recipient,
+                    status="Claimed",
+                    last_updated_by_id=login_claimer),
+                Item(
+                    description="Claimed 2",
+                    user_id=recipient,
+                    status="Claimed",
+                    last_updated_by_id=login_claimer),
+                Item(
+                    description="Purchased",
+                    user_id=recipient,
+                    status="Purchased",
+                    last_updated_by_id=login_claimer),
             ]
             db.session.add_all(items)
             db.session.commit()
@@ -143,7 +166,8 @@ class TestMyClaimsPage:
 class TestDashboardWidget:
     """Tests for the dashboard widget on index page."""
 
-    def test_dashboard_shows_when_has_claims(self, app, client, login_claimer, recipient):
+    def test_dashboard_shows_when_has_claims(
+            self, app, client, login_claimer, recipient):
         """Dashboard should show claimed/purchased counts when user has claims."""
         with app.app_context():
             item = Item(
@@ -172,7 +196,8 @@ class TestDashboardWidget:
 class TestNavbarBadge:
     """Tests for the My Claims navbar badge."""
 
-    def test_navbar_badge_shows_claimed_count(self, app, client, login_claimer, recipient):
+    def test_navbar_badge_shows_claimed_count(
+            self, app, client, login_claimer, recipient):
         """Navbar should show badge with count of claimed items."""
         with app.app_context():
             item = Item(

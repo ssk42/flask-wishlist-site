@@ -1,7 +1,4 @@
 """Tests for Amazon stealth extractor."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from dataclasses import dataclass
 
 from services.amazon_stealth.extractor import (
     ExtractionResult,

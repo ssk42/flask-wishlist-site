@@ -100,7 +100,8 @@ def test_filter_items_by_status(page, live_server):
     # Claim the second item from dashboard
     page.goto(f"{live_server}/")
     item_card = page.locator(f'.glass-card:has-text("{claimed_item}")')
-    claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
+    claim_button = item_card.locator(
+        'button.btn-outline-primary:has-text("Claim")')
     claim_button.click()
 
     # Wait for HTMX update

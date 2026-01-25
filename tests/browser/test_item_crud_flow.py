@@ -136,16 +136,16 @@ def test_edit_item_updates_fields(page, live_server):
     # Navigate to items page and get edit link
     page.goto(f"{live_server}/items")
     page.wait_for_load_state('networkidle')
-    
+
     # Get the item ID from the edit link
     item_card = page.locator(f'.glass-card:has-text("{original_desc}")')
     edit_link = item_card.locator('a:has-text("Edit")')
     edit_href = edit_link.get_attribute('href')
-    
+
     # Navigate directly to edit page
     page.goto(f"{live_server}{edit_href}")
     page.wait_for_load_state('networkidle')
-    
+
     # Wait for the form to be fully loaded
     form = page.locator('form.glass-card')
     expect(form).to_be_visible()
@@ -154,17 +154,18 @@ def test_edit_item_updates_fields(page, live_server):
     updated_desc = f"Updated Item {uuid.uuid4().hex[:8]}"
     form.locator('input[name="description"]').fill(updated_desc)
     form.locator('input[name="price"]').fill("75.00")
-    
+
     # Click the submit button within the form (DOM-based approach)
     submit_button = form.locator('button[type="submit"]')
     expect(submit_button).to_be_visible()
-    
+
     with page.expect_navigation():
         submit_button.click()
 
     # Verify we're on the items page and the updated description appears
     assert "/items" in page.url
-    expect(page.locator(f'.glass-card:has-text("{updated_desc}")')).to_be_visible()
+    expect(page.locator(
+        f'.glass-card:has-text("{updated_desc}")')).to_be_visible()
 
 
 def test_edit_item_other_user_cannot_edit_unless_claimed(page, live_server):

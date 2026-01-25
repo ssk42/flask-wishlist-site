@@ -4,21 +4,29 @@ from models import PriceHistory, Item, User
 from services.price_history import record_price_history, get_price_history_stats
 from app import db
 
+
 class TestPriceHistory:
     @pytest.fixture(autouse=True)
     def setup(self, app):
         self.app = app
         self.db = db
-        
+
         # Create test user and item
         with self.app.app_context():
-            user = User(name='HistoryTestUser', email='history@test.com', is_private=False)
+            user = User(
+                name='HistoryTestUser',
+                email='history@test.com',
+                is_private=False)
             self.db.session.add(user)
             self.db.session.commit()
             self.user_id = user.id
-            
-            # Use instance attribute to properly store the item ID for retrieval later
-            new_item = Item(description='Test Item', user_id=user.id, price=100.0)
+
+            # Use instance attribute to properly store the item ID for
+            # retrieval later
+            new_item = Item(
+                description='Test Item',
+                user_id=user.id,
+                price=100.0)
             self.db.session.add(new_item)
             self.db.session.commit()
             self.item_id = new_item.id
@@ -26,8 +34,9 @@ class TestPriceHistory:
     def test_record_price_history_initial(self):
         """Test recording initial price history."""
         with self.app.app_context():
-            result = record_price_history(self.item_id, 100.0, source='initial')
-            
+            result = record_price_history(
+                self.item_id, 100.0, source='initial')
+
             assert result is True
             history = PriceHistory.query.filter_by(item_id=self.item_id).all()
             assert len(history) == 1
@@ -38,10 +47,10 @@ class TestPriceHistory:
         """Test that duplicate price within 6 hours is ignored."""
         with self.app.app_context():
             record_price_history(self.item_id, 100.0)
-            
+
             # Try recording same price immediately
             result = record_price_history(self.item_id, 100.0)
-            
+
             assert result is False
             history = PriceHistory.query.filter_by(item_id=self.item_id).all()
             assert len(history) == 1
@@ -50,12 +59,14 @@ class TestPriceHistory:
         """Test that price change is recorded regardless of time."""
         with self.app.app_context():
             record_price_history(self.item_id, 100.0)
-            
+
             # Update price
             result = record_price_history(self.item_id, 90.0)
-            
+
             assert result is True
-            history = PriceHistory.query.filter_by(item_id=self.item_id).order_by(PriceHistory.recorded_at.desc()).all()
+            history = PriceHistory.query.filter_by(
+                item_id=self.item_id).order_by(
+                PriceHistory.recorded_at.desc()).all()
             assert len(history) == 2
             assert history[0].price == 90.0
 
@@ -65,16 +76,16 @@ class TestPriceHistory:
             # Create old record manually
             old_time = datetime.now(timezone.utc) - timedelta(hours=7)
             old_record = PriceHistory(
-                item_id=self.item_id, 
-                price=100.0, 
+                item_id=self.item_id,
+                price=100.0,
                 recorded_at=old_time
             )
             self.db.session.add(old_record)
             self.db.session.commit()
-            
+
             # Record same price now
             result = record_price_history(self.item_id, 100.0)
-            
+
             assert result is True
             history = PriceHistory.query.filter_by(item_id=self.item_id).all()
             assert len(history) == 2
@@ -86,9 +97,9 @@ class TestPriceHistory:
             record_price_history(self.item_id, 100.0)
             record_price_history(self.item_id, 80.0)
             record_price_history(self.item_id, 120.0)
-            
+
             stats = get_price_history_stats(self.item_id, days=7)
-            
+
             assert stats['min'] == 80.0
             assert stats['max'] == 120.0
             assert stats['avg'] == 100.0
@@ -98,13 +109,13 @@ class TestPriceHistory:
         # Add history within app context
         with self.app.app_context():
             record_price_history(self.item_id, 50.0)
-        
+
         # Login
         with client.session_transaction() as sess:
             sess['_user_id'] = str(self.user_id)
-            
+
         response = client.get(f'/api/items/{self.item_id}/price-history')
-        
+
         assert response.status_code == 200
         data = response.get_json()
         assert data['item_id'] == self.item_id
@@ -117,7 +128,7 @@ class TestPriceHistory:
         with self.app.app_context():
             result = record_price_history(self.item_id, None)
             assert result is False
-            
+
             # No history should be added
             history = PriceHistory.query.filter_by(item_id=self.item_id).all()
             assert len(history) == 0
@@ -127,7 +138,7 @@ class TestPriceHistory:
         with self.app.app_context():
             result = record_price_history(self.item_id, -10.0)
             assert result is False
-            
+
             # No history should be added
             history = PriceHistory.query.filter_by(item_id=self.item_id).all()
             assert len(history) == 0

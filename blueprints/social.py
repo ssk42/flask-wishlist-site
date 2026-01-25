@@ -1,6 +1,8 @@
 """Social blueprint for comments and notifications."""
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import (
+    Blueprint, render_template, request, redirect, url_for, flash, jsonify
+)
 from flask_login import login_required, current_user
 
 from models import db, User, Item, Comment, Notification
@@ -37,7 +39,8 @@ def add_comment(item_id):
     ).distinct().all()
 
     for recipient in previous_commenters:
-        msg = f"{current_user.name} commented on an item for {item.user.name}: {item.description[:30]}..."
+        msg = (f"{current_user.name} commented on an item for "
+               f"{item.user.name}: {item.description[:30]}...")
         link = url_for('items.items_list', _anchor=f'item-{item.id}')
         notif = Notification(user_id=recipient.id, message=msg, link=link)
         db.session.add(notif)
@@ -60,7 +63,8 @@ def notifications():
 @login_required
 def mark_notification_read(notif_id):
     """Mark a notification as read."""
-    notif = Notification.query.filter_by(id=notif_id, user_id=current_user.id).first_or_404()
+    notif = Notification.query.filter_by(
+        id=notif_id, user_id=current_user.id).first_or_404()
     notif.is_read = True
     db.session.commit()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

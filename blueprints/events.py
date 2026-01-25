@@ -1,7 +1,10 @@
 """Events blueprint for event management."""
 
 import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app
+from flask import (
+    Blueprint, render_template, request, redirect, url_for, flash, abort,
+    current_app
+)
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 
@@ -22,9 +25,16 @@ def events_list():
         joinedload(Event.items)
     )
 
-    upcoming_events = base_query.filter(Event.date >= today).order_by(Event.date.asc()).all()
-    past_events = base_query.filter(Event.date < today).order_by(Event.date.desc()).all()
-    return render_template('events.html', upcoming_events=upcoming_events, past_events=past_events)
+    upcoming_events = base_query.filter(
+        Event.date >= today).order_by(
+        Event.date.asc()).all()
+    past_events = base_query.filter(
+        Event.date < today).order_by(
+        Event.date.desc()).all()
+    return render_template(
+        'events.html',
+        upcoming_events=upcoming_events,
+        past_events=past_events)
 
 
 @bp.route('/new', methods=['GET', 'POST'])
@@ -37,17 +47,24 @@ def new_event():
 
         if not name:
             flash('Event name is required.', 'danger')
-            return render_template('event_form.html', form_data=request.form.to_dict())
+            return render_template(
+                'event_form.html',
+                form_data=request.form.to_dict())
 
         if not date_str:
             flash('Event date is required.', 'danger')
-            return render_template('event_form.html', form_data=request.form.to_dict())
+            return render_template(
+                'event_form.html',
+                form_data=request.form.to_dict())
 
         try:
-            event_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+            event_date = datetime.datetime.strptime(
+                date_str, '%Y-%m-%d').date()
         except ValueError:
             flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
-            return render_template('event_form.html', form_data=request.form.to_dict())
+            return render_template(
+                'event_form.html',
+                form_data=request.form.to_dict())
 
         new_event = Event(
             name=name,
@@ -56,7 +73,8 @@ def new_event():
         )
         db.session.add(new_event)
         db.session.commit()
-        current_app.logger.info(f'Event created by user_id={current_user.id}: {name}')
+        current_app.logger.info(
+            f'Event created by user_id={current_user.id}: {name}')
         flash(f'Event "{name}" created successfully!', 'success')
         return redirect(url_for('events.events_list'))
 
@@ -81,17 +99,27 @@ def edit_event(event_id):
 
         if not name:
             flash('Event name is required.', 'danger')
-            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
+            return render_template(
+                'event_form.html',
+                event=event,
+                form_data=request.form.to_dict())
 
         if not date_str:
             flash('Event date is required.', 'danger')
-            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
+            return render_template(
+                'event_form.html',
+                event=event,
+                form_data=request.form.to_dict())
 
         try:
-            event_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+            event_date = datetime.datetime.strptime(
+                date_str, '%Y-%m-%d').date()
         except ValueError:
             flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
-            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
+            return render_template(
+                'event_form.html',
+                event=event,
+                form_data=request.form.to_dict())
 
         event.name = name
         event.date = event_date

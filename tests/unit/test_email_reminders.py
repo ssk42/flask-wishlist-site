@@ -1,6 +1,6 @@
 """Tests for the email reminder functionality."""
 import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import pytest
 from models import db, User, Event, Item
 
@@ -146,4 +146,5 @@ class TestSendRemindersCommand:
         """CLI command should be registered."""
         # Verify the command is registered
         from app import app as flask_app
-        assert 'send-reminders' in [cmd.name for cmd in flask_app.cli.commands.values()]
+        assert 'send-reminders' in [
+            cmd.name for cmd in flask_app.cli.commands.values()]

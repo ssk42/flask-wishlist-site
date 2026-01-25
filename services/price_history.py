@@ -8,15 +8,19 @@ from models import PriceHistory
 
 logger = logging.getLogger(__name__)
 
-def record_price_history(item_id: int, price: float, source: str = 'auto') -> bool:
+
+def record_price_history(
+        item_id: int,
+        price: float,
+        source: str = 'auto') -> bool:
     """
     Record a price point for an item.
-    
+
     Logic:
     - If no history exists, record.
     - If price changed > $0.01 from last record, record.
-    - If price is same but last record > 6 hours old, record (to show liveness).
-    
+    - If price is same but last record > 6 hours old, record for liveness.
+
     Returns:
         bool: True if a new record was added, False otherwise.
     """
@@ -30,13 +34,16 @@ def record_price_history(item_id: int, price: float, source: str = 'auto') -> bo
             .first()
 
         should_record = False
-        
+
         if not last_record:
             should_record = True
         else:
             price_diff = abs(last_record.price - price)
-            time_diff = datetime.datetime.now(datetime.timezone.utc) - last_record.recorded_at.replace(tzinfo=datetime.timezone.utc)
-            
+            now = datetime.datetime.now(datetime.timezone.utc)
+            last_time = last_record.recorded_at.replace(
+                tzinfo=datetime.timezone.utc)
+            time_diff = now - last_time
+
             # Record if price changed significantly (more than 1 cent)
             if price_diff > 0.01:
                 should_record = True
@@ -53,9 +60,11 @@ def record_price_history(item_id: int, price: float, source: str = 'auto') -> bo
             )
             db.session.add(history)
             db.session.commit()
-            logger.info(f"Recorded price history for item {item_id}: ${price} ({source})")
+            logger.info(
+                f"Recorded price history for item {item_id}: "
+                f"${price} ({source})")
             return True
-            
+
         return False
 
     except Exception as e:
@@ -63,12 +72,14 @@ def record_price_history(item_id: int, price: float, source: str = 'auto') -> bo
         db.session.rollback()
         return False
 
+
 def get_price_history_stats(item_id: int, days: int = 90):
     """
     Get price history statistics (min, max, avg) for an item.
     """
-    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
-    
+    cutoff = datetime.datetime.now(
+        datetime.timezone.utc) - datetime.timedelta(days=days)
+
     try:
         stats = db.session.query(
             func.min(PriceHistory.price),
@@ -78,7 +89,7 @@ def get_price_history_stats(item_id: int, days: int = 90):
             PriceHistory.item_id == item_id,
             PriceHistory.recorded_at >= cutoff
         ).first()
-        
+
         if stats and stats[0] is not None:
             return {
                 'min': float(stats[0]),
@@ -87,7 +98,7 @@ def get_price_history_stats(item_id: int, days: int = 90):
                 'period_days': days
             }
         return None
-        
+
     except Exception as e:
         logger.error(f"Failed to get history stats for item {item_id}: {e}")
         return None

@@ -1,5 +1,4 @@
 """Tests for forgot email functionality."""
-import pytest
 from models import User, db
 
 

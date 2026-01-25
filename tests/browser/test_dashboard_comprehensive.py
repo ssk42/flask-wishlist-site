@@ -63,7 +63,8 @@ def test_dashboard_hides_own_items(page, live_server):
     # Dashboard should not show own items (shows other users' items only)
     page.goto(f"{live_server}/")
     # The item should not be visible on dashboard since it's the user's own
-    expect(page.locator(f'.glass-card:has-text("{item_desc}")')).not_to_be_visible()
+    expect(page.locator(
+        f'.glass-card:has-text("{item_desc}")')).not_to_be_visible()
 
 
 def test_dashboard_quick_view_modal(page, live_server):
@@ -128,9 +129,11 @@ def test_dashboard_navbar_links(page, live_server):
 
     # Check sidebar links (text is inside .sidebar-link-text spans)
     expect(page.locator('.sidebar-link-text:has-text("Home")').first).to_be_visible()
-    expect(page.locator('.sidebar-link-text:has-text("All Gifts")').first).to_be_visible()
+    expect(page.locator(
+        '.sidebar-link-text:has-text("All Gifts")').first).to_be_visible()
     expect(page.locator('.sidebar-link-text:has-text("Events")').first).to_be_visible()
-    expect(page.locator('.sidebar-link-text:has-text("My Claims")').first).to_be_visible()
+    expect(page.locator(
+        '.sidebar-link-text:has-text("My Claims")').first).to_be_visible()
 
 
 def test_dashboard_shows_priority_badges(page, live_server):

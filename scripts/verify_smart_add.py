@@ -8,7 +8,7 @@ urls = [
     # Generic (GitHub - has OG tags)
     "https://github.com/microsoft/playwright-python",
     # Amazon (from previous logs)
-    "https://www.amazon.com/dp/B08JWGFKF2/", 
+    "https://www.amazon.com/dp/B08JWGFKF2/",
 ]
 
 for url in urls:

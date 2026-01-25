@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 PRIORITY_CHOICES = ['High', 'Medium', 'Low']
 STATUS_CHOICES = ['Available', 'Claimed', 'Purchased', 'Received', 'Splitting']
 
-# Load environment variables from .env file (skip if in pytest to allow test overrides)
+# Load environment variables from .env file (skip if in pytest to allow
+# test overrides)
 if 'pytest' not in os.getenv('_', '').lower():
     load_dotenv()
 
@@ -24,7 +25,7 @@ class Config:
 
     # SQLAlchemy
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
+
     # Database Connection Pooling (Item 13)
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_size": 10,
@@ -37,14 +38,16 @@ class Config:
     WTF_CSRF_ENABLED = True
 
     # Session
-    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+    SESSION_COOKIE_SECURE = os.getenv(
+        'SESSION_COOKIE_SECURE',
+        'False').lower() == 'true'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 
     # Database
     @staticmethod
     def get_database_uri():
-        """Get database URI with postgres:// to postgresql:// conversion for Heroku."""
+        """Get database URI with postgres:// to postgresql:// fix."""
         uri = os.getenv('DATABASE_URL')
         if uri:
             # Heroku uses postgres://, SQLAlchemy requires postgresql://
@@ -53,11 +56,13 @@ class Config:
             return uri
         return None
 
-    SQLALCHEMY_DATABASE_URI = get_database_uri.__func__() or 'sqlite:///wishlist.db'
+    SQLALCHEMY_DATABASE_URI = (
+        get_database_uri.__func__() or 'sqlite:///wishlist.db'
+    )
 
     # Redis (for future caching)
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-    
+
     # Caching (Item 12)
     # Temporarily disabled RedisCache due to Heroku Redis SSL issues
     # TODO: Fix Redis SSL cert validation for cachelib
@@ -67,16 +72,18 @@ class Config:
     # Rate Limiting
     @staticmethod
     def get_ratelimit_storage_uri():
-        """Get rate limit storage URI, defaulting to Heroku Redis if available."""
-        uri = os.getenv('RATELIMIT_STORAGE_URI') or os.getenv('REDIS_TLS_URL') or os.getenv('REDIS_URL') or 'memory://'
-        
-        # Heroku Redis uses self-signed certificates, so we must ignore validition
+        """Get rate limit storage URI, defaulting to Heroku Redis."""
+        uri = os.getenv('RATELIMIT_STORAGE_URI') or os.getenv(
+            'REDIS_TLS_URL') or os.getenv('REDIS_URL') or 'memory://'
+
+        # Heroku Redis uses self-signed certificates, so we must ignore
+        # validition
         if uri and uri.startswith('rediss://') and 'ssl_cert_reqs' not in uri:
             if '?' in uri:
                 uri += '&ssl_cert_reqs=none'
             else:
                 uri += '?ssl_cert_reqs=none'
-        
+
         return uri
 
     RATELIMIT_STORAGE_URI = get_ratelimit_storage_uri.__func__()
@@ -88,8 +95,10 @@ class Config:
     MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@wishlist.app')
-    
+    MAIL_DEFAULT_SENDER = os.getenv(
+        'MAIL_DEFAULT_SENDER',
+        'noreply@wishlist.app')
+
     # Sentry
     SENTRY_DSN = os.getenv('SENTRY_DSN')
 
@@ -98,7 +107,8 @@ class Config:
     LOG_FILE = os.getenv('LOG_FILE', 'wishlist.log')
 
     # Amazon stealth extraction settings
-    AMAZON_STEALTH_ENABLED = os.environ.get('AMAZON_STEALTH_ENABLED', 'true').lower() == 'true'
+    AMAZON_STEALTH_ENABLED = os.environ.get(
+        'AMAZON_STEALTH_ENABLED', 'true').lower() == 'true'
 
     # Security Headers (configured in app.py)
     SECURITY_HEADERS = {
@@ -137,10 +147,10 @@ class TestingConfig(Config):
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
     }
-    
+
     # Disable Rate Limiting for testing
     RATELIMIT_ENABLED = False
-    
+
     # Use SimpleCache (memory) for tests
     CACHE_TYPE = 'SimpleCache'
     CACHE_REDIS_URL = None
@@ -158,7 +168,14 @@ class ProductionConfig(Config):
     # Stricter security headers for production
     SECURITY_HEADERS = {
         **Config.SECURITY_HEADERS,
-        'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https:;",
+        'Content-Security-Policy': (
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net "
+            "https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https:;"
+        ),
     }
 
 

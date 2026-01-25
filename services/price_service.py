@@ -35,13 +35,19 @@ def _get_identity_manager():
             return None
     return _identity_manager
 
+
 # Rotating user agents to reduce blocking
 USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+     '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+    ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+     '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+    ('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) '
+     'Gecko/20100101 Firefox/121.0'),
+    ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 '
+     '(KHTML, like Gecko) Version/17.2 Safari/605.1.15'),
+    ('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+     '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
 ]
 
 # Rate limiting: minimum seconds between requests
@@ -59,7 +65,10 @@ def _get_session():
     session = requests.Session()
     session.headers.update({
         'User-Agent': random.choice(USER_AGENTS),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept': (
+            'text/html,application/xhtml+xml,application/xml;q=0.9,'
+            'image/avif,image/webp,image/apng,*/*;q=0.8'
+        ),
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
@@ -73,19 +82,19 @@ def _get_session():
     return session
 
 
-
-
 class CachedResponse:
     """Mock response object for cached content."""
+
     def __init__(self, text, status_code=200):
         self.text = text
         self.content = text.encode('utf-8')
         self.status_code = status_code
         self.ok = True
         self.url = ""
-        
+
     def raise_for_status(self):
         pass
+
 
 def _make_request(url, session=None, retries=MAX_RETRIES):
     """Make a request with retry logic and caching."""
@@ -101,24 +110,28 @@ def _make_request(url, session=None, retries=MAX_RETRIES):
 
     for attempt in range(retries + 1):
         try:
-            response = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            response = session.get(
+                url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
             response.raise_for_status()
-            
+
             # Cache successful responses (if text content)
             if response.ok and response.text:
                 price_cache.cache_response(url, response.text)
-                
+
             return response
         except requests.RequestException as e:
             if attempt < retries:
                 wait_time = (attempt + 1) * 2 + random.uniform(0, 1)
-                logger.info(f'Retry {attempt + 1}/{retries} for {url} after {wait_time:.1f}s')
+                logger.info(
+                    f'Retry {attempt + 1}/{retries} for {url} '
+                    f'after {wait_time:.1f}s')
                 time.sleep(wait_time)
                 # Get a fresh session with new user agent
                 session = _get_session()
             else:
                 logger.warning(f'All retries failed for {url}: {str(e)}')
-                # Don't raise, return None so callers can handle or try fallback
+                # Don't raise, return None so callers can handle or try
+                # fallback
                 return None
     return None
 
@@ -164,9 +177,9 @@ def fetch_price(url):
     finally:
         duration_ms = int((time.time() - start_time) * 1000)
         price_metrics.log_extraction_attempt(
-            url=url, 
-            success=success, 
-            price=price, 
+            url=url,
+            success=success,
+            price=price,
             error_type=error_type,
             response_time_ms=duration_ms
         )
@@ -203,7 +216,7 @@ def fetch_metadata(url):
             if data:
                 metadata.update(data)
             return metadata
-        
+
         # Generic approach for other sites
         data = _fetch_generic_metadata(url)
         if data:
@@ -228,21 +241,28 @@ def _fetch_with_playwright(url):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             # Create a context with realistic browser attributes
+            ua = (
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/120.0.0.0 Safari/537.36'
+            )
             context = browser.new_context(
-                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                viewport={'width': 1280, 'height': 800},
+                user_agent=ua,
+                viewport={
+                    'width': 1280,
+                    'height': 800},
                 device_scale_factor=2,
             )
             page = context.new_page()
-            
+
             # Stealthier navigation
             try:
                 page.goto(url, timeout=30000, wait_until='domcontentloaded')
                 # Wait a bit for JS to execute (many sites render price via JS)
                 page.wait_for_timeout(2000)
-                
+
                 content = page.content()
-                
+
                 # Cache the content
                 if content:
                     price_cache.cache_response(url, content)
@@ -251,11 +271,10 @@ def _fetch_with_playwright(url):
                 return soup
             finally:
                 browser.close()
-                
+
     except Exception as e:
         logger.error(f"Playwright fetch failed for {url}: {e}")
         return None
-
 
 
 def _fetch_amazon_price(url):
@@ -264,7 +283,7 @@ def _fetch_amazon_price(url):
     Uses stealth extraction when AMAZON_STEALTH_ENABLED is True and identity
     manager is available. Falls back to legacy extraction otherwise.
 
-    Note: Amazon actively blocks scraping. Stealth mode uses browser fingerprinting
+    Note: Amazon actively blocks scraping. Stealth mode uses fingerprinting
     rotation to improve success rates.
     """
     # Try stealth extraction if enabled
@@ -286,17 +305,24 @@ def _fetch_amazon_price(url):
                         return result.price
                     elif result.failure_type == AmazonFailureType.CAPTCHA:
                         manager.mark_burned(identity)
-                        logger.warning(f"Stealth extraction hit CAPTCHA for {url}, identity burned")
+                        logger.warning(
+                            f"Stealth extraction hit CAPTCHA for {url}, "
+                            "identity burned")
                         return None
                     else:
                         # Other failures (no price found, rate limited, etc.)
-                        logger.warning(f"Stealth extraction failed ({result.failure_type}): {url}")
+                        logger.warning(
+                            f"Stealth extraction failed "
+                            f"({result.failure_type}): {url}")
                         return None
                 except Exception as e:
-                    logger.error(f"Stealth extraction error for {url}: {e}")
+                    logger.error(
+                        f"Stealth extraction error for {url}: {e}")
                     # Fall through to legacy on unexpected errors
             else:
-                logger.warning(f"All Amazon identities burned, skipping: {url}")
+                logger.warning(
+                    f"All Amazon identities burned, "
+                    f"skipping: {url}")
                 return None
 
     # Fall back to legacy extraction
@@ -306,9 +332,9 @@ def _fetch_amazon_price(url):
 def _fetch_amazon_price_legacy(url):
     """Legacy price extraction using requests/Playwright fallback.
 
-    Note: Amazon actively blocks scraping. This function tries multiple approaches
-    but may fail due to CAPTCHAs, bot detection, or page structure changes.
-    For reliable Amazon pricing, consider using the Amazon Product Advertising API.
+    Note: Amazon actively blocks scraping. This function tries multiple
+    approaches but may fail due to CAPTCHAs, bot detection, or page
+    structure changes. Consider using the Amazon Product Advertising API.
     """
     try:
         session = _get_session()
@@ -321,15 +347,20 @@ def _fetch_amazon_price_legacy(url):
 
         response = _make_request(url, session)
         if not response:
-            logger.warning(f'Amazon request failed (possible bot detection): {url}')
+            logger.warning(
+                f'Amazon request failed (possible bot detection): '
+                f'{url}')
             return None
 
         # Check if we got a CAPTCHA or robot check page
-        if 'captcha' in response.text.lower() or 'robot check' in response.text.lower():
-            logger.warning(f'Amazon returned CAPTCHA/robot check page via requests, trying Playwright: {url}')
+        lower_text = response.text.lower()
+        if 'captcha' in lower_text or 'robot check' in lower_text:
+            logger.warning(
+                f'Amazon returned CAPTCHA/robot check page via requests, '
+                f'trying Playwright: {url}')
             soup = _fetch_with_playwright(url)
             if soup:
-                 return _extract_amazon_price_from_soup(soup)
+                return _extract_amazon_price_from_soup(soup)
             return None
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -337,6 +368,7 @@ def _fetch_amazon_price_legacy(url):
     except Exception as e:
         logger.warning(f'Amazon price fetch failed for {url}: {str(e)}')
         return None
+
 
 def _extract_amazon_price_from_soup(soup):
     """Extract price from Amazon BeautifulSoup object."""
@@ -346,7 +378,8 @@ def _extract_amazon_price_from_soup(soup):
         if price_elem:
             price = _parse_price(price_elem.get('data-asin-price'))
             if price and price > 0:
-                logger.info(f'Found Amazon price from data-asin-price: ${price}')
+                logger.info(
+                    f'Found Amazon price from data-asin-price: ${price}')
                 return price
 
         # Second try: Extensive list of Amazon price selectors
@@ -361,7 +394,7 @@ def _extract_amazon_price_from_soup(soup):
             '.priceToPay .a-offscreen',
             '.reinventPricePriceToPayMargin .a-offscreen',
             # Book specific
-            '#price', 
+            '#price',
             '.header-price',
             # Legacy selectors
             '#priceblock_ourprice',
@@ -376,24 +409,23 @@ def _extract_amazon_price_from_soup(soup):
             '.a-color-price',
             'span[data-a-color="price"] .a-offscreen',
         ]
-        
+
         for selector in price_selectors:
             price_elem = soup.select_one(selector)
             if price_elem:
                 price = _parse_price(price_elem.get_text())
                 if price and price > 0:
-                     logger.info(f'Found Amazon price: ${price}')
-                     return price
+                    logger.info(f'Found Amazon price: ${price}')
+                    return price
 
         # Third try: Extract from embedded JavaScript data
         price = _extract_amazon_price_from_scripts(soup)
         if price:
             return price
-            
+
         return None
     except Exception:
         return None
-
 
 
 def _extract_amazon_price_from_scripts(soup):
@@ -423,8 +455,6 @@ def _extract_amazon_price_from_scripts(soup):
     return None
 
 
-
-
 def _extract_target_price_from_soup(soup):
     """Helper to extract Target price from a BeautifulSoup object."""
     try:
@@ -451,6 +481,7 @@ def _extract_target_price_from_soup(soup):
     except Exception:
         return None
 
+
 def _fetch_target_price(url):
     """Fetch price from Target product page."""
     try:
@@ -459,20 +490,20 @@ def _fetch_target_price(url):
         response = _make_request(url)
         if response:
             soup = BeautifulSoup(response.text, 'html.parser')
-            
+
             # Check for bot block
             if "Access Denied" in soup.title.string if soup.title else "":
                 logger.warning(f"Target blocked requests for {url}")
             else:
-                 price = _extract_target_price_from_soup(soup)
-                 if price: 
-                     return price
+                price = _extract_target_price_from_soup(soup)
+                if price:
+                    return price
 
         # Fallback to Playwright if everything else failed
         logger.info(f"Trying Target fallback via Playwright for {url}")
         soup = _fetch_with_playwright(url)
         if soup:
-             return _extract_target_price_from_soup(soup)
+            return _extract_target_price_from_soup(soup)
 
         return None
 
@@ -493,6 +524,7 @@ def _fetch_walmart_price(url):
     except Exception as e:
         logger.warning(f'Walmart price fetch failed for {url}: {str(e)}')
         return None
+
 
 def _extract_walmart_price_from_soup(soup):
     """Extract price from Walmart BeautifulSoup object."""
@@ -530,7 +562,8 @@ def _extract_walmart_price_from_soup(soup):
                     if price_info:
                         current = price_info.get('currentPrice', {})
                         if isinstance(current, dict):
-                            price = current.get('price') or current.get('priceValue')
+                            price = current.get(
+                                'price') or current.get('priceValue')
                         else:
                             price = current
                         if price:
@@ -555,6 +588,7 @@ def _fetch_bestbuy_price(url):
     except Exception as e:
         logger.warning(f'Best Buy price fetch failed for {url}: {str(e)}')
         return None
+
 
 def _extract_bestbuy_price_from_soup(soup):
     """Extract price from Best Buy BeautifulSoup object."""
@@ -597,6 +631,7 @@ def _fetch_etsy_price(url):
         logger.warning(f'Etsy price fetch failed for {url}: {str(e)}')
         return None
 
+
 def _extract_etsy_price_from_soup(soup):
     """Extract price from Etsy BeautifulSoup object."""
     try:
@@ -611,7 +646,8 @@ def _extract_etsy_price_from_soup(soup):
         for selector in selectors:
             elem = soup.select_one(selector)
             if elem:
-                price_text = elem.get('data-buy-box-listing-price') or elem.get_text()
+                price_text = elem.get(
+                    'data-buy-box-listing-price') or elem.get_text()
                 price = _parse_price(price_text)
                 if price and price > 0:
                     logger.info(f'Found Etsy price: ${price}')
@@ -628,7 +664,7 @@ def _extract_etsy_price_from_soup(soup):
 
 
 def _fetch_generic_price(url):
-    """Try to fetch price from a generic product page using multiple strategies."""
+    """Try to fetch price from a generic product page."""
     try:
         response = _make_request(url)
         if not response:
@@ -639,6 +675,7 @@ def _fetch_generic_price(url):
     except Exception as e:
         logger.warning(f'Generic price fetch failed for {url}: {str(e)}')
         return None
+
 
 def _extract_generic_price_from_soup(soup):
     """Extract price from generic page using standard strategies."""
@@ -674,7 +711,6 @@ def _extract_generic_price_from_soup(soup):
             if price and price > 0:
                 logger.info(f'Found price from microdata: ${price}')
                 return price
-        
 
         # Strategy 4: Common CSS class patterns
         price_classes = [
@@ -698,9 +734,12 @@ def _extract_generic_price_from_soup(soup):
         for selector in price_classes:
             elements = soup.select(selector)
             for element in elements:
-                price_text = element.get('data-price') or element.get('content') or element.get_text(strip=True)
+                price_text = (element.get('data-price') or
+                              element.get('content') or
+                              element.get_text(strip=True))
                 price = _parse_price(price_text)
-                if price is not None and price > 0 and price < 100000:  # Sanity check
+                # Sanity check
+                if price is not None and 0 < price < 100000:
                     logger.info(f'Found price from class {selector}: ${price}')
                     return price
 
@@ -815,7 +854,10 @@ def _parse_price(price_text):
 
     # Handle price ranges - take the first/lower price
     if ' - ' in price_text or ' to ' in price_text.lower():
-        price_text = re.split(r'\s*[-–]\s*|\s+to\s+', price_text, flags=re.IGNORECASE)[0]
+        price_text = re.split(
+            r'\s*[-–]\s*|\s+to\s+',
+            price_text,
+            flags=re.IGNORECASE)[0]
 
     # Remove currency symbols, letters, and extra whitespace
     cleaned = re.sub(r'[^\d.,\s]', '', price_text).strip()
@@ -855,11 +897,10 @@ def _parse_price(price_text):
         return None
 
 
-
 def _fetch_amazon_metadata(url):
     """Fetch all metadata from Amazon."""
     metadata = {}
-    
+
     # Try requests first
     try:
         session = _get_session()
@@ -870,27 +911,32 @@ def _fetch_amazon_metadata(url):
             'DNT': '1',
         })
         response = _make_request(url, session)
-        
+
         soup = None
-        if response and 'captcha' not in response.text.lower() and 'robot check' not in response.text.lower():
-             soup = BeautifulSoup(response.text, 'html.parser')
+        if response and 'captcha' not in response.text.lower(
+        ) and 'robot check' not in response.text.lower():
+            soup = BeautifulSoup(response.text, 'html.parser')
         else:
-            logger.warning(f'Amazon CAPTCHA detected, switching to Playwright for metadata: {url}')
+            logger.warning(
+                f'Amazon CAPTCHA detected, switching to Playwright '
+                f'for metadata: {url}')
             soup = _fetch_with_playwright(url)
-            
+
         if soup:
             # Title
-            title_elem = soup.select_one('#productTitle') or soup.select_one('#title')
+            title_elem = soup.select_one(
+                '#productTitle') or soup.select_one('#title')
             if title_elem:
                 metadata['title'] = title_elem.get_text(strip=True)
-                
+
             # Price
             price = _extract_amazon_price_from_soup(soup)
             if price:
                 metadata['price'] = price
-                
+
             # Image
-            img_elem = soup.select_one('#landingImage') or soup.select_one('#imgBlkFront')
+            img_elem = soup.select_one(
+                '#landingImage') or soup.select_one('#imgBlkFront')
             if img_elem:
                 # Try to get high res from data attribute
                 if img_elem.get('data-a-dynamic-image'):
@@ -898,8 +944,9 @@ def _fetch_amazon_metadata(url):
                         data = json.loads(img_elem['data-a-dynamic-image'])
                         if data:
                             # Get the largest image key
-                            metadata['image_url'] = max(data.keys(), key=lambda k: data[k][0])
-                    except:
+                            metadata['image_url'] = max(
+                                data.keys(), key=lambda k: data[k][0])
+                    except BaseException:
                         pass
                 if not metadata.get('image_url'):
                     metadata['image_url'] = img_elem.get('src')
@@ -908,7 +955,7 @@ def _fetch_amazon_metadata(url):
 
     except Exception as e:
         logger.warning(f"Error fetching Amazon metadata: {e}")
-    
+
     return metadata
 
 
@@ -919,9 +966,9 @@ def _fetch_generic_metadata(url):
         response = _make_request(url)
         if not response:
             return None
-            
+
         soup = BeautifulSoup(response.text, 'html.parser')
-        
+
         # 1. OpenGraph Tags
         og_mapping = {
             'og:title': 'title',
@@ -930,7 +977,7 @@ def _fetch_generic_metadata(url):
             'og:price:amount': 'price',
             'product:price:amount': 'price'
         }
-        
+
         for prop, key in og_mapping.items():
             elem = soup.find('meta', property=prop)
             if elem and elem.get('content'):
@@ -954,23 +1001,32 @@ def _fetch_generic_metadata(url):
             if price_elem:
                 val = price_elem.get('content') or price_elem.get_text()
                 price = _parse_price(val)
-                if price: metadata['price'] = price
+                if price:
+                    metadata['price'] = price
 
             # CSS Classes
             if not metadata.get('price'):
                 price_classes = [
-                    '.product-price', '.price', '.current-price', '.sale-price', 
-                    '.product__price', '[data-price]', '.price-value', '.ProductPrice'
-                ]
+                    '.product-price',
+                    '.price',
+                    '.current-price',
+                    '.sale-price',
+                    '.product__price',
+                    '[data-price]',
+                    '.price-value',
+                    '.ProductPrice']
                 for selector in price_classes:
                     elements = soup.select(selector)
                     for element in elements:
-                        val = element.get('data-price') or element.get('content') or element.get_text(strip=True)
+                        val = (element.get('data-price') or
+                               element.get('content') or
+                               element.get_text(strip=True))
                         price = _parse_price(val)
                         if price and price > 0:
                             metadata['price'] = price
                             break
-                    if metadata.get('price'): break
+                    if metadata.get('price'):
+                        break
 
         # 4. Image Fallback
         if not metadata.get('image_url'):
@@ -992,8 +1048,8 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
         app: Flask application instance
         db: SQLAlchemy database instance
         Item: Item model class
-        Notification: Notification model class (optional, for price drop alerts)
-        force_all: If True, update all items with links regardless of last update time
+        Notification: Notification model class (optional, for alerts)
+        force_all: If True, update all items with links ignoring last update
 
     Returns:
         Dictionary with counts of items processed, updated, and errors
@@ -1018,8 +1074,12 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
             Item.price_updated_at < seven_days_ago
         ).count()
 
-        logger.info(f'Price update diagnostics: total_items={total_items}, items_with_links={items_with_links}, '
-                    f'never_updated={items_never_updated}, stale={items_stale}, cutoff_date={seven_days_ago}, force_all={force_all}')
+        logger.info(
+            f'Price update diagnostics: total={total_items}, '
+            f'with_links={items_with_links}, '
+            f'never_updated={items_never_updated}, '
+            f'stale={items_stale}, cutoff={seven_days_ago}, '
+            f'force={force_all}')
 
         # Find items with links that need updating
         # Find items with links that need updating
@@ -1036,12 +1096,13 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
             logger.info('No items to update')
             return stats
 
-        # Collect URLs mapped to items (handle duplicates if any, though unlikely to fetch same URL twice ideally)
+        # Collect URLs mapped to items (handle duplicates if any, though
+        # unlikely to fetch same URL twice ideally)
         url_to_items = defaultdict(list)
         for item in items:
             if item.link:
                 url_to_items[item.link].append(item)
-        
+
         urls = list(url_to_items.keys())
         logger.info(f"Starting async batch update for {len(urls)} URLs")
 
@@ -1049,52 +1110,58 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
             from services import price_async
             from services.price_history import record_price_history
             import asyncio
-            
+
             # Run async fetch
             results = asyncio.run(price_async.fetch_prices_batch(urls))
-            
+
             # Process results
             for url, new_price in results.items():
                 items_for_url = url_to_items.get(url, [])
-                
+
                 for item in items_for_url:
                     stats['items_processed'] += 1
-                    
+
                     if new_price is not None:
                         old_price = item.price
                         item.price = new_price
-                        item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
-                        
+                        item.price_updated_at = datetime.datetime.now(
+                            datetime.timezone.utc)
+
                         # Record history
                         record_price_history(item.id, new_price, source='auto')
-                        
+
                         if old_price != new_price:
-                             stats['prices_updated'] += 1
-                             # Check for significant price drop (≥10%)
-                             if Notification and old_price and new_price < old_price:
-                                drop_percent = ((old_price - new_price) / old_price) * 100
+                            stats['prices_updated'] += 1
+                            # Check for significant price drop (≥10%)
+                            if (Notification and old_price and
+                                    new_price < old_price):
+                                drop_percent = (
+                                    (old_price - new_price) / old_price) * 100
                                 if drop_percent >= 10:
                                     stats['price_drops'] += 1
                                     _create_price_drop_notifications(
-                                        item, old_price, new_price, drop_percent, db, Notification
-                                    )
+                                        item, old_price, new_price,
+                                        drop_percent, db, Notification)
                     else:
-                        # Update timestamp to avoid repeatedly trying failed URLs immediately (set to now)
-                        item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
-            
+                        # Update timestamp to avoid repeatedly trying failed
+                        # URLs immediately (set to now)
+                        item.price_updated_at = datetime.datetime.now(
+                            datetime.timezone.utc)
+
             # Commit all changes
             db.session.commit()
-            
+
             # Handle items that failed (not in results)
             # Use timestamp update so we don't retry them immediately next run
             failed_urls = set(urls) - set(results.keys())
             if failed_urls:
                 for url in failed_urls:
                     for item in url_to_items[url]:
-                        item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
+                        item.price_updated_at = datetime.datetime.now(
+                            datetime.timezone.utc)
                 db.session.commit()
                 stats['errors'] += len(failed_urls)
-                
+
         except Exception as e:
             logger.error(f"Batch update failed: {e}")
             db.session.rollback()
@@ -1104,34 +1171,52 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
         return stats
 
 
-def _create_price_drop_notifications(item, old_price, new_price, drop_percent, db, Notification):
+def _create_price_drop_notifications(
+        item,
+        old_price,
+        new_price,
+        drop_percent,
+        db,
+        Notification):
     """Create notifications for significant price drops.
-    
+
     Notifies:
     - Item owner
     - User who claimed the item (if any, and not the owner)
     """
     # Notification for owner
-    owner_message = f"🎉 Price drop! '{item.description[:50]}' is now ${new_price:.2f} (was ${old_price:.2f}) - {drop_percent:.0f}% off!"
+    owner_message = (
+        f"🎉 Price drop! '{item.description[:50]}' is now "
+        f"${new_price:.2f} (was ${old_price:.2f}) - {drop_percent:.0f}% off!"
+    )
     owner_notif = Notification(
         message=owner_message,
         link=f"/items?user_filter={item.user_id}",
         user_id=item.user_id
     )
     db.session.add(owner_notif)
-    logger.info(f'Created price drop notification for owner (user_id={item.user_id})')
-    
+    logger.info(
+        f'Created price drop notification for owner '
+        f'(user_id={item.user_id})')
+
     # Notification for claimer (if different from owner)
-    if item.last_updated_by_id and item.last_updated_by_id != item.user_id and item.status in ['Claimed', 'Purchased']:
-        claimer_message = f"💰 Price drop on '{item.description[:50]}' you claimed! Now ${new_price:.2f} (was ${old_price:.2f})"
+    claimer_id = item.last_updated_by_id
+    if (claimer_id and claimer_id != item.user_id and
+            item.status in ['Claimed', 'Purchased']):
+        claimer_message = (
+            f"💰 Price drop on '{item.description[:50]}' you claimed! "
+            f"Now ${new_price:.2f} (was ${old_price:.2f})"
+        )
         claimer_notif = Notification(
             message=claimer_message,
             link="/my-claims",
             user_id=item.last_updated_by_id
         )
         db.session.add(claimer_notif)
-        logger.info(f'Created price drop notification for claimer (user_id={item.last_updated_by_id})')
-    
+        logger.info(
+            f'Created price drop notification for claimer '
+            f'(user_id={item.last_updated_by_id})')
+
     db.session.commit()
 
 
@@ -1141,7 +1226,7 @@ def get_items_needing_update(Item, db, cutoff_date, force_all=False):
         Item.link.isnot(None),
         Item.link != ''
     )
-    
+
     if not force_all:
         query = query.filter(
             db.or_(
@@ -1149,10 +1234,10 @@ def get_items_needing_update(Item, db, cutoff_date, force_all=False):
                 Item.price_updated_at < cutoff_date
             )
         )
-        
+
     # Potential future optimization: order by priority/staleness
     # query = query.order_by(Item.price_updated_at.asc())
-    
+
     return query.all()
 
 
@@ -1176,11 +1261,11 @@ def refresh_item_price(item, db):
             old_price = item.price
             item.price = new_price
             item.price_updated_at = datetime.datetime.now()
-            
+
             # Record history
             from services.price_history import record_price_history
             record_price_history(item.id, new_price, source='manual')
-            
+
             db.session.commit()
 
             if old_price is None:
@@ -1188,7 +1273,9 @@ def refresh_item_price(item, db):
             elif abs(old_price - new_price) < 0.01:
                 return True, new_price, 'Price confirmed (no change)'
             else:
-                return True, new_price, f'Price updated from ${old_price:.2f} to ${new_price:.2f}'
+                msg = (f'Price updated from ${old_price:.2f} '
+                       f'to ${new_price:.2f}')
+                return True, new_price, msg
         else:
             # Update timestamp even if fetch failed
             item.price_updated_at = datetime.datetime.now()

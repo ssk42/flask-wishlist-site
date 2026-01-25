@@ -99,7 +99,7 @@ def test_notification_generated_on_comment(page, live_server):
     page.goto(f"{live_server}/notifications")
     page.wait_for_load_state('networkidle')
     page.wait_for_timeout(500)  # Extra wait for DOM to settle
-    
+
     # Check that there's at least one notification about a comment
     # The notification list should not show "No notifications yet"
     expect(page.locator('.list-group-item').first).to_be_visible()

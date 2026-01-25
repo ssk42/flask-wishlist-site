@@ -175,7 +175,8 @@ class TestRefreshItemPrice:
             assert updated_item.price_updated_at is not None
 
     @patch('services.price_service.fetch_price')
-    def test_refresh_price_updates_timestamp(self, mock_fetch, app, item_owner):
+    def test_refresh_price_updates_timestamp(
+            self, mock_fetch, app, item_owner):
         """Should update price_updated_at timestamp."""
         from services.price_service import refresh_item_price
         mock_fetch.return_value = 25.00
@@ -205,7 +206,8 @@ class TestUpdateStalePrices:
         from services.price_service import update_stale_prices
 
         with app.app_context():
-            old_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=10)
+            old_date = datetime.datetime.now(
+                datetime.timezone.utc) - datetime.timedelta(days=10)
 
             item = Item(
                 description="Stale Item",
@@ -219,7 +221,8 @@ class TestUpdateStalePrices:
 
             with patch('asyncio.run') as mock_asyncio_run:
                 # Mock returns dict of url -> price
-                mock_asyncio_run.return_value = {"https://example.com/product": 19.99}
+                mock_asyncio_run.return_value = {
+                    "https://example.com/product": 19.99}
 
                 stats = update_stale_prices(app, db, Item)
 
@@ -231,7 +234,8 @@ class TestUpdateStalePrices:
         from services.price_service import update_stale_prices
 
         with app.app_context():
-            recent_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+            recent_date = datetime.datetime.now(
+                datetime.timezone.utc) - datetime.timedelta(days=1)
 
             item = Item(
                 description="Fresh Item",
@@ -244,7 +248,8 @@ class TestUpdateStalePrices:
             db.session.commit()
 
             with patch('asyncio.run') as mock_asyncio_run:
-                mock_asyncio_run.side_effect = lambda coro: (coro.close(), {})[1]
+                mock_asyncio_run.side_effect = lambda coro: (coro.close(), {})[
+                    1]
                 stats = update_stale_prices(app, db, Item)
 
                 assert stats['items_processed'] == 0
@@ -266,7 +271,8 @@ class TestUpdateStalePrices:
             db.session.commit()
 
             with patch('asyncio.run') as mock_asyncio_run:
-                mock_asyncio_run.side_effect = lambda coro: (coro.close(), {"https://example.com/product": 29.99})[1]
+                mock_asyncio_run.side_effect = lambda coro: (
+                    coro.close(), {"https://example.com/product": 29.99})[1]
 
                 stats = update_stale_prices(app, db, Item)
 
@@ -296,7 +302,8 @@ class TestUpdateStalePrices:
 
                 stats = update_stale_prices(app, db, Item)
 
-                # When batch fetch fails entirely, all items are marked as errors
+                # When batch fetch fails entirely, all items are marked as
+                # errors
                 assert stats['errors'] >= 1
 
 
@@ -325,12 +332,19 @@ class TestRefreshPriceRoute:
             db.session.commit()
             item_id = item.id
 
-        response = client.post(f'/item/{item_id}/refresh-price', follow_redirects=True)
+        response = client.post(
+            f'/item/{item_id}/refresh-price',
+            follow_redirects=True)
         assert response.status_code == 200
         assert b'no link' in response.data.lower()
 
     @patch('services.price_service.refresh_item_price')
-    def test_refresh_price_success(self, mock_refresh, app, client, login_owner):
+    def test_refresh_price_success(
+            self,
+            mock_refresh,
+            app,
+            client,
+            login_owner):
         """Should show success message when price is updated."""
         mock_refresh.return_value = (True, 49.99, "Price updated")
 
@@ -344,7 +358,9 @@ class TestRefreshPriceRoute:
             db.session.commit()
             item_id = item.id
 
-        response = client.post(f'/item/{item_id}/refresh-price', follow_redirects=True)
+        response = client.post(
+            f'/item/{item_id}/refresh-price',
+            follow_redirects=True)
         assert response.status_code == 200
 
 

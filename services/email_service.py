@@ -29,8 +29,9 @@ def send_email(to, subject, template_name, **kwargs):
         msg = Message(
             subject=subject,
             recipients=[to],
-            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@wishlist.app')
-        )
+            sender=current_app.config.get(
+                'MAIL_DEFAULT_SENDER',
+                'noreply@wishlist.app'))
 
         # Render both HTML and plain text versions
         msg.html = render_template(f'email/{template_name}.html', **kwargs)
@@ -44,7 +45,12 @@ def send_email(to, subject, template_name, **kwargs):
         return False
 
 
-def send_event_reminder(user_email, user_name, event_name, event_date, claimed_items):
+def send_event_reminder(
+        user_email,
+        user_name,
+        event_name,
+        event_date,
+        claimed_items):
     """Send a reminder email about claimed items for an upcoming event.
 
     Args:

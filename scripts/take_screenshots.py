@@ -3,6 +3,7 @@
 Screenshot capture script for README documentation.
 Run this against the live Heroku app or local dev server.
 """
+from playwright.sync_api import sync_playwright
 import os
 import sys
 from pathlib import Path
@@ -11,10 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from playwright.sync_api import sync_playwright
 
 # Configuration
-BASE_URL = os.getenv("SCREENSHOT_URL", "https://reitz-wishlist-d7ae3288f979.herokuapp.com")
+BASE_URL = os.getenv(
+    "SCREENSHOT_URL",
+    "https://reitz-wishlist-d7ae3288f979.herokuapp.com")
 SCREENSHOTS_DIR = ROOT / "docs" / "screenshots"
 SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 

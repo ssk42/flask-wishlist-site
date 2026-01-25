@@ -1,21 +1,22 @@
 
 import pytest
-from app import create_app
 from models import db, User
+
 
 @pytest.fixture
 def auth_app(app):
     """Reuse the session-scoped app but configure for auth testing."""
     old_pw = app.config.get('FAMILY_PASSWORD')
     app.config['FAMILY_PASSWORD'] = 'testsecret'
-    
+
     yield app
-    
+
     # Cleanup config
     if old_pw:
         app.config['FAMILY_PASSWORD'] = old_pw
     else:
         app.config.pop('FAMILY_PASSWORD', None)
+
 
 def test_register_success(auth_app):
     """Test registration with correct family code."""
@@ -25,14 +26,15 @@ def test_register_success(auth_app):
         'email': 'test@example.com',
         'password': 'testsecret'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b"Registration successful" in response.data
-    
+
     with auth_app.app_context():
         user = User.query.filter_by(email='test@example.com').first()
         assert user is not None
         assert user.name == 'Test User'
+
 
 def test_register_failure_wrong_code(auth_app):
     """Test registration with incorrect family code."""
@@ -42,13 +44,14 @@ def test_register_failure_wrong_code(auth_app):
         'email': 'hacker@example.com',
         'password': 'wrongcode'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b"Incorrect Family Code" in response.data
-    
+
     with auth_app.app_context():
         user = User.query.filter_by(email='hacker@example.com').first()
         assert user is None
+
 
 def test_login_success(auth_app):
     """Test login with correct family code."""
@@ -63,9 +66,10 @@ def test_login_success(auth_app):
         'email': 'existing@example.com',
         'password': 'testsecret'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b"Welcome back, Existing User!" in response.data
+
 
 def test_login_failure_wrong_code(auth_app):
     """Test login with incorrect family code."""
@@ -80,7 +84,7 @@ def test_login_failure_wrong_code(auth_app):
         'email': 'target@example.com',
         'password': 'wrongcode'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b"Incorrect Family Code" in response.data
     # "Welcome back" is in the login page header, so we can't assert it's missing.

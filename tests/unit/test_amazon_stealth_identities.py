@@ -1,5 +1,4 @@
 """Tests for Amazon stealth browser identities."""
-import pytest
 from services.amazon_stealth.identities import BrowserIdentity, IDENTITY_PROFILES
 
 
@@ -35,8 +34,16 @@ class TestBrowserIdentity:
 
     def test_identity_profiles_have_required_fields(self):
         """Each profile should have all required fields."""
-        required = ["id", "user_agent", "viewport", "timezone", "locale",
-                    "color_scheme", "device_scale", "webgl_vendor", "webgl_renderer"]
+        required = [
+            "id",
+            "user_agent",
+            "viewport",
+            "timezone",
+            "locale",
+            "color_scheme",
+            "device_scale",
+            "webgl_vendor",
+            "webgl_renderer"]
         for profile in IDENTITY_PROFILES:
             for field in required:
                 assert field in profile, f"Profile {profile.get('id')} missing {field}"

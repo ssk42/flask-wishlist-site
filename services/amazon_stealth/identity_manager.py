@@ -4,7 +4,9 @@ import random
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from services.amazon_stealth.identities import BrowserIdentity, IDENTITY_PROFILES
+from services.amazon_stealth.identities import (
+    BrowserIdentity, IDENTITY_PROFILES
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +78,10 @@ class IdentityManager:
         healthy.sort(key=lambda i: self._get_request_count(i.id))
 
         # Add some randomization among low-usage identities
-        low_usage = [i for i in healthy if self._get_request_count(i.id) <= self._get_request_count(healthy[0].id) + 2]
+        low_usage = [
+            i for i in healthy if self._get_request_count(
+                i.id) <= self._get_request_count(
+                healthy[0].id) + 2]
 
         return random.choice(low_usage)
 
@@ -95,9 +100,12 @@ class IdentityManager:
         self.redis.expire(key, 86400)
 
         # Check if we should rotate
-        threshold = random.randint(MIN_REQUESTS_BEFORE_ROTATE, MAX_REQUESTS_BEFORE_ROTATE)
+        threshold = random.randint(
+            MIN_REQUESTS_BEFORE_ROTATE,
+            MAX_REQUESTS_BEFORE_ROTATE)
         if count >= threshold:
-            logger.info(f"Rotating identity {identity.id} after {count} requests")
+            logger.info(
+                f"Rotating identity {identity.id} after {count} requests")
             self._reset_identity(identity.id)
 
     def mark_burned(self, identity: BrowserIdentity):
@@ -105,7 +113,8 @@ class IdentityManager:
 
         Identity will be unavailable for BURN_DURATION_HOURS.
         """
-        burn_until = datetime.now(timezone.utc) + timedelta(hours=BURN_DURATION_HOURS)
+        burn_until = datetime.now(timezone.utc) + \
+            timedelta(hours=BURN_DURATION_HOURS)
 
         if self.redis:
             key = self._redis_key(identity.id, "burned")

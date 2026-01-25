@@ -7,13 +7,21 @@ from config import STATUS_CHOICES, PRIORITY_CHOICES
 
 
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
+    return client.post(
+        "/login",
+        data={
+            "email": email,
+            "password": "testsecret"},
+        follow_redirects=True)
 
 
 def test_register_creates_user(client, app):
     response = client.post(
         "/register",
-        data={"name": "Alice", "email": "alice@example.com", "password": "testsecret"},
+        data={
+            "name": "Alice",
+            "email": "alice@example.com",
+            "password": "testsecret"},
         follow_redirects=True,
     )
 
@@ -33,7 +41,10 @@ def test_register_get_renders_form(client):
 def test_submit_item_requires_description(client, login):
     response = client.post(
         "/submit_item",
-        data={"description": "", "status": STATUS_CHOICES[0], "priority": PRIORITY_CHOICES[0]},
+        data={
+            "description": "",
+            "status": STATUS_CHOICES[0],
+            "priority": PRIORITY_CHOICES[0]},
         follow_redirects=True,
     )
 
@@ -66,7 +77,10 @@ def test_items_filtered_by_status(client, app, login, user):
         db.session.add_all([available, claimed])
         db.session.commit()
 
-    response = client.get("/items", query_string={"status_filter": "Available"})
+    response = client.get(
+        "/items",
+        query_string={
+            "status_filter": "Available"})
 
     assert response.status_code == 200
     # only the available item should be present
@@ -74,7 +88,8 @@ def test_items_filtered_by_status(client, app, login, user):
     assert b"Book" not in response.data
 
 
-def test_items_filtered_by_user_priority_and_search(client, app, login, user, other_user):
+def test_items_filtered_by_user_priority_and_search(
+        client, app, login, user, other_user):
     with app.app_context():
         db.session.add_all(
             [
@@ -130,7 +145,10 @@ def test_register_duplicate_email_shows_warning(client, app):
 
     response = client.post(
         "/register",
-        data={"name": "Someone", "email": "duplicate@example.com", "password": "testsecret"},
+        data={
+            "name": "Someone",
+            "email": "duplicate@example.com",
+            "password": "testsecret"},
         follow_redirects=True,
     )
 
@@ -298,7 +316,8 @@ def test_edit_item_owner_blank_description_keeps_form(client, app, user):
     assert b"Description cannot be empty" in response.data
 
 
-def test_edit_item_other_user_invalid_status_shows_error(client, app, user, other_user):
+def test_edit_item_other_user_invalid_status_shows_error(
+        client, app, user, other_user):
     with app.app_context():
         item = Item(
             description="Shared Item",
@@ -469,7 +488,7 @@ def test_export_my_status_updates(client, app, user, other_user):
 
     login_via_post(client, "test@example.com")
 
-    filename = Path(f"status_updates_by_Test User.xlsx")
+    filename = Path("status_updates_by_Test User.xlsx")
     if filename.exists():
         filename.unlink()
 
@@ -494,7 +513,10 @@ def test_register_commit_failure_rolls_back(client, monkeypatch):
 
     response = client.post(
         "/register",
-        data={"name": "Eve", "email": "eve@example.com", "password": "testsecret"},
+        data={
+            "name": "Eve",
+            "email": "eve@example.com",
+            "password": "testsecret"},
         follow_redirects=True,
     )
 
@@ -532,7 +554,11 @@ def test_items_preserves_nonexistent_event_filter(client, app, login, user):
     still preserves the filter value in the session.
     """
     # 999 is assumed to be a non-existent event ID
-    response = client.get("/items", query_string={"event_filter": "999", "q": ""})
+    response = client.get(
+        "/items",
+        query_string={
+            "event_filter": "999",
+            "q": ""})
     assert response.status_code == 200
     # Should be preserved in session as int
     with client.session_transaction() as sess:
@@ -568,7 +594,8 @@ def test_items_default_sorting_by_price_desc(client, app, login, user):
     assert body.index(b"Luxury Watch") < body.index(b"Budget Watch")
 
 
-def test_items_summary_rows_include_totals(client, app, login, user, other_user):
+def test_items_summary_rows_include_totals(
+        client, app, login, user, other_user):
     with app.app_context():
         db.session.add_all(
             [
@@ -603,6 +630,7 @@ def test_items_summary_rows_include_totals(client, app, login, user, other_user)
     assert b"At a Glance" in response.data
     assert b"$120.00" in response.data
     assert b"$300.00" in response.data
+
 
 def test_claim_item_missing_returns_404(client, app, other_user):
     login_via_post(client, "other@example.com")
@@ -668,7 +696,8 @@ def test_unclaim_item_nonexistent_returns_404(client, app, login, user):
     assert response.status_code == 404
 
 
-def test_unclaim_item_not_claimed_by_user_shows_error(client, app, login, user, other_user):
+def test_unclaim_item_not_claimed_by_user_shows_error(
+        client, app, login, user, other_user):
     """Test that a user cannot unclaim an item they did not claim."""
     with app.app_context():
         # Create an item owned by user, claimed by other_user
@@ -717,7 +746,8 @@ def test_item_modal_nonexistent_returns_404(client, app, login, user):
     assert b"Item not found" in response.data
 
 
-def test_unclaim_item_htmx_from_items_list(client, app, login, user, other_user):
+def test_unclaim_item_htmx_from_items_list(
+        client, app, login, user, other_user):
     """Test unclaiming an item via HTMX from items list returns partial HTML."""
     with app.app_context():
         item = Item(
@@ -1143,7 +1173,8 @@ def test_claim_item_htmx_dashboard_context(client, app, user, other_user):
     assert b"glass-card" in response.data or b"item-card" in response.data
 
 
-def test_unclaim_item_htmx_dashboard_context(client, app, login, user, other_user):
+def test_unclaim_item_htmx_dashboard_context(
+        client, app, login, user, other_user):
     """Test unclaiming item via HTMX from dashboard returns partial with flash."""
     with app.app_context():
         item = Item(

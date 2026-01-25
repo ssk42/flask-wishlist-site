@@ -1,8 +1,6 @@
 """Tests for CLI commands (send-reminders and update-prices)."""
-import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 
@@ -87,7 +85,8 @@ def test_update_prices_command_with_force_flag(app):
         }
 
         with flask_app.app_context():
-            result = runner.invoke(flask_app.cli.commands['update-prices'], ['--force'])
+            result = runner.invoke(
+                flask_app.cli.commands['update-prices'], ['--force'])
 
         assert result.exit_code == 0
         assert 'Force updating ALL prices' in result.output

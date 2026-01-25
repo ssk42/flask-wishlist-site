@@ -34,8 +34,10 @@ def test_login_with_valid_email(page, live_server):
 
     # Should redirect to dashboard and show welcome message with user name
     expect(page).to_have_url(f"{live_server}/")
-    # Use first() to handle multiple matches (e.g., in both flash message and header)
-    expect(page.locator(f'text="Welcome back, {user_name}!"').first).to_be_visible()
+    # Use first() to handle multiple matches (e.g., in both flash message and
+    # header)
+    expect(page.locator(
+        f'text="Welcome back, {user_name}!"').first).to_be_visible()
 
 
 def test_login_with_invalid_email(page, live_server):
@@ -46,7 +48,8 @@ def test_login_with_invalid_email(page, live_server):
     page.click('button[type="submit"]')
 
     # Should show error message
-    expect(page.locator('.alert-danger')).to_contain_text("could not find an account")
+    expect(page.locator('.alert-danger')
+           ).to_contain_text("could not find an account")
 
 
 def test_login_redirects_to_next_url(page, live_server):
@@ -95,12 +98,14 @@ def test_logout_flow(page, live_server):
 
     # Verify logged in by checking the welcome message
     page.goto(f"{live_server}/")
-    expect(page.locator(f'text="Welcome back, {user_name}!"').first).to_be_visible()
+    expect(page.locator(
+        f'text="Welcome back, {user_name}!"').first).to_be_visible()
 
     # Logout
     page.goto(f"{live_server}/logout")
 
-    # Should redirect to home and show login link (use sidebar-link class and first to avoid strict mode)
+    # Should redirect to home and show login link (use sidebar-link class and
+    # first to avoid strict mode)
     expect(page.locator('.sidebar-link:has-text("Login")').first).to_be_visible()
 
 
@@ -139,4 +144,5 @@ def test_forgot_email_with_invalid_name(page, live_server):
     page.click('button[type="submit"]')
 
     # Should show error
-    expect(page.locator('.alert-danger')).to_contain_text("could not find an account with that name")
+    expect(page.locator('.alert-danger')
+           ).to_contain_text("could not find an account with that name")

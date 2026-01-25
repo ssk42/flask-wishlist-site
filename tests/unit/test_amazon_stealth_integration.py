@@ -1,5 +1,4 @@
 """Integration tests for Amazon stealth extraction in price service."""
-import pytest
 from unittest.mock import MagicMock, patch
 
 
@@ -70,7 +69,7 @@ class TestAmazonStealthIntegration:
         mock_request.return_value = mock_response
 
         from services.price_service import _fetch_amazon_price
-        result = _fetch_amazon_price("https://amazon.com/dp/B001234")
+        _fetch_amazon_price("https://amazon.com/dp/B001234")
 
         # Should have called legacy request
         mock_request.assert_called()
@@ -79,7 +78,8 @@ class TestAmazonStealthIntegration:
     @patch('services.price_service._get_identity_manager')
     @patch('services.amazon_stealth.extractor.stealth_fetch_amazon_sync')
     @patch('services.price_service._fetch_amazon_price_legacy')
-    def test_falls_back_to_legacy_on_no_manager(self, mock_legacy, mock_stealth, mock_get_manager):
+    def test_falls_back_to_legacy_on_no_manager(
+            self, mock_legacy, mock_stealth, mock_get_manager):
         """Should fall back to legacy when identity manager unavailable."""
         mock_get_manager.return_value = None
         mock_legacy.return_value = 19.99

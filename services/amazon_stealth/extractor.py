@@ -8,7 +8,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from services.amazon_stealth.identities import BrowserIdentity
-from services.amazon_stealth.behaviors import interact_like_human, handle_cookie_banner
+from services.amazon_stealth.behaviors import interact_like_human
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ async def stealth_fetch_amazon(
                     timeout=30000,
                     wait_until='domcontentloaded'
                 )
-                status_code = response.status if response else 0
+                response.status if response else 0
             except Exception as e:
                 logger.warning(f"Navigation failed for {url}: {e}")
                 return ExtractionResult(
@@ -132,7 +132,8 @@ async def stealth_fetch_amazon(
             content = await page.content()
 
             # Check for CAPTCHA/blocking
-            if 'captcha' in content.lower() or 'robot check' in content.lower():
+            lower_content = content.lower()
+            if 'captcha' in lower_content or 'robot check' in lower_content:
                 logger.warning(f"CAPTCHA detected for {url}")
                 return ExtractionResult(
                     success=False,
@@ -152,7 +153,8 @@ async def stealth_fetch_amazon(
 
             if price:
                 logger.info(f"Successfully extracted Amazon price: ${price}")
-                return ExtractionResult(success=True, price=price, content=content)
+                return ExtractionResult(
+                    success=True, price=price, content=content)
             else:
                 return ExtractionResult(
                     success=False,

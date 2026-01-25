@@ -19,7 +19,8 @@ def test_export_items_link_visible(page, live_server):
 
     # Create an item first
     page.goto(f"{live_server}/submit_item")
-    page.fill('input[name="description"]', f"Export Item {uuid.uuid4().hex[:8]}")
+    page.fill('input[name="description"]',
+              f"Export Item {uuid.uuid4().hex[:8]}")
     page.click('button[type="submit"]')
 
     # Go to items page
@@ -47,7 +48,7 @@ def test_export_items_downloads_csv(page, live_server):
     # Create items with known data
     item1_desc = f"CSV Item 1 {uuid.uuid4().hex[:8]}"
     item2_desc = f"CSV Item 2 {uuid.uuid4().hex[:8]}"
-    
+
     page.goto(f"{live_server}/submit_item")
     page.fill('input[name="description"]', item1_desc)
     page.fill('input[name="price"]', "25.00")
@@ -67,23 +68,23 @@ def test_export_items_downloads_csv(page, live_server):
     download = download_info.value
     # Verify it's an Excel file
     assert download.suggested_filename.endswith('.xlsx')
-    
+
     # Wait for download to complete and get the file path
     download_path = download.path()
-    
+
     # Read the Excel content using pandas (same library that wrote it)
     df = pd.read_excel(download_path)
-    
+
     # Verify headers exist
     assert 'User' in df.columns, f"Expected 'User' column, got: {list(df.columns)}"
     assert 'Description' in df.columns, f"Expected 'Description' column, got: {list(df.columns)}"
     assert 'Price' in df.columns, f"Expected 'Price' column, got: {list(df.columns)}"
-    
+
     # Verify our created items appear in the export
     descriptions = df['Description'].tolist()
     assert item1_desc in descriptions, f"Expected '{item1_desc}' in {descriptions}"
     assert item2_desc in descriptions, f"Expected '{item2_desc}' in {descriptions}"
-    
+
     # Verify prices match
     for _, row in df.iterrows():
         if row['Description'] == item1_desc:
@@ -158,30 +159,31 @@ def test_export_my_status_updates_downloads_csv(page, live_server):
     download = download_info.value
     # Actual exports are Excel files
     assert download.suggested_filename.endswith('.xlsx')
-    
+
     # Read the Excel content using pandas
     import pandas as pd
     download_path = download.path()
     df = pd.read_excel(download_path)
-    
+
     # Verify headers exist
     assert 'Description' in df.columns, f"Expected 'Description' column, got: {list(df.columns)}"
     assert 'Status' in df.columns, f"Expected 'Status' column, got: {list(df.columns)}"
-    
+
     # Verify the claimed item appears in the export
     descriptions = df['Description'].tolist()
     assert item_desc in descriptions, f"Expected '{item_desc}' in {descriptions}"
-    
+
     # Verify the item has a status set
     for _, row in df.iterrows():
         if row['Description'] == item_desc:
             # Status should be set for claimed items
-            assert pd.notna(row['Status']), "Status should not be NaN for claimed item"
+            assert pd.notna(
+                row['Status']), "Status should not be NaN for claimed item"
 
 
 def test_export_requires_login(page, live_server):
     """Test export_my_status_updates endpoint requires login (export_items does not require login)."""
     # export_my_status_updates requires login - should redirect to login
-    response = page.goto(f"{live_server}/export_my_status_updates")
+    page.goto(f"{live_server}/export_my_status_updates")
     page.wait_for_load_state('networkidle')
     assert "/login" in page.url

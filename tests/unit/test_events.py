@@ -57,7 +57,8 @@ class TestEventsPage:
         assert response.status_code == 200
         assert b'Events' in response.data
 
-    def test_events_shows_upcoming_and_past(self, app, client, login_event_owner):
+    def test_events_shows_upcoming_and_past(
+            self, app, client, login_event_owner):
         """Events should be grouped into upcoming and past."""
         with app.app_context():
             today = datetime.date.today()
@@ -180,7 +181,8 @@ class TestEditEvent:
         assert b'Updated Name' in response.data
         assert b'updated successfully' in response.data
 
-    def test_edit_event_only_owner_can_edit(self, app, client, login_event_owner, login_other_user):
+    def test_edit_event_only_owner_can_edit(
+            self, app, client, login_event_owner, login_other_user):
         """Only the event creator can edit."""
         with app.app_context():
             event = Event(
@@ -197,7 +199,9 @@ class TestEditEvent:
             session["_user_id"] = str(login_other_user)
             session["_fresh"] = True
 
-        response = client.get(f'/events/{event_id}/edit', follow_redirects=True)
+        response = client.get(
+            f'/events/{event_id}/edit',
+            follow_redirects=True)
         assert response.status_code == 200
         assert b'only edit events you created' in response.data
 
@@ -206,7 +210,8 @@ class TestEditEvent:
         response = client.get('/events/99999/edit')
         assert response.status_code == 404
 
-    def test_edit_event_missing_name_shows_error(self, app, client, login_event_owner):
+    def test_edit_event_missing_name_shows_error(
+            self, app, client, login_event_owner):
         """Editing an event with empty name should show validation error."""
         with app.app_context():
             event = Event(
@@ -226,7 +231,8 @@ class TestEditEvent:
         assert response.status_code == 200
         assert b'Event name is required' in response.data
 
-    def test_edit_event_missing_date_shows_error(self, app, client, login_event_owner):
+    def test_edit_event_missing_date_shows_error(
+            self, app, client, login_event_owner):
         """Editing an event with empty date should show validation error."""
         with app.app_context():
             event = Event(
@@ -246,7 +252,8 @@ class TestEditEvent:
         assert response.status_code == 200
         assert b'Event date is required' in response.data
 
-    def test_edit_event_invalid_date_shows_error(self, app, client, login_event_owner):
+    def test_edit_event_invalid_date_shows_error(
+            self, app, client, login_event_owner):
         """Editing an event with invalid date format should show validation error."""
         with app.app_context():
             event = Event(
@@ -282,14 +289,17 @@ class TestDeleteEvent:
             db.session.commit()
             event_id = event.id
 
-        response = client.post(f'/events/{event_id}/delete', follow_redirects=True)
+        response = client.post(
+            f'/events/{event_id}/delete',
+            follow_redirects=True)
         assert response.status_code == 200
         assert b'deleted' in response.data
 
         with app.app_context():
             assert db.session.get(Event, event_id) is None
 
-    def test_delete_event_only_owner_can_delete(self, app, client, login_event_owner, login_other_user):
+    def test_delete_event_only_owner_can_delete(
+            self, app, client, login_event_owner, login_other_user):
         """Only the event creator can delete."""
         with app.app_context():
             event = Event(
@@ -306,7 +316,9 @@ class TestDeleteEvent:
             session["_user_id"] = str(login_other_user)
             session["_fresh"] = True
 
-        response = client.post(f'/events/{event_id}/delete', follow_redirects=True)
+        response = client.post(
+            f'/events/{event_id}/delete',
+            follow_redirects=True)
         assert response.status_code == 200
         assert b'only delete events you created' in response.data
 
@@ -314,7 +326,8 @@ class TestDeleteEvent:
         with app.app_context():
             assert db.session.get(Event, event_id) is not None
 
-    def test_delete_event_clears_item_associations(self, app, client, login_event_owner):
+    def test_delete_event_clears_item_associations(
+            self, app, client, login_event_owner):
         """Deleting an event should unlink items but not delete them."""
         with app.app_context():
             event = Event(
@@ -335,7 +348,9 @@ class TestDeleteEvent:
             db.session.commit()
             item_id = item.id
 
-        response = client.post(f'/events/{event_id}/delete', follow_redirects=True)
+        response = client.post(
+            f'/events/{event_id}/delete',
+            follow_redirects=True)
         assert response.status_code == 200
 
         # Item should still exist but no longer associated
@@ -344,7 +359,8 @@ class TestDeleteEvent:
             assert item is not None
             assert item.event_id is None
 
-    def test_delete_event_nonexistent_returns_404(self, client, login_event_owner):
+    def test_delete_event_nonexistent_returns_404(
+            self, client, login_event_owner):
         """Deleting a non-existent event returns 404."""
         response = client.post('/events/99999/delete')
         assert response.status_code == 404

@@ -1,9 +1,11 @@
+from extensions import cache
+from models import db, User
+from app import create_app
 import sys
 import os
 import threading
 import time
 import gc
-import atexit
 from pathlib import Path
 
 import pytest
@@ -13,10 +15,6 @@ from werkzeug.serving import make_server
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-
-from app import create_app
-from models import db, User
-from extensions import cache
 
 
 # Hook to handle session teardown errors gracefully
@@ -40,14 +38,14 @@ def pytest_sessionfinish(session, exitstatus):
 def app(tmp_path_factory):
     """App fixture for unit tests - CSRF disabled for easier testing."""
     db_file = tmp_path_factory.mktemp("data") / "test.sqlite"
-    
+
     # Set DATABASE_URL to test file and FLASK_ENV=testing
     old_db_url = os.environ.get("DATABASE_URL")
     os.environ["DATABASE_URL"] = f"sqlite:///{db_file}"
-    
+
     old_flask_env = os.environ.get("FLASK_ENV")
     os.environ["FLASK_ENV"] = "testing"
-        
+
     try:
         flask_app = create_app()
     finally:
@@ -56,7 +54,7 @@ def app(tmp_path_factory):
             os.environ["DATABASE_URL"] = old_db_url
         else:
             del os.environ["DATABASE_URL"]
-            
+
         if old_flask_env:
             os.environ["FLASK_ENV"] = old_flask_env
         else:
@@ -73,9 +71,9 @@ def app(tmp_path_factory):
 
     with flask_app.app_context():
         db.create_all()
-        
+
     yield flask_app
-    
+
     with flask_app.app_context():
         db.session.remove()
         db.drop_all()
@@ -88,7 +86,7 @@ def app(tmp_path_factory):
 def browser_app(tmp_path_factory):
     """App fixture for browser tests - CSRF enabled for realistic testing."""
     db_file = tmp_path_factory.mktemp("browser_data") / "test.sqlite"
-    
+
     # Set DATABASE_URL to test file and FLASK_ENV=testing
     old_db_url = os.environ.get("DATABASE_URL")
     os.environ["DATABASE_URL"] = f"sqlite:///{db_file}"
@@ -103,7 +101,7 @@ def browser_app(tmp_path_factory):
             os.environ["DATABASE_URL"] = old_db_url
         else:
             del os.environ["DATABASE_URL"]
-            
+
         if old_flask_env:
             os.environ["FLASK_ENV"] = old_flask_env
         else:
@@ -120,9 +118,9 @@ def browser_app(tmp_path_factory):
 
     with flask_app.app_context():
         db.create_all()
-        
+
     yield flask_app
-    
+
     with flask_app.app_context():
         db.session.remove()
         db.drop_all()
@@ -134,7 +132,8 @@ def browser_app(tmp_path_factory):
 @pytest.fixture(autouse=True)
 def _clean_database(app, request):
     # Skip for async tests to prevent event loop conflicts
-    if 'asyncio' in request.keywords or request.node.get_closest_marker('asyncio'):
+    if 'asyncio' in request.keywords or request.node.get_closest_marker(
+            'asyncio'):
         yield
         return
     with app.app_context():

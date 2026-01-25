@@ -39,12 +39,14 @@ def test_claim_and_unclaim_item(page, live_server):
     # Claim the item from dashboard
     page.goto(f"{live_server}/")
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
-    claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
+    claim_button = item_card.locator(
+        'button.btn-outline-primary:has-text("Claim")')
     expect(claim_button).to_be_visible()
     claim_button.click()
 
     # Wait for HTMX update and verify Unclaim button appears
-    unclaim_button = item_card.locator('button.btn-outline-warning:has-text("Unclaim")')
+    unclaim_button = item_card.locator(
+        'button.btn-outline-warning:has-text("Unclaim")')
     expect(unclaim_button).to_be_visible()
     expect(claim_button).not_to_be_visible()
 
@@ -52,7 +54,8 @@ def test_claim_and_unclaim_item(page, live_server):
     unclaim_button.click()
 
     # Wait for HTMX update and verify Claim button reappears
-    claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
+    claim_button = item_card.locator(
+        'button.btn-outline-primary:has-text("Claim")')
     expect(claim_button).to_be_visible()
 
 
@@ -119,7 +122,8 @@ def test_mark_as_purchased_via_edit(page, live_server):
     # Claim item from dashboard
     page.goto(f"{live_server}/")
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
-    claim_button = item_card.locator('button.btn-outline-primary:has-text("Claim")')
+    claim_button = item_card.locator(
+        'button.btn-outline-primary:has-text("Claim")')
     claim_button.click()
 
     # Wait for HTMX update

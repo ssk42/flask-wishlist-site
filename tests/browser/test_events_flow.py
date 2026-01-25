@@ -36,7 +36,8 @@ def test_create_event_flow(page, live_server):
     page.click('button[type="submit"]')
 
     # Verify success
-    expect(page.locator('.alert-success')).to_contain_text("created successfully")
+    expect(page.locator('.alert-success')
+           ).to_contain_text("created successfully")
     expect(page.locator('h3:has-text("Birthday Party")')).to_be_visible()
 
 
@@ -71,7 +72,8 @@ def test_edit_event_flow(page, live_server):
     page.click('button[type="submit"]')
 
     # Verify update
-    expect(page.locator('.alert-success')).to_contain_text("updated successfully")
+    expect(page.locator('.alert-success')
+           ).to_contain_text("updated successfully")
     expect(page.locator('h3:has-text("Updated Event")')).to_be_visible()
 
 

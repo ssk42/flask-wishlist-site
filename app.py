@@ -79,9 +79,10 @@ def create_app(config_name=None):
     CSRFProtect(app)
     Mail(app)
     Compress(app)
-    # Configure Limiter (storage options configured via RATELIMIT_STORAGE_URI in config)
+    # Configure Limiter (storage options configured via RATELIMIT_STORAGE_URI
+    # in config)
     limiter.init_app(app)
-    
+
     # Initialize caching
     cache.init_app(app)
 
@@ -99,7 +100,9 @@ def create_app(config_name=None):
         return db.session.get(User, int(user_id))
 
     # Register blueprints
-    from blueprints import auth_bp, api_bp, dashboard_bp, events_bp, social_bp, items_bp
+    from blueprints import (
+        auth_bp, api_bp, dashboard_bp, events_bp, social_bp, items_bp
+    )
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(dashboard_bp)
@@ -127,9 +130,8 @@ def create_app(config_name=None):
             return {'nav_claimed_count': claimed_count}
         return {'nav_claimed_count': 0}
 
-
-
     # Global Error Handlers
+
     @app.errorhandler(404)
     def not_found_error(error):
         return render_template('errors/404.html'), 404
@@ -160,15 +162,17 @@ def create_app(config_name=None):
             raise SystemExit(1)
 
     @app.cli.command('update-prices')
-    @click.option('--force', is_flag=True, help='Force update all items regardless of last update time')
+    @click.option('--force', is_flag=True,
+                  help='Force update all items regardless of last update time')
     def update_prices_command(force):
-        """Update prices for items with links that haven't been updated in 7 days."""
+        """Update prices for items not updated in 7 days."""
         from services.price_service import update_stale_prices
         if force:
             click.echo('Force updating ALL prices (ignoring 7-day window)...')
         else:
             click.echo('Updating stale prices...')
-        stats = update_stale_prices(app, db, Item, Notification, force_all=force)
+        stats = update_stale_prices(
+            app, db, Item, Notification, force_all=force)
         click.echo(f'Items processed: {stats["items_processed"]}')
         click.echo(f'Prices updated: {stats["prices_updated"]}')
         click.echo(f'Price drops detected: {stats["price_drops"]}')

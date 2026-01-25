@@ -1,6 +1,6 @@
 """
 Logging configuration for the Wishlist application.
-Provides structured logging with different outputs for development and production.
+Provides structured logging for development and production.
 """
 
 import logging
@@ -50,10 +50,15 @@ def get_logging_config(log_level=None, log_file=None):
         'disable_existing_loggers': False,
         'formatters': {
             'default': {
-                'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+                'format': (
+                    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+                ),
             },
             'detailed': {
-                'format': '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
+                'format': (
+                    '%(asctime)s - %(name)s - %(levelname)s - '
+                    '%(funcName)s:%(lineno)d - %(message)s'
+                ),
             },
             'json': {
                 '()': 'services.logging_config.CustomJsonFormatter',
@@ -112,7 +117,11 @@ def setup_logging(app=None):
 
     if app:
         # Flask's logger will use our configuration
-        app.logger.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL', 'INFO')))
+        app.logger.setLevel(
+            logging.getLevelName(
+                os.getenv(
+                    'LOG_LEVEL',
+                    'INFO')))
         app.logger.info('Flask logging configured')
 
     return logger

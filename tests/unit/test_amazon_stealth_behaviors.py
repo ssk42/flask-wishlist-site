@@ -1,6 +1,4 @@
 """Tests for Amazon stealth behavior functions."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from services.amazon_stealth.behaviors import (
     human_delay,

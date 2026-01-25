@@ -57,8 +57,10 @@ def generate_bezier_points(
         t = i / (num_points - 1)
 
         # Quadratic bezier formula
-        x = (1 - t) ** 2 * start[0] + 2 * (1 - t) * t * control[0] + t ** 2 * end[0]
-        y = (1 - t) ** 2 * start[1] + 2 * (1 - t) * t * control[1] + t ** 2 * end[1]
+        x = (1 - t) ** 2 * start[0] + 2 * (1 - t) * \
+            t * control[0] + t ** 2 * end[0]
+        y = (1 - t) ** 2 * start[1] + 2 * (1 - t) * \
+            t * control[1] + t ** 2 * end[1]
 
         # Add small noise except for start point
         if i > 0 and i < num_points - 1:
@@ -83,13 +85,15 @@ async def human_mouse_move(page, target_x: float, target_y: float):
     """
     # Get current mouse position (approximate from viewport center if unknown)
     try:
-        current = await page.evaluate("({x: window._mouseX || 640, y: window._mouseY || 400})")
+        js = "({x: window._mouseX || 640, y: window._mouseY || 400})"
+        current = await page.evaluate(js)
         start = (current['x'], current['y'])
     except Exception:
         start = (640, 400)  # Default to viewport center
 
     # Generate curved path
-    points = generate_bezier_points(start, (target_x, target_y), num_points=random.randint(15, 25))
+    points = generate_bezier_points(
+        start, (target_x, target_y), num_points=random.randint(15, 25))
 
     # Move through points
     for x, y in points:
@@ -97,7 +101,8 @@ async def human_mouse_move(page, target_x: float, target_y: float):
         await asyncio.sleep(random.uniform(0.005, 0.025))
 
     # Track position for next move
-    await page.evaluate(f"window._mouseX = {target_x}; window._mouseY = {target_y}")
+    js = f"window._mouseX = {target_x}; window._mouseY = {target_y}"
+    await page.evaluate(js)
 
 
 async def human_scroll(page, scroll_amount: int = None):
@@ -166,8 +171,10 @@ async def interact_like_human(page):
     viewport = page.viewport_size or {"width": 1280, "height": 800}
     await human_mouse_move(
         page,
-        random.randint(int(viewport["width"] * 0.3), int(viewport["width"] * 0.7)),
-        random.randint(int(viewport["height"] * 0.2), int(viewport["height"] * 0.4))
+        random.randint(
+            int(viewport["width"] * 0.3), int(viewport["width"] * 0.7)),
+        random.randint(
+            int(viewport["height"] * 0.2), int(viewport["height"] * 0.4))
     )
 
     # 4. Scroll down to product area

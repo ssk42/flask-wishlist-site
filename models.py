@@ -14,14 +14,25 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(50), unique=True, nullable=False)
     is_private = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
-    items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
+    updated_at = db.Column(
+        db.DateTime, default=lambda: datetime.datetime.now(
+            datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
+    items = db.relationship(
+        'Item',
+        backref='user',
+        lazy=True,
+        foreign_keys='Item.user_id')
 
     @property
     def unread_count(self):
         """Count of unread notifications for this user."""
-        return Notification.query.filter_by(user_id=self.id, is_read=False).count()
+        return Notification.query.filter_by(
+            user_id=self.id, is_read=False).count()
 
     def __repr__(self):
         return f'<User {self.name}>'
@@ -32,10 +43,19 @@ class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     date = db.Column(db.Date, nullable=False)
-    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_by_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id'),
+        nullable=False)
     reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
+    updated_at = db.Column(
+        db.DateTime, default=lambda: datetime.datetime.now(
+            datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
     created_by = db.relationship('User', backref='events')
     items = db.relationship('Item', backref='event', lazy=True)
 
@@ -50,26 +70,49 @@ class Item(db.Model):
     link = db.Column(db.String(2048), nullable=True)
     comment = db.Column(db.String(100))
     price = db.Column(db.Float, nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='Available', index=True)
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default='Available',
+        index=True)
     question = db.Column(db.String(100))
     year = db.Column(db.Integer, default=datetime.datetime.now().year)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id'),
+        nullable=False,
+        index=True)
     category = db.Column(db.String(50), index=True)
     image_url = db.Column(db.String(2048))
     priority = db.Column(db.String(50), index=True)
     last_updated_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True, index=True)
+    last_updated_by = db.relationship(
+        'User', foreign_keys=[last_updated_by_id])
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id'),
+        nullable=True,
+        index=True)
     price_updated_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
+    updated_at = db.Column(
+        db.DateTime, default=lambda: datetime.datetime.now(
+            datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
 
     # Item variants (size, color, quantity)
     size = db.Column(db.String(50), nullable=True)
     color = db.Column(db.String(50), nullable=True)
     quantity = db.Column(db.Integer, nullable=True)
 
-    comments = db.relationship('Comment', backref='item', lazy=True, cascade='all, delete-orphan')
+    comments = db.relationship(
+        'Comment',
+        backref='item',
+        lazy=True,
+        cascade='all, delete-orphan')
 
     # Composite index for common query pattern (user_id + status)
     __table_args__ = (
@@ -111,7 +154,10 @@ class Comment(db.Model):
     """Comment model for item discussions."""
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(500), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
 
@@ -132,7 +178,10 @@ class Notification(db.Model):
     message = db.Column(db.String(500), nullable=False)
     link = db.Column(db.String(500), nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     recipient = db.relationship('User', backref='notifications')
@@ -150,14 +199,26 @@ class Contribution(db.Model):
     __tablename__ = 'contributions'
 
     id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False, index=True)
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey('item.id'),
+        nullable=False,
+        index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     is_organizer = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc))
 
     # Relationships
-    item = db.relationship('Item', backref=db.backref('contributions', lazy=True, cascade='all, delete-orphan'))
+    item = db.relationship(
+        'Item',
+        backref=db.backref(
+            'contributions',
+            lazy=True,
+            cascade='all, delete-orphan'))
     user = db.relationship('User', backref='contributions')
 
     __table_args__ = (
@@ -165,7 +226,8 @@ class Contribution(db.Model):
     )
 
     def __repr__(self):
-        return f'<Contribution {self.amount} by User {self.user_id} for Item {self.item_id}>'
+        return (f'<Contribution {self.amount} by User {self.user_id} '
+                f'for Item {self.item_id}>')
 
 
 class PriceExtractionLog(db.Model):
@@ -175,27 +237,50 @@ class PriceExtractionLog(db.Model):
     url = db.Column(db.String(2048))
     success = db.Column(db.Boolean, nullable=False)
     price = db.Column(db.Float, nullable=True)
-    extraction_method = db.Column(db.String(50))  # 'meta', 'jsonld', 'selector', 'playwright'
-    error_type = db.Column(db.String(50))  # 'captcha', 'timeout', 'no_price', 'blocked'
+    # 'meta', 'jsonld', 'selector', 'playwright'
+    extraction_method = db.Column(db.String(50))
+    # 'captcha', 'timeout', 'no_price', 'blocked'
+    error_type = db.Column(db.String(50))
     response_time_ms = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc),
+        index=True)
 
     def __repr__(self):
         return f'<PriceLog {self.domain} Success={self.success}>'
+
+
 class PriceHistory(db.Model):
     """Track historical prices for items to show trends."""
     id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False, index=True)
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey('item.id'),
+        nullable=False,
+        index=True)
     price = db.Column(db.Float, nullable=False)
-    recorded_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
-    source = db.Column(db.String(50), default='auto')  # 'auto', 'manual', 'initial'
+    recorded_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(
+            datetime.timezone.utc),
+        index=True)
+    # 'auto', 'manual', 'initial'
+    source = db.Column(db.String(50), default='auto')
 
     # Relationship to Item
-    item = db.relationship('Item', backref=db.backref('price_history', lazy=True, cascade='all, delete-orphan'))
+    item = db.relationship(
+        'Item',
+        backref=db.backref(
+            'price_history',
+            lazy=True,
+            cascade='all, delete-orphan'))
 
     __table_args__ = (
         db.Index('idx_price_history_item_date', 'item_id', 'recorded_at'),
     )
 
     def __repr__(self):
-        return f'<PriceHistory Item={self.item_id} Price={self.price} Date={self.recorded_at}>'
+        return (f'<PriceHistory Item={self.item_id} Price={self.price} '
+                f'Date={self.recorded_at}>')

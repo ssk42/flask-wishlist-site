@@ -1,7 +1,7 @@
 """Tests for Amazon stealth identity manager."""
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from services.amazon_stealth.identity_manager import IdentityManager
 from services.amazon_stealth.identities import BrowserIdentity
@@ -45,7 +45,8 @@ class TestIdentityManager:
         assert identity is not None
         assert identity.id == "mac_chrome_1"
 
-    def test_get_healthy_identity_returns_none_when_all_burned(self, manager, mock_redis):
+    def test_get_healthy_identity_returns_none_when_all_burned(
+            self, manager, mock_redis):
         """Should return None when all identities are burned."""
         future = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat()
         mock_redis.get.return_value = future.encode()
@@ -69,7 +70,8 @@ class TestIdentityManager:
         call_args = mock_redis.set.call_args
         assert ":burned" in call_args[0][0]
 
-    def test_get_healthy_identity_prefers_lowest_request_count(self, manager, mock_redis):
+    def test_get_healthy_identity_prefers_lowest_request_count(
+            self, manager, mock_redis):
         """Should prefer identities with lowest request count."""
         def mock_get(key):
             if "mac_chrome_1:requests" in key:
@@ -87,5 +89,6 @@ class TestIdentityManager:
         identities = [manager.get_healthy_identity() for _ in range(5)]
         ids = [i.id for i in identities]
         # mac_chrome_2 has count 50, which is lowest
-        # All should be mac_chrome_2 since it's the only one with count <= min + 2
+        # All should be mac_chrome_2 since it's the only one with count <= min
+        # + 2
         assert all(i == "mac_chrome_2" for i in ids)

@@ -10,7 +10,7 @@ def send_event_reminders(app, db, Event, Item, User):
     """Send reminder emails for events happening in 7 days.
 
     This function:
-    1. Finds events where date is exactly 7 days from now and reminder_sent is False
+    1. Finds events where date is exactly 7 days from now and not sent
     2. For each event, finds all users who have claimed items for that event
     3. Sends each user an email listing their claimed items with links
     4. Marks reminder_sent = True on the event
@@ -31,7 +31,8 @@ def send_event_reminders(app, db, Event, Item, User):
         today = datetime.date.today()
         reminder_date = today + datetime.timedelta(days=7)
 
-        # Find events happening in exactly 7 days that haven't had reminders sent
+        # Find events happening in exactly 7 days that haven't had reminders
+        # sent
         events = Event.query.filter(
             Event.date == reminder_date,
             Event.reminder_sent == False  # noqa: E712
@@ -54,7 +55,9 @@ def send_event_reminders(app, db, Event, Item, User):
             ).all()
 
             if not claimed_items:
-                logger.info(f'No claimed items for event {event.name}, marking as processed')
+                logger.info(
+                    f'No claimed items for event {event.name}, '
+                    'marking as processed')
                 event.reminder_sent = True
                 db.session.commit()
                 stats['events_processed'] += 1
@@ -63,7 +66,8 @@ def send_event_reminders(app, db, Event, Item, User):
             # Group items by the user who claimed them
             user_items = defaultdict(list)
             for item in claimed_items:
-                if item.last_updated_by_id and item.user_id != item.last_updated_by_id:
+                claimer_id = item.last_updated_by_id
+                if claimer_id and item.user_id != claimer_id:
                     user_items[item.last_updated_by_id].append(item)
 
             # Send reminder to each user who has claimed items
@@ -94,11 +98,15 @@ def send_event_reminders(app, db, Event, Item, User):
                     )
                     if success:
                         stats['emails_sent'] += 1
-                        logger.info(f'Sent reminder to {claimer.email} for event {event.name}')
+                        logger.info(
+                            f'Sent reminder to {claimer.email} '
+                            f'for event {event.name}')
                     else:
                         stats['errors'] += 1
                 except Exception as e:
-                    logger.error(f'Failed to send reminder to {claimer.email}: {str(e)}')
+                    logger.error(
+                        f'Failed to send reminder to {claimer.email}: '
+                        f'{str(e)}')
                     stats['errors'] += 1
 
             # Mark the event as having had its reminder sent

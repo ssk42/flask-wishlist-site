@@ -1,5 +1,4 @@
 """Tests for utility functions."""
-import pytest
 
 
 class TestGetItemsUrlWithFilters:
@@ -8,11 +7,11 @@ class TestGetItemsUrlWithFilters:
     def test_no_filters(self, app, client):
         """Should return base items URL with no filters."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.session_transaction() as sess:
             # Clear any existing filters
             sess.clear()
-        
+
         with app.test_request_context():
             url = get_items_url_with_filters()
             assert url == '/items'
@@ -20,10 +19,10 @@ class TestGetItemsUrlWithFilters:
     def test_user_filter(self, app, client):
         """Should include user filter in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.session_transaction() as sess:
             sess['user_filter'] = '1'
-        
+
         with client.application.test_request_context():
             from flask import session
             session['user_filter'] = '1'
@@ -33,7 +32,7 @@ class TestGetItemsUrlWithFilters:
     def test_status_filter(self, app, client):
         """Should include status filter in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.application.test_request_context():
             from flask import session
             session['status_filter'] = 'Available'
@@ -43,7 +42,7 @@ class TestGetItemsUrlWithFilters:
     def test_priority_filter(self, app, client):
         """Should include priority filter in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.application.test_request_context():
             from flask import session
             session['priority_filter'] = 'High'
@@ -53,7 +52,7 @@ class TestGetItemsUrlWithFilters:
     def test_event_filter(self, app, client):
         """Should include event filter in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.application.test_request_context():
             from flask import session
             session['event_filter'] = '5'
@@ -63,7 +62,7 @@ class TestGetItemsUrlWithFilters:
     def test_search_query(self, app, client):
         """Should include search query in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.application.test_request_context():
             from flask import session
             session['q'] = 'nintendo'
@@ -73,7 +72,7 @@ class TestGetItemsUrlWithFilters:
     def test_sort_options(self, app, client):
         """Should include sort options in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.application.test_request_context():
             from flask import session
             session['sort_by'] = 'price'
@@ -85,7 +84,7 @@ class TestGetItemsUrlWithFilters:
     def test_multiple_filters(self, app, client):
         """Should include multiple filters in URL."""
         from services.utils import get_items_url_with_filters
-        
+
         with client.application.test_request_context():
             from flask import session
             session['user_filter'] = '2'

@@ -7,6 +7,7 @@ from models import db, PriceExtractionLog
 
 logger = logging.getLogger(__name__)
 
+
 class ExtractionError(Enum):
     CAPTCHA = "captcha"
     BOT_BLOCKED = "bot_blocked"
@@ -17,7 +18,14 @@ class ExtractionError(Enum):
     RATE_LIMITED = "rate_limited"
     UNKNOWN = "unknown"
 
-def log_extraction_attempt(url, success, price=None, method=None, error_type=None, response_time_ms=None):
+
+def log_extraction_attempt(
+        url,
+        success,
+        price=None,
+        method=None,
+        error_type=None,
+        response_time_ms=None):
     """Log an extraction attempt to the database."""
     try:
         # Extract domain from URL
@@ -25,7 +33,7 @@ def log_extraction_attempt(url, success, price=None, method=None, error_type=Non
         domain = parsed.netloc.lower()
         if domain.startswith('www.'):
             domain = domain[4:]
-            
+
         # Convert Enum to string if needed
         error_str = None
         if error_type:
@@ -33,7 +41,7 @@ def log_extraction_attempt(url, success, price=None, method=None, error_type=Non
                 error_str = error_type.value
             else:
                 error_str = str(error_type)[:50]
-            
+
         log = PriceExtractionLog(
             domain=domain,
             url=url[:2048],  # Truncate to fit column
@@ -45,7 +53,7 @@ def log_extraction_attempt(url, success, price=None, method=None, error_type=Non
         )
         db.session.add(log)
         db.session.commit()
-        
+
     except Exception as e:
         logger.error(f"Failed to log extraction attempt: {e}")
         db.session.rollback()

@@ -3,6 +3,7 @@ from models import db, User, Item, Contribution
 
 app = create_app()
 
+
 def seed():
     with app.app_context():
         # Create Users
@@ -13,7 +14,7 @@ def seed():
             db.session.add(owner)
         else:
             owner.set_password("wishlist2025")
-            
+
         splitter = User.query.filter_by(email="splitter@example.com").first()
         if not splitter:
             splitter = User(name="Splitter", email="splitter@example.com")
@@ -21,17 +22,20 @@ def seed():
             db.session.add(splitter)
         else:
             splitter.set_password("wishlist2025")
-            
-        contributor = User.query.filter_by(email="contributor@example.com").first()
+
+        contributor = User.query.filter_by(
+            email="contributor@example.com").first()
         if not contributor:
-            contributor = User(name="Contributor", email="contributor@example.com")
+            contributor = User(
+                name="Contributor",
+                email="contributor@example.com")
             contributor.set_password("wishlist2025")
             db.session.add(contributor)
         else:
             contributor.set_password("wishlist2025")
-            
+
         db.session.commit()
-        
+
         # Create/Find Item
         item = Item.query.filter_by(description="Browser Test Gift").first()
         if not item:
@@ -43,7 +47,7 @@ def seed():
             )
             db.session.add(item)
             db.session.commit()
-            
+
             # Create Initial Contribution
             contrib = Contribution(
                 item_id=item.id,
@@ -60,9 +64,10 @@ def seed():
             if item.status != 'Splitting':
                 item.status = 'Splitting'
             db.session.commit()
-            
+
             # Ensure contribution exists
-            contrib = Contribution.query.filter_by(item_id=item.id, user_id=splitter.id).first()
+            contrib = Contribution.query.filter_by(
+                item_id=item.id, user_id=splitter.id).first()
             if not contrib:
                 contrib = Contribution(
                     item_id=item.id,
@@ -72,6 +77,7 @@ def seed():
                 )
                 db.session.add(contrib)
                 db.session.commit()
+
 
 if __name__ == "__main__":
     seed()
