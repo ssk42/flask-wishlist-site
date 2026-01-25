@@ -3,6 +3,7 @@
 All extensions here are initialized in app.py or by the blueprints.
 """
 import os
+import ssl
 import redis
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -14,10 +15,17 @@ cache = Cache()
 # Redis client for identity management and other features
 # Handles both regular redis:// and secure rediss:// URLs
 _redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+redis_client = None
+
 if _redis_url:
     try:
-        redis_client = redis.from_url(_redis_url)
+        # Handle Heroku Redis's self-signed SSL certs for rediss:// URLs
+        if _redis_url.startswith('rediss://'):
+            redis_client = redis.from_url(
+                _redis_url,
+                ssl_cert_reqs=ssl.CERT_NONE
+            )
+        else:
+            redis_client = redis.from_url(_redis_url)
     except Exception:
         redis_client = None
-else:
-    redis_client = None
