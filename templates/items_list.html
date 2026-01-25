@@ -200,9 +200,8 @@
     </div>
     <div class="row">
         {% for item in group.items %}
-        <div style="--stagger-index: {{ loop.index0 }};">
-            {% include 'partials/_item_card.html' %}
-        </div>
+        {% set stagger_index = loop.index0 %}
+        {% include 'partials/_item_card.html' %}
         {% endfor %}
     </div>
 </section>

@@ -1,6 +1,6 @@
 {# Partial template for a single item card - used by htmx swaps #}
 <div class="col-md-6 col-lg-4 mb-4">
-    <div class="glass-card p-3 h-100 d-flex flex-column stagger-item" id="item-card-{{ item.id }}">
+    <div class="glass-card p-3 h-100 d-flex flex-column stagger-item" id="item-card-{{ item.id }}" style="--stagger-index: {{ stagger_index|default(0) }};">
         <!-- Image Section -->
         <div class="position-relative mb-3 rounded overflow-hidden" style="height: 200px;">
             <img src="{{ item.image_url or default_image_url }}" class="w-100 h-100 object-fit-cover"
