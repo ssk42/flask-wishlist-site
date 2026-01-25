@@ -59,21 +59,10 @@ class Config:
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     
     # Caching (Item 12)
-    CACHE_TYPE = 'RedisCache' if os.getenv('REDIS_URL') else 'SimpleCache'
+    # Temporarily disabled RedisCache due to Heroku Redis SSL issues
+    # TODO: Fix Redis SSL cert validation for cachelib
+    CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 300
-    CACHE_REDIS_URL = os.getenv('REDIS_URL')
-
-    # Heroku Redis uses self-signed certs - disable SSL verification for cache
-    @staticmethod
-    def get_cache_options():
-        """Get cache options with SSL fix for Heroku Redis."""
-        uri = os.getenv('REDIS_URL', '')
-        if uri.startswith('rediss://'):
-            import ssl
-            return {'ssl_cert_reqs': ssl.CERT_NONE}
-        return {}
-
-    CACHE_OPTIONS = get_cache_options.__func__()
 
     # Rate Limiting
     @staticmethod
