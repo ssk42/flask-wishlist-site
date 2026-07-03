@@ -20,7 +20,7 @@
 - Modify: `services/price_extraction/parser.py`
 - Test (existing, currently failing): `tests/unit/test_price_extraction.py`
 
-- [ ] **Step 1: Run the failing tests to confirm the failures**
+- [x] **Step 1: Run the failing tests to confirm the failures**
 
 Run:
 ```bash
@@ -28,7 +28,7 @@ Run:
 ```
 Expected: 3 failed — `parse_price('-$10.00')` returns `10.0` (want `None`); `is_amazon_url('')` and `is_amazon_url(None)` return `None` (want `False`).
 
-- [ ] **Step 2: Fix `parse_price` to reject negative prices**
+- [x] **Step 2: Fix `parse_price` to reject negative prices**
 
 In `services/price_extraction/parser.py`, immediately after `price_text = str(price_text).strip()` (line 29), add:
 
@@ -40,7 +40,7 @@ In `services/price_extraction/parser.py`, immediately after `price_text = str(pr
 
 (This sits BEFORE the range-split block. Ranges like `"$10 - $20"` are unaffected because they don't start with `-`.)
 
-- [ ] **Step 3: Fix the five `is_*_url` matchers to return real booleans**
+- [x] **Step 3: Fix the five `is_*_url` matchers to return real booleans**
 
 In the same file, wrap each matcher's return expression in `bool(...)`. All five follow the same pattern; here is each complete function body:
 
@@ -75,12 +75,12 @@ def is_etsy_url(url):
     return bool(domain and 'etsy.com' in domain)
 ```
 
-- [ ] **Step 4: Run the whole price_extraction test file**
+- [x] **Step 4: Run the whole price_extraction test file**
 
 Run: `.venv/bin/python -m pytest tests/unit/test_price_extraction.py -p no:cacheprovider --no-cov -q`
 Expected: all pass, 0 failed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/price_extraction/parser.py
@@ -96,7 +96,7 @@ Currently `services/price_extraction/__init__.py` imports FROM `price_service` (
 **Files:**
 - Modify: `services/price_extraction/__init__.py` (full rewrite)
 
-- [ ] **Step 1: Replace the file contents entirely**
+- [x] **Step 1: Replace the file contents entirely**
 
 ```python
 """Price extraction package: pluggable per-site price and metadata extractors.
@@ -134,12 +134,12 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 2: Run the unit suite to confirm nothing depended on the re-exports**
+- [x] **Step 2: Run the unit suite to confirm nothing depended on the re-exports**
 
 Run: `.venv/bin/python -m pytest tests/unit/ -p no:cacheprovider --no-cov -q`
 Expected: same pass count as baseline (445 passed after Task 1), 0 failed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add services/price_extraction/__init__.py
@@ -159,7 +159,7 @@ This is the core task. `fetch_price`'s public behavior is unchanged; internally,
 - Modify: `tests/unit/test_price_service.py:32-56` (parse-price tests)
 - Modify: `tests/unit/test_price_crawler_v2.py:57,74` (patch targets)
 
-- [ ] **Step 1: Add extractor imports to `price_service.py`**
+- [x] **Step 1: Add extractor imports to `price_service.py`**
 
 Near the top, after `from services import price_cache, price_metrics`, add:
 
@@ -172,7 +172,7 @@ from services.price_extraction.extractors import (
 )
 ```
 
-- [ ] **Step 2: Rewrite `fetch_price`'s dispatch to three branches**
+- [x] **Step 2: Rewrite `fetch_price`'s dispatch to three branches**
 
 Inside `fetch_price`, replace the six-way `if/elif` dispatch (lines 140-153 of the current file) with:
 
@@ -187,7 +187,7 @@ Inside `fetch_price`, replace the six-way `if/elif` dispatch (lines 140-153 of t
             price = _fetch_standard_price(url)
 ```
 
-- [ ] **Step 3: Add `_fetch_standard_price` (replaces the Walmart/BestBuy/Etsy/generic fetchers)**
+- [x] **Step 3: Add `_fetch_standard_price` (replaces the Walmart/BestBuy/Etsy/generic fetchers)**
 
 ```python
 def _fetch_standard_price(url):
@@ -203,7 +203,7 @@ def _fetch_standard_price(url):
         return None
 ```
 
-- [ ] **Step 4: Rewrite `_fetch_amazon_price_legacy` to delegate parsing**
+- [x] **Step 4: Rewrite `_fetch_amazon_price_legacy` to delegate parsing**
 
 `_fetch_amazon_price` (the stealth orchestrator) is UNCHANGED. Replace `_fetch_amazon_price_legacy` with:
 
@@ -243,7 +243,7 @@ def _fetch_amazon_price_legacy(url):
         return None
 ```
 
-- [ ] **Step 5: Rewrite `_fetch_target_price` to delegate parsing**
+- [x] **Step 5: Rewrite `_fetch_target_price` to delegate parsing**
 
 ```python
 def _fetch_target_price(url):
@@ -275,7 +275,7 @@ def _fetch_target_price(url):
 buggy conditional expression that could raise `TypeError` on a title-less page and skip
 the Playwright fallback; the rewrite preserves the intended behavior.)
 
-- [ ] **Step 6: Rewrite `_fetch_amazon_metadata` to delegate, preserving the `image_url` key**
+- [x] **Step 6: Rewrite `_fetch_amazon_metadata` to delegate, preserving the `image_url` key**
 
 ```python
 def _fetch_amazon_metadata(url):
@@ -314,7 +314,7 @@ def _fetch_amazon_metadata(url):
         return {}
 ```
 
-- [ ] **Step 7: Simplify `_fetch_generic_metadata`'s price fallback**
+- [x] **Step 7: Simplify `_fetch_generic_metadata`'s price fallback**
 
 Keep the function and its OpenGraph/title/twitter-image handling as-is, but replace the
 entire "3. Price Fallback" block (the microdata check plus the `price_classes` loop,
@@ -331,7 +331,7 @@ currently lines 950-973) with:
 (GenericPriceExtractor tries meta tags → JSON-LD → microdata → CSS classes, a superset
 of the old fallback chain and identical to what `fetch_price` uses for generic sites.)
 
-- [ ] **Step 8: Delete the now-dead parsing code from `price_service.py`**
+- [x] **Step 8: Delete the now-dead parsing code from `price_service.py`**
 
 Delete these functions entirely:
 - `_extract_amazon_price_from_soup`
@@ -345,7 +345,7 @@ Delete these functions entirely:
 - `_deep_search_dict`
 - `_parse_price`
 
-- [ ] **Step 9: Repoint `services/amazon_stealth/extractor.py`**
+- [x] **Step 9: Repoint `services/amazon_stealth/extractor.py`**
 
 At lines 143-146, replace:
 
@@ -365,7 +365,7 @@ with:
             price = AmazonPriceExtractor().extract_from_soup(soup)
 ```
 
-- [ ] **Step 10: Replace `price_async._parse_content`**
+- [x] **Step 10: Replace `price_async._parse_content`**
 
 Replace the whole function (lines 278-326) with:
 
@@ -381,7 +381,7 @@ def _parse_content(url: str, html_content: str) -> Optional[float]:
         return None
 ```
 
-- [ ] **Step 11: Repoint tests that referenced deleted internals**
+- [x] **Step 11: Repoint tests that referenced deleted internals**
 
 In `tests/unit/test_price_service.py`, the five parse-price tests (lines 32-56) import
 `_parse_price` from `services.price_service`. Change each import to:
@@ -406,14 +406,14 @@ with patch('services.price_service._fetch_standard_price', return_value=99.99):
 `tests/unit/test_amazon_stealth_integration.py` needs NO changes — `_fetch_amazon_price`,
 `_fetch_amazon_price_legacy`, and `_make_request` all still exist.
 
-- [ ] **Step 12: Run the unit suite**
+- [x] **Step 12: Run the unit suite**
 
 Run: `.venv/bin/python -m pytest tests/unit/ -p no:cacheprovider --no-cov -q`
 Expected: 445 passed, 0 failed. If an Amazon/Target/Walmart extraction test fails,
 diff the failing extractor against the legacy function in `git show HEAD:services/price_service.py`
 and port the missing selector/strategy into the extractor — do NOT resurrect the legacy function.
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add services/price_service.py services/price_async.py services/amazon_stealth/extractor.py tests/unit/test_price_service.py tests/unit/test_price_crawler_v2.py
@@ -430,7 +430,7 @@ codes change. Existing route tests are the safety net.
 **Files:**
 - Modify: `blueprints/items.py`
 
-- [ ] **Step 1: Add module-level constant and helpers (after the `bp = Blueprint(...)` line)**
+- [x] **Step 1: Add module-level constant and helpers (after the `bp = Blueprint(...)` line)**
 
 ```python
 DEFAULT_IMAGE_URL = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
@@ -474,13 +474,13 @@ def _parse_contribution_amount():
     return amount, None
 ```
 
-- [ ] **Step 2: Replace the five `default_image_url = 'https://via.placeholder.com/...'` literals**
+- [x] **Step 2: Replace the five `default_image_url = 'https://via.placeholder.com/...'` literals**
 
 In `items_list`, `claim_item`, `unclaim_item`, `get_split_modal`, and `my_claims`,
 delete the local `default_image_url = '...'` assignment and pass
 `default_image_url=DEFAULT_IMAGE_URL` (or use the constant directly) instead.
 
-- [ ] **Step 3: Replace the get-or-404 pattern with `_get_item_or_404`**
+- [x] **Step 3: Replace the get-or-404 pattern with `_get_item_or_404`**
 
 In these nine routes, replace the two/three-line `item = db.session.get(Item, item_id)` +
 `if item is None: abort(404)` (or `if not item: abort(404)`) block with
@@ -491,7 +491,7 @@ In these nine routes, replace the two/three-line `item = db.session.get(Item, it
 Do NOT change `get_item_modal` (returns a plain-text 404, not the error page) or
 `delete_item` (combines the not-found and not-owner cases into one flash+redirect).
 
-- [ ] **Step 4: Use `_item_card_response` in `claim_item` and `unclaim_item`**
+- [x] **Step 4: Use `_item_card_response` in `claim_item` and `unclaim_item`**
 
 In `claim_item`, the htmx block becomes:
 
@@ -515,7 +515,7 @@ In `unclaim_item`, the corresponding block inside the `if item.status == 'Claime
 (The trailing `else: flash('You cannot unclaim this item.', 'danger')` and final
 `return redirect(...)` stay exactly as they are.)
 
-- [ ] **Step 5: Use `_parse_contribution_amount` in the two split routes**
+- [x] **Step 5: Use `_parse_contribution_amount` in the two split routes**
 
 In `start_split` and `join_split`, replace the try/except float parse + `amount <= 0`
 check (two blocks of ~10 lines each) with:
@@ -526,12 +526,12 @@ check (two blocks of ~10 lines each) with:
         return error
 ```
 
-- [ ] **Step 6: Run the items and split test files, then the whole unit suite**
+- [x] **Step 6: Run the items and split test files, then the whole unit suite**
 
 Run: `.venv/bin/python -m pytest tests/unit/ -p no:cacheprovider --no-cov -q`
 Expected: 445 passed, 0 failed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add blueprints/items.py
@@ -542,7 +542,7 @@ git commit -m "Deduplicate items blueprint: shared 404/card/amount helpers"
 
 ### Task 5: Full-suite verification
 
-- [ ] **Step 1: Run the complete test suite (unit + browser) with coverage**
+- [x] **Step 1: Run the complete test suite (unit + browser) with coverage**
 
 Browser tests need Playwright browsers: if `tests/browser` fails at startup with a
 missing-executable error, run `.venv/bin/playwright install chromium` first.
@@ -554,12 +554,12 @@ If browser tests cannot run locally (missing system deps), run
 `.venv/bin/python -m pytest tests/unit/ -p no:cacheprovider --no-cov -q` (expected:
 445 passed) and note that CI must run the full suite.
 
-- [ ] **Step 2: Confirm the line-count payoff**
+- [x] **Step 2: Confirm the line-count payoff**
 
 Run: `wc -l services/price_service.py blueprints/items.py`
 Expected: `price_service.py` ≈ 450-550 lines (from 1,201); `items.py` ≈ 570-600 (from 641).
 
-- [ ] **Step 3: Final commit if anything was adjusted during verification**
+- [x] **Step 3: Final commit if anything was adjusted during verification**
 
 ```bash
 git status  # should be clean of *new* changes from this plan; pre-existing pending refactor files remain
