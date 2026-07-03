@@ -1,9 +1,7 @@
 """Price fetching service for wishlist items."""
 import datetime
-import json
 import logging
 import random
-import re
 import time
 from urllib.parse import urlparse
 from collections import defaultdict
@@ -12,6 +10,12 @@ import requests
 from bs4 import BeautifulSoup
 from config import Config
 from services import price_cache, price_metrics
+from services.price_extraction.extractors import (
+    get_extractor_for_url,
+    AmazonPriceExtractor,
+    GenericPriceExtractor,
+    TargetPriceExtractor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -137,20 +141,14 @@ def fetch_price(url):
         parsed = urlparse(url)
         domain = parsed.netloc.lower()
 
-        # Site-specific extractors
+        # Amazon and Target need special fetching (stealth / Playwright fallback);
+        # everything else is fetch-then-extract with the registry.
         if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
             price = _fetch_amazon_price(url)
         elif 'target.com' in domain:
             price = _fetch_target_price(url)
-        elif 'walmart.com' in domain:
-            price = _fetch_walmart_price(url)
-        elif 'bestbuy.com' in domain:
-            price = _fetch_bestbuy_price(url)
-        elif 'etsy.com' in domain:
-            price = _fetch_etsy_price(url)
         else:
-            # Generic approach for other sites
-            price = _fetch_generic_price(url)
+            price = _fetch_standard_price(url)
 
         if price is not None:
             success = True
@@ -258,6 +256,19 @@ def _fetch_with_playwright(url):
 
 
 
+def _fetch_standard_price(url):
+    """Fetch a page and extract its price with the site-appropriate extractor."""
+    try:
+        response = _make_request(url)
+        if not response:
+            return None
+        soup = BeautifulSoup(response.text, 'html.parser')
+        return get_extractor_for_url(url).extract_from_soup(soup)
+    except Exception as e:
+        logger.warning(f'Price fetch failed for {url}: {str(e)}')
+        return None
+
+
 def _fetch_amazon_price(url):
     """Fetch price from Amazon product page.
 
@@ -304,15 +315,14 @@ def _fetch_amazon_price(url):
 
 
 def _fetch_amazon_price_legacy(url):
-    """Legacy price extraction using requests/Playwright fallback.
+    """Legacy Amazon extraction: requests first, Playwright on CAPTCHA.
 
-    Note: Amazon actively blocks scraping. This function tries multiple approaches
-    but may fail due to CAPTCHAs, bot detection, or page structure changes.
-    For reliable Amazon pricing, consider using the Amazon Product Advertising API.
+    Note: Amazon actively blocks scraping. This may fail due to CAPTCHAs,
+    bot detection, or page structure changes. For reliable Amazon pricing,
+    consider the Amazon Product Advertising API.
     """
     try:
         session = _get_session()
-        # Add Amazon-specific headers to look more like a real browser
         session.headers.update({
             'Accept-Language': 'en-US,en;q=0.9',
             'Referer': 'https://www.amazon.com/',
@@ -324,592 +334,80 @@ def _fetch_amazon_price_legacy(url):
             logger.warning(f'Amazon request failed (possible bot detection): {url}')
             return None
 
-        # Check if we got a CAPTCHA or robot check page
+        extractor = AmazonPriceExtractor()
         if 'captcha' in response.text.lower() or 'robot check' in response.text.lower():
             logger.warning(f'Amazon returned CAPTCHA/robot check page via requests, trying Playwright: {url}')
             soup = _fetch_with_playwright(url)
             if soup:
-                 return _extract_amazon_price_from_soup(soup)
+                return extractor.extract_from_soup(soup)
             return None
 
         soup = BeautifulSoup(response.text, 'html.parser')
-        return _extract_amazon_price_from_soup(soup)
+        return extractor.extract_from_soup(soup)
     except Exception as e:
         logger.warning(f'Amazon price fetch failed for {url}: {str(e)}')
         return None
 
-def _extract_amazon_price_from_soup(soup):
-    """Extract price from Amazon BeautifulSoup object."""
-    try:
-        # First try: Extract from twister-plus-price-data-price attribute
-        price_elem = soup.find(attrs={'data-asin-price': True})
-        if price_elem:
-            price = _parse_price(price_elem.get('data-asin-price'))
-            if price and price > 0:
-                logger.info(f'Found Amazon price from data-asin-price: ${price}')
-                return price
-
-        # Second try: Extensive list of Amazon price selectors
-        price_selectors = [
-            # Main price displays (2024-2025 layouts)
-            '#corePrice_feature_div .a-offscreen',
-            '#corePriceDisplay_desktop_feature_div .a-offscreen',
-            '#apex_offerDisplay_desktop .a-offscreen',
-            '.apexPriceToPay .a-offscreen',
-            '#tp_price_block_total_price_ww .a-offscreen',
-            '.priceToPay .a-offscreen',
-            '.priceToPay .a-offscreen',
-            '.reinventPricePriceToPayMargin .a-offscreen',
-            # Book specific
-            '#price', 
-            '.header-price',
-            # Legacy selectors
-            '#priceblock_ourprice',
-            '#priceblock_dealprice',
-            '#priceblock_saleprice',
-            '.a-price .a-offscreen',
-            '#price_inside_buybox',
-            '#newBuyBoxPrice',
-            '#kindle-price',
-            '#price',
-            # Try broader selectors last
-            '.a-color-price',
-            'span[data-a-color="price"] .a-offscreen',
-        ]
-        
-        for selector in price_selectors:
-            price_elem = soup.select_one(selector)
-            if price_elem:
-                price = _parse_price(price_elem.get_text())
-                if price and price > 0:
-                     logger.info(f'Found Amazon price: ${price}')
-                     return price
-
-        # Third try: Extract from embedded JavaScript data
-        price = _extract_amazon_price_from_scripts(soup)
-        if price:
-            return price
-            
-        return None
-    except Exception:
-        return None
-
-
-
-def _extract_amazon_price_from_scripts(soup):
-    """Try to extract Amazon price from embedded scripts/data."""
-    # Look for price in data attributes
-    price_elements = soup.find_all(attrs={'data-asin-price': True})
-    for elem in price_elements:
-        price = _parse_price(elem.get('data-asin-price'))
-        if price and price > 0:
-            return price
-
-    # Look in script tags for price data
-    for script in soup.find_all('script'):
-        if script.string:
-            # Look for common Amazon price patterns in JS
-            patterns = [
-                r'"priceAmount":\s*([\d.]+)',
-                r'"price":\s*"?\$?([\d,.]+)"?',
-                r'buyingPrice["\']?\s*:\s*["\']?([\d,.]+)',
-            ]
-            for pattern in patterns:
-                match = re.search(pattern, script.string)
-                if match:
-                    price = _parse_price(match.group(1))
-                    if price and price > 0:
-                        return price
-    return None
-
-
-
-
-def _extract_target_price_from_soup(soup):
-    """Helper to extract Target price from a BeautifulSoup object."""
-    try:
-        # Look for price in JSON-LD
-        price = _extract_price_from_json_ld_all(soup)
-        if price:
-            return price
-
-        # Try page selectors (updated for 2024/2025)
-        selectors = [
-            '[data-test="product-price"]',
-            '.styles_CurrentPrice',
-            '[data-test="current-price"]',
-            '[data-test="product-price-container"] span',
-        ]
-        for selector in selectors:
-            elem = soup.select_one(selector)
-            if elem:
-                price = _parse_price(elem.get_text())
-                if price and price > 0:
-                    logger.info(f'Found Target price via soup: ${price}')
-                    return price
-        return None
-    except Exception:
-        return None
 
 def _fetch_target_price(url):
-    """Fetch price from Target product page."""
+    """Fetch price from Target, falling back to Playwright for JS-rendered pages."""
+    extractor = TargetPriceExtractor()
     try:
-        # Target heavily relies on JS and API calls via __NEXT_DATA__
-        # But we can try requests first for static hydration data
         response = _make_request(url)
         if response:
             soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Check for bot block
-            if "Access Denied" in soup.title.string if soup.title else "":
-                logger.warning(f"Target blocked requests for {url}")
+            title = soup.title.string if soup.title and soup.title.string else ''
+            if 'Access Denied' in title:
+                logger.warning(f'Target blocked requests for {url}')
             else:
-                 price = _extract_target_price_from_soup(soup)
-                 if price: 
-                     return price
+                price = extractor.extract_from_soup(soup)
+                if price:
+                    return price
 
-        # Fallback to Playwright if everything else failed
-        logger.info(f"Trying Target fallback via Playwright for {url}")
+        logger.info(f'Trying Target fallback via Playwright for {url}')
         soup = _fetch_with_playwright(url)
         if soup:
-             return _extract_target_price_from_soup(soup)
-
+            return extractor.extract_from_soup(soup)
         return None
-
     except Exception as e:
         logger.warning(f'Target price fetch failed for {url}: {str(e)}')
         return None
 
 
-def _fetch_walmart_price(url):
-    """Fetch price from Walmart product page."""
-    try:
-        response = _make_request(url)
-        if not response:
-            return None
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        return _extract_walmart_price_from_soup(soup)
-    except Exception as e:
-        logger.warning(f'Walmart price fetch failed for {url}: {str(e)}')
-        return None
-
-def _extract_walmart_price_from_soup(soup):
-    """Extract price from Walmart BeautifulSoup object."""
-    try:
-        # Walmart uses various price display methods
-        selectors = [
-            '[itemprop="price"]',
-            '.price-characteristic',
-            '[data-automation="buybox-price"]',
-            '.prod-PriceHero',
-            'span[data-testid="price-wrap"]',
-        ]
-
-        for selector in selectors:
-            elem = soup.select_one(selector)
-            if elem:
-                # Check for content attribute first
-                price_val = elem.get('content') or elem.get_text()
-                price = _parse_price(price_val)
-                if price and price > 0:
-                    logger.info(f'Found Walmart price: ${price}')
-                    return price
-
-        # Try JSON-LD
-        price = _extract_price_from_json_ld_all(soup)
-        if price:
-            return price
-
-        # Try script data
-        for script in soup.find_all('script', id='__NEXT_DATA__'):
-            if script.string:
-                try:
-                    data = json.loads(script.string)
-                    price_info = _deep_search_dict(data, 'priceInfo')
-                    if price_info:
-                        current = price_info.get('currentPrice', {})
-                        if isinstance(current, dict):
-                            price = current.get('price') or current.get('priceValue')
-                        else:
-                            price = current
-                        if price:
-                            return float(price)
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    pass
-        return None
-    except Exception as e:
-        logger.warning(f'Walmart price extraction failed: {str(e)}')
-        return None
-
-
-def _fetch_bestbuy_price(url):
-    """Fetch price from Best Buy product page."""
-    try:
-        response = _make_request(url)
-        if not response:
-            return None
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        return _extract_bestbuy_price_from_soup(soup)
-    except Exception as e:
-        logger.warning(f'Best Buy price fetch failed for {url}: {str(e)}')
-        return None
-
-def _extract_bestbuy_price_from_soup(soup):
-    """Extract price from Best Buy BeautifulSoup object."""
-    try:
-        # Best Buy price selectors
-        selectors = [
-            '.priceView-hero-price span',
-            '[data-testid="customer-price"] span',
-            '.pricing-price__regular-price',
-        ]
-
-        for selector in selectors:
-            elem = soup.select_one(selector)
-            if elem:
-                price = _parse_price(elem.get_text())
-                if price and price > 0:
-                    logger.info(f'Found Best Buy price: ${price}')
-                    return price
-
-        # Try JSON-LD
-        price = _extract_price_from_json_ld_all(soup)
-        if price:
-            return price
-
-        return None
-    except Exception:
-        return None
-
-
-def _fetch_etsy_price(url):
-    """Fetch price from Etsy product page."""
-    try:
-        response = _make_request(url)
-        if not response:
-            return None
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        return _extract_etsy_price_from_soup(soup)
-    except Exception as e:
-        logger.warning(f'Etsy price fetch failed for {url}: {str(e)}')
-        return None
-
-def _extract_etsy_price_from_soup(soup):
-    """Extract price from Etsy BeautifulSoup object."""
-    try:
-        # Etsy price selectors
-        selectors = [
-            '[data-buy-box-listing-price]',
-            '.wt-text-title-03',
-            '.wt-mr-xs-1',
-            'p[class*="Price"]',
-        ]
-
-        for selector in selectors:
-            elem = soup.select_one(selector)
-            if elem:
-                price_text = elem.get('data-buy-box-listing-price') or elem.get_text()
-                price = _parse_price(price_text)
-                if price and price > 0:
-                    logger.info(f'Found Etsy price: ${price}')
-                    return price
-
-        # Try JSON-LD
-        price = _extract_price_from_json_ld_all(soup)
-        if price:
-            return price
-
-        return None
-    except Exception:
-        return None
-
-
-def _fetch_generic_price(url):
-    """Try to fetch price from a generic product page using multiple strategies."""
-    try:
-        response = _make_request(url)
-        if not response:
-            return None
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        return _extract_generic_price_from_soup(soup)
-    except Exception as e:
-        logger.warning(f'Generic price fetch failed for {url}: {str(e)}')
-        return None
-
-def _extract_generic_price_from_soup(soup):
-    """Extract price from generic page using standard strategies."""
-    try:
-        # Strategy 1: Meta tags (most reliable when available)
-        meta_selectors = [
-            ('meta[property="og:price:amount"]', 'content'),
-            ('meta[property="product:price:amount"]', 'content'),
-            ('meta[name="price"]', 'content'),
-            ('meta[name="twitter:data1"]', 'content'),
-            ('meta[property="og:price"]', 'content'),
-        ]
-
-        for selector, attr in meta_selectors:
-            element = soup.select_one(selector)
-            if element and element.get(attr):
-                price = _parse_price(element.get(attr))
-                if price is not None and price > 0:
-                    logger.info(f'Found price from meta tag: ${price}')
-                    return price
-
-        # Strategy 2: JSON-LD structured data
-        price = _extract_price_from_json_ld_all(soup)
-        if price:
-            logger.info(f'Found price from JSON-LD: ${price}')
-            return price
-
-        # Strategy 3: Microdata
-        price_elem = soup.find(itemprop='price')
-        if price_elem:
-            price_val = price_elem.get('content') or price_elem.get_text()
-            price = _parse_price(price_val)
-            if price and price > 0:
-                logger.info(f'Found price from microdata: ${price}')
-                return price
-        
-
-        # Strategy 4: Common CSS class patterns
-        price_classes = [
-            '.product-price',
-            '.price',
-            '.current-price',
-            '.sale-price',
-            '.regular-price',
-            '.product__price',
-            '[data-price]',
-            '[data-product-price]',
-            '.price-value',
-            '.price__current',
-            '.ProductPrice',
-            '.product-single__price',
-            '#product-price',
-            '.woocommerce-Price-amount',
-            '.shopify-Price',
-        ]
-
-        for selector in price_classes:
-            elements = soup.select(selector)
-            for element in elements:
-                price_text = element.get('data-price') or element.get('content') or element.get_text(strip=True)
-                price = _parse_price(price_text)
-                if price is not None and price > 0 and price < 100000:  # Sanity check
-                    logger.info(f'Found price from class {selector}: ${price}')
-                    return price
-
-        logger.warning('Could not find price on page')
-        return None
-
-    except Exception as e:
-        logger.warning(f'Generic price extraction failed: {str(e)}')
-        return None
-
-
-def _extract_price_from_json_ld_all(soup):
-    """Extract price from all JSON-LD blocks on the page."""
-    for script in soup.find_all('script', type='application/ld+json'):
-        try:
-            if script.string:
-                data = json.loads(script.string)
-                price = _extract_price_from_json_ld(data)
-                if price is not None:
-                    return price
-        except (json.JSONDecodeError, TypeError):
-            continue
-    return None
-
-
-def _extract_price_from_json_ld(data):
-    """Extract price from JSON-LD structured data."""
-    if isinstance(data, list):
-        for item in data:
-            price = _extract_price_from_json_ld(item)
-            if price is not None:
-                return price
-        return None
-
-    if isinstance(data, dict):
-        # Check @type for Product
-        obj_type = data.get('@type', '')
-        if isinstance(obj_type, list):
-            obj_type = obj_type[0] if obj_type else ''
-
-        # Direct price field
-        if 'price' in data:
-            price = _parse_price(str(data['price']))
-            if price is not None and price > 0:
-                return price
-
-        # Offers - can be dict or list
-        offers = data.get('offers')
-        if offers:
-            if isinstance(offers, dict):
-                price = offers.get('price')
-                if price:
-                    parsed = _parse_price(str(price))
-                    if parsed and parsed > 0:
-                        return parsed
-                # Try lowPrice for ranges
-                low_price = offers.get('lowPrice')
-                if low_price:
-                    parsed = _parse_price(str(low_price))
-                    if parsed and parsed > 0:
-                        return parsed
-
-            elif isinstance(offers, list):
-                for offer in offers:
-                    if isinstance(offer, dict):
-                        price = offer.get('price')
-                        if price:
-                            parsed = _parse_price(str(price))
-                            if parsed and parsed > 0:
-                                return parsed
-
-        # Nested product data
-        if '@graph' in data:
-            return _extract_price_from_json_ld(data['@graph'])
-
-    return None
-
-
-def _deep_search_dict(data, key):
-    """Recursively search for a key in nested dict/list structures."""
-    if isinstance(data, dict):
-        if key in data:
-            return data[key]
-        for v in data.values():
-            result = _deep_search_dict(v, key)
-            if result is not None:
-                return result
-    elif isinstance(data, list):
-        for item in data:
-            result = _deep_search_dict(item, key)
-            if result is not None:
-                return result
-    return None
-
-
-def _parse_price(price_text):
-    """Parse a price string into a float.
-
-    Args:
-        price_text: String like "$19.99", "USD 19.99", "19,99", etc.
-
-    Returns:
-        Float price or None if parsing fails
-    """
-    if not price_text:
-        return None
-
-    if isinstance(price_text, (int, float)):
-        return float(price_text)
-
-    price_text = str(price_text).strip()
-
-    # Handle price ranges - take the first/lower price
-    if ' - ' in price_text or ' to ' in price_text.lower():
-        price_text = re.split(r'\s*[-–]\s*|\s+to\s+', price_text, flags=re.IGNORECASE)[0]
-
-    # Remove currency symbols, letters, and extra whitespace
-    cleaned = re.sub(r'[^\d.,\s]', '', price_text).strip()
-
-    # Handle multiple prices (take first one)
-    if '  ' in cleaned:
-        cleaned = cleaned.split()[0]
-
-    if not cleaned:
-        return None
-
-    # Handle different decimal separators
-    if ',' in cleaned and '.' in cleaned:
-        # Determine which is the decimal separator
-        if cleaned.rfind(',') > cleaned.rfind('.'):
-            # European format: 1.234,56
-            cleaned = cleaned.replace('.', '').replace(',', '.')
-        else:
-            # US format: 1,234.56
-            cleaned = cleaned.replace(',', '')
-    elif ',' in cleaned:
-        parts = cleaned.split(',')
-        if len(parts) == 2 and len(parts[1]) <= 2:
-            # Likely European decimal: 19,99
-            cleaned = cleaned.replace(',', '.')
-        else:
-            # Likely thousands separator: 1,234
-            cleaned = cleaned.replace(',', '')
-
-    try:
-        result = float(cleaned)
-        # Sanity check - prices shouldn't be negative or absurdly high
-        if result < 0 or result > 1000000:
-            return None
-        return result
-    except ValueError:
-        return None
-
-
-
 def _fetch_amazon_metadata(url):
     """Fetch all metadata from Amazon."""
-    metadata = {}
-    
-    # Try requests first
     try:
         session = _get_session()
-        # Add Amazon-specific headers
         session.headers.update({
             'Accept-Language': 'en-US,en;q=0.9',
             'Referer': 'https://www.amazon.com/',
             'DNT': '1',
         })
         response = _make_request(url, session)
-        
-        soup = None
+
         if response and 'captcha' not in response.text.lower() and 'robot check' not in response.text.lower():
-             soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.text, 'html.parser')
         else:
             logger.warning(f'Amazon CAPTCHA detected, switching to Playwright for metadata: {url}')
             soup = _fetch_with_playwright(url)
-            
-        if soup:
-            # Title
-            title_elem = soup.select_one('#productTitle') or soup.select_one('#title')
-            if title_elem:
-                metadata['title'] = title_elem.get_text(strip=True)
-                
-            # Price
-            price = _extract_amazon_price_from_soup(soup)
-            if price:
-                metadata['price'] = price
-                
-            # Image
-            img_elem = soup.select_one('#landingImage') or soup.select_one('#imgBlkFront')
-            if img_elem:
-                # Try to get high res from data attribute
-                if img_elem.get('data-a-dynamic-image'):
-                    try:
-                        data = json.loads(img_elem['data-a-dynamic-image'])
-                        if data:
-                            # Get the largest image key
-                            metadata['image_url'] = max(data.keys(), key=lambda k: data[k][0])
-                    except:
-                        pass
-                if not metadata.get('image_url'):
-                    metadata['image_url'] = img_elem.get('src')
 
-            return metadata
+        if not soup:
+            return {}
+
+        data = AmazonPriceExtractor().extract_metadata(soup)
+        # The extractor uses 'image'; the public fetch_metadata() contract uses 'image_url'.
+        metadata = {}
+        if data.get('title'):
+            metadata['title'] = data['title']
+        if data.get('price'):
+            metadata['price'] = data['price']
+        if data.get('image'):
+            metadata['image_url'] = data['image']
+        return metadata
 
     except Exception as e:
-        logger.warning(f"Error fetching Amazon metadata: {e}")
-    
-    return metadata
+        logger.warning(f'Error fetching Amazon metadata: {e}')
+        return {}
 
 
 def _fetch_generic_metadata(url):
@@ -936,7 +434,7 @@ def _fetch_generic_metadata(url):
             if elem and elem.get('content'):
                 val = elem['content']
                 if key == 'price':
-                    price = _parse_price(val)
+                    price = GenericPriceExtractor.parse_price(val)
                     if price:
                         metadata[key] = price
                 else:
@@ -949,28 +447,9 @@ def _fetch_generic_metadata(url):
 
         # 3. Price Fallback
         if not metadata.get('price'):
-            # Microdata
-            price_elem = soup.find(itemprop='price')
-            if price_elem:
-                val = price_elem.get('content') or price_elem.get_text()
-                price = _parse_price(val)
-                if price: metadata['price'] = price
-
-            # CSS Classes
-            if not metadata.get('price'):
-                price_classes = [
-                    '.product-price', '.price', '.current-price', '.sale-price', 
-                    '.product__price', '[data-price]', '.price-value', '.ProductPrice'
-                ]
-                for selector in price_classes:
-                    elements = soup.select(selector)
-                    for element in elements:
-                        val = element.get('data-price') or element.get('content') or element.get_text(strip=True)
-                        price = _parse_price(val)
-                        if price and price > 0:
-                            metadata['price'] = price
-                            break
-                    if metadata.get('price'): break
+            price = GenericPriceExtractor().extract_from_soup(soup)
+            if price:
+                metadata['price'] = price
 
         # 4. Image Fallback
         if not metadata.get('image_url'):
@@ -999,7 +478,7 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
         Dictionary with counts of items processed, updated, and errors
     """
     with app.app_context():
-        seven_days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+        seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
 
         # Diagnostic: count items with links
         total_items = Item.query.count()
@@ -1175,8 +654,8 @@ def refresh_item_price(item, db):
         if new_price is not None:
             old_price = item.price
             item.price = new_price
-            item.price_updated_at = datetime.datetime.now()
-            
+            item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
+
             # Record history
             from services.price_history import record_price_history
             record_price_history(item.id, new_price, source='manual')
@@ -1191,7 +670,7 @@ def refresh_item_price(item, db):
                 return True, new_price, f'Price updated from ${old_price:.2f} to ${new_price:.2f}'
         else:
             # Update timestamp even if fetch failed
-            item.price_updated_at = datetime.datetime.now()
+            item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
             db.session.commit()
             return False, None, 'Could not fetch price from URL'
 

@@ -29,30 +29,30 @@ class TestPriceParser:
 
     def test_parse_us_dollar_format(self):
         """Should parse US dollar format like $19.99"""
-        from services.price_service import _parse_price
+        from services.price_extraction.parser import parse_price as _parse_price
         assert _parse_price("$19.99") == 19.99
         assert _parse_price("$1,234.56") == 1234.56
 
     def test_parse_european_format(self):
         """Should parse European format like 19,99"""
-        from services.price_service import _parse_price
+        from services.price_extraction.parser import parse_price as _parse_price
         assert _parse_price("19,99") == 19.99
 
     def test_parse_with_currency_symbols(self):
         """Should strip currency symbols."""
-        from services.price_service import _parse_price
+        from services.price_extraction.parser import parse_price as _parse_price
         assert _parse_price("USD 19.99") == 19.99
         assert _parse_price("EUR 19,99") == 19.99
 
     def test_parse_empty_returns_none(self):
         """Should return None for empty input."""
-        from services.price_service import _parse_price
+        from services.price_extraction.parser import parse_price as _parse_price
         assert _parse_price("") is None
         assert _parse_price(None) is None
 
     def test_parse_invalid_returns_none(self):
         """Should return None for invalid input."""
-        from services.price_service import _parse_price
+        from services.price_extraction.parser import parse_price as _parse_price
         assert _parse_price("not a price") is None
 
 
@@ -65,10 +65,14 @@ class TestFetchPrice:
         assert fetch_price(None) is None
         assert fetch_price("") is None
 
+    @patch('services.price_service._get_identity_manager')
     @patch('services.price_service._make_request')
-    def test_fetch_amazon_price(self, mock_request):
+    def test_fetch_amazon_price(self, mock_request, mock_identity_mgr):
         """Should extract price from Amazon page."""
         from services.price_service import _fetch_amazon_price
+
+        # Mock identity manager to return None (skip stealth mode)
+        mock_identity_mgr.return_value = None
 
         mock_response = MagicMock()
         # More complete HTML with proper Amazon price structure

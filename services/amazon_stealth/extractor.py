@@ -140,10 +140,10 @@ async def stealth_fetch_amazon(
                     content=content
                 )
 
-            # Extract price using existing logic
-            from services.price_service import _extract_amazon_price_from_soup
+            # Extract price using the shared Amazon extractor
+            from services.price_extraction.extractors import AmazonPriceExtractor
             soup = BeautifulSoup(content, 'html.parser')
-            price = _extract_amazon_price_from_soup(soup)
+            price = AmazonPriceExtractor().extract_from_soup(soup)
 
             # Save cookies for next time
             if identity_manager:

@@ -35,6 +35,8 @@ class BasePriceExtractor(ABC):
         Returns:
             True if this extractor can handle the URL
         """
+        if not url:
+            return False
         from urllib.parse import urlparse
         domain = urlparse(url).netloc.lower()
         for pattern in cls.domain_patterns:

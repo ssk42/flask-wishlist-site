@@ -276,50 +276,11 @@ async def _fetch_price_async(url: str) -> Optional[float]:
 
 
 def _parse_content(url: str, html_content: str) -> Optional[float]:
-    """Parse price from HTML content based on domain.
-    
-    This function duplicates some logic from price_service.py's parsing steps
-    to avoid refactoring the entire legacy service immediately.
-    Ideally, price_service.py would expose `parse_amazon(soup)` independent of fetching.
-    For now, we implement a lightweight parser or import if possible.
-    """
+    """Parse price from HTML content using the site-appropriate extractor."""
     try:
-        from services import price_service
+        from services.price_extraction.extractors import get_extractor_for_url
         soup = BeautifulSoup(html_content, 'html.parser')
-        
-        parsed = urlparse(url)
-        domain = parsed.netloc.lower()
-        
-        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
-             # Use the parsing logic from price_service if available or reimplement reuse
-             # Since _extract_amazon_price_from_soup exists in price_service (implied by previous context)
-             # we should try to use it if exposed, or verify if it's private.
-             # It seems to be private `_extract_amazon_price_from_soup` but we can access it.
-             if hasattr(price_service, '_extract_amazon_price_from_soup'):
-                 return price_service._extract_amazon_price_from_soup(soup)
-                 
-        elif 'target.com' in domain:
-            if hasattr(price_service, '_extract_target_price_from_soup'):
-                 return price_service._extract_target_price_from_soup(soup)
-        
-        elif 'walmart.com' in domain:
-             if hasattr(price_service, '_extract_walmart_price_from_soup'):
-                 return price_service._extract_walmart_price_from_soup(soup)
-
-        elif 'bestbuy.com' in domain:
-             if hasattr(price_service, '_extract_bestbuy_price_from_soup'):
-                 return price_service._extract_bestbuy_price_from_soup(soup)
-                 
-        elif 'etsy.com' in domain:
-             if hasattr(price_service, '_extract_etsy_price_from_soup'):
-                 return price_service._extract_etsy_price_from_soup(soup)
-
-        # Fallback to generic
-        if hasattr(price_service, '_extract_generic_price_from_soup'):
-             return price_service._extract_generic_price_from_soup(soup)
-             
-        return None
-
+        return get_extractor_for_url(url).extract_from_soup(soup)
     except Exception as e:
         logger.error(f"Parsing failed for {url}: {e}")
         return None
