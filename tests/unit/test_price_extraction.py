@@ -15,6 +15,10 @@ from services.price_extraction.parser import (
 from services.price_extraction.extractors.base import BasePriceExtractor
 from services.price_extraction.extractors.etsy import EtsyPriceExtractor
 from services.price_extraction.extractors.generic import GenericPriceExtractor
+from services.price_extraction.extractors.amazon import AmazonPriceExtractor
+from services.price_extraction.extractors.walmart import WalmartPriceExtractor
+from services.price_extraction.extractors.target import TargetPriceExtractor
+from services.price_extraction.extractors.bestbuy import BestBuyPriceExtractor
 
 
 class TestParsePrice:
@@ -705,3 +709,742 @@ class TestGenericPriceExtractorCSSSelectors:
         html = '<div data-product-price="59.99">Price: $59.99</div>'
         soup = BeautifulSoup(html, 'html.parser')
         assert extractor.extract_from_soup(soup) == 59.99
+
+
+class TestAmazonPriceExtractor:
+    """Tests for the AmazonPriceExtractor class."""
+
+    def test_domain_patterns(self):
+        """Should match Amazon domain."""
+        assert 'amazon.com' in AmazonPriceExtractor.domain_patterns
+
+    def test_matches_amazon_url(self):
+        """Should match Amazon URLs."""
+        assert AmazonPriceExtractor.matches_url('https://www.amazon.com/dp/B123') is True
+
+    def test_extract_from_data_asin_price_attribute(self):
+        """Should extract price from data-asin-price attribute (first strategy)."""
+        extractor = AmazonPriceExtractor()
+        html = '<html><span data-asin-price="29.99">$29.99</span></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 29.99
+
+    def test_extract_from_core_price_selector(self):
+        """Should extract price from #corePrice_feature_div .a-offscreen selector."""
+        extractor = AmazonPriceExtractor()
+        html = '''
+        <html>
+            <div id="corePrice_feature_div">
+                <span class="a-offscreen">$49.99</span>
+            </div>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 49.99
+
+    def test_extract_from_legacy_priceblock_selector(self):
+        """Should extract price from legacy #priceblock_ourprice selector."""
+        extractor = AmazonPriceExtractor()
+        html = '<html><span id="priceblock_ourprice">$34.50</span></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 34.50
+
+    def test_extract_from_script_price_amount_pattern(self):
+        """Should extract price from priceAmount pattern in script tag (third strategy)."""
+        extractor = AmazonPriceExtractor()
+        html = '''
+        <html>
+            <script>
+                var data = {"priceAmount": 59.99, "currency": "USD"};
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 59.99
+
+    def test_extract_from_script_buying_price_pattern(self):
+        """Should extract price from buyingPrice pattern in script tag."""
+        extractor = AmazonPriceExtractor()
+        html = '''
+        <html>
+            <script>
+                var data = {"buyingPrice": "19.99"};
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 19.99
+
+    def test_extract_returns_none_when_no_price(self):
+        """Should return None when no price is found via any strategy."""
+        extractor = AmazonPriceExtractor()
+        html = '<html><body>No price here</body></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
+
+    def test_extract_handles_exception(self):
+        """Should return None on exception."""
+        extractor = AmazonPriceExtractor()
+        price = extractor.extract_from_soup(None)
+        assert price is None
+
+    def test_extract_metadata_full(self):
+        """Should extract title, price, and largest dynamic image."""
+        extractor = AmazonPriceExtractor()
+        html = '''
+        <html>
+            <body>
+                <span id="productTitle">Fancy Widget</span>
+                <div id="corePrice_feature_div">
+                    <span class="a-offscreen">$19.99</span>
+                </div>
+                <img id="landingImage" src="https://img.example.com/small.jpg"
+                     data-a-dynamic-image='{"https://img.example.com/small.jpg": [100, 100], "https://img.example.com/large.jpg": [500, 500]}'>
+            </body>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        metadata = extractor.extract_metadata(soup)
+        assert metadata['title'] == 'Fancy Widget'
+        assert metadata['price'] == 19.99
+        assert metadata['image'] == 'https://img.example.com/large.jpg'
+
+    def test_extract_metadata_title_fallback_to_title_id(self):
+        """Should fall back to #title when #productTitle is missing."""
+        extractor = AmazonPriceExtractor()
+        html = '<html><body><span id="title">Alt Title</span></body></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        metadata = extractor.extract_metadata(soup)
+        assert metadata['title'] == 'Alt Title'
+
+    def test_extract_metadata_image_src_fallback(self):
+        """Should fall back to plain src attribute when no dynamic-image data present."""
+        extractor = AmazonPriceExtractor()
+        html = '''
+        <html>
+            <body>
+                <img id="landingImage" src="https://img.example.com/plain.jpg">
+            </body>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        metadata = extractor.extract_metadata(soup)
+        assert metadata['image'] == 'https://img.example.com/plain.jpg'
+
+    def test_extract_metadata_malformed_dynamic_image_json_falls_back_to_src(self):
+        """Should fall back to src when data-a-dynamic-image JSON is malformed."""
+        extractor = AmazonPriceExtractor()
+        html = '''
+        <html>
+            <body>
+                <img id="landingImage" src="https://img.example.com/fallback.jpg"
+                     data-a-dynamic-image="not valid json">
+            </body>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        metadata = extractor.extract_metadata(soup)
+        assert metadata['image'] == 'https://img.example.com/fallback.jpg'
+
+    def test_extract_metadata_no_title_no_image(self):
+        """Should return None values when no title or image elements present."""
+        extractor = AmazonPriceExtractor()
+        html = '<html><body>Nothing here</body></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        metadata = extractor.extract_metadata(soup)
+        assert metadata['title'] is None
+        assert metadata['image'] is None
+        assert metadata['price'] is None
+
+
+class TestWalmartPriceExtractor:
+    """Tests for the WalmartPriceExtractor class."""
+
+    def test_domain_patterns(self):
+        """Should match Walmart domain."""
+        assert 'walmart.com' in WalmartPriceExtractor.domain_patterns
+
+    def test_matches_walmart_url(self):
+        """Should match Walmart URLs."""
+        assert WalmartPriceExtractor.matches_url('https://www.walmart.com/ip/123') is True
+
+    def test_extract_from_itemprop_price_content_attribute(self):
+        """Should extract price from [itemprop=price] content attribute (first strategy)."""
+        extractor = WalmartPriceExtractor()
+        html = '<html><span itemprop="price" content="24.99">$24.99</span></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 24.99
+
+    def test_extract_from_selector_text_content(self):
+        """Should extract price from selector text when no content attribute present."""
+        extractor = WalmartPriceExtractor()
+        html = '<html><div class="price-characteristic">14.99</div></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 14.99
+
+    def test_extract_from_json_ld_offers_dict(self):
+        """Should extract price from JSON-LD offers dict (second strategy)."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": {"price": "44.50"}
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 44.50
+
+    def test_extract_from_json_ld_offers_list(self):
+        """Should extract price from JSON-LD offers list."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": [{"price": "22.00"}]
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 22.00
+
+    def test_extract_from_json_ld_low_price(self):
+        """Should extract lowPrice when offers dict has no direct price."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": {"lowPrice": "18.75", "highPrice": "25.00"}
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 18.75
+
+    def test_extract_from_json_ld_malformed_falls_through(self):
+        """Should ignore malformed JSON-LD and continue to next strategy."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            { not valid json
+            </script>
+            <script id="__NEXT_DATA__">
+            {"props": {"priceInfo": {"currentPrice": {"price": 33.33}}}}
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 33.33
+
+    def test_extract_from_next_data_nested_price_dict(self):
+        """Should extract price from nested priceInfo.currentPrice.price via _deep_search_dict."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script id="__NEXT_DATA__">
+            {"props": {"pageProps": {"initialData": {"data": {"product": {
+                "priceInfo": {"currentPrice": {"price": 27.45}}
+            }}}}}}
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 27.45
+
+    def test_extract_from_next_data_scalar_current_price(self):
+        """Should extract price when currentPrice is a scalar rather than a dict."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script id="__NEXT_DATA__">
+            {"props": {"priceInfo": {"currentPrice": 15.5}}}
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 15.5
+
+    def test_extract_from_next_data_malformed_json_ignored(self):
+        """Should ignore malformed __NEXT_DATA__ JSON and return None."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script id="__NEXT_DATA__">
+            { not valid json at all
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
+
+    def test_extract_returns_none_when_nothing_matches(self):
+        """Should return None when no strategy finds a price."""
+        extractor = WalmartPriceExtractor()
+        html = '<html><body>No price info</body></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
+
+    def test_extract_handles_exception(self):
+        """Should return None on exception (e.g. bad soup input)."""
+        extractor = WalmartPriceExtractor()
+        price = extractor.extract_from_soup(None)
+        assert price is None
+
+    def test_find_price_in_json_ld_direct_price_field(self):
+        """Should find a direct top-level 'price' field with no offers wrapper."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {"@type": "Product", "price": "88.10"}
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 88.10
+
+    def test_find_price_in_json_ld_recurses_into_nested_dict(self):
+        """Should recurse into nested dict values to find offers."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "WebPage",
+                "mainEntity": {
+                    "@type": "Product",
+                    "offers": {"price": "91.20"}
+                }
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 91.20
+
+    def test_find_price_in_json_ld_top_level_list(self):
+        """Should find price when JSON-LD root is a list of objects."""
+        extractor = WalmartPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            [
+                {"@type": "BreadcrumbList"},
+                {"@type": "Product", "offers": {"price": "66.60"}}
+            ]
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 66.60
+
+    def test_deep_search_dict_finds_nested_key_in_list(self):
+        """Should find key nested inside a list of dicts."""
+        extractor = WalmartPriceExtractor()
+        data = {'a': [{'b': 'no'}, {'priceInfo': {'currentPrice': 5}}]}
+        result = extractor._deep_search_dict(data, 'priceInfo')
+        assert result == {'currentPrice': 5}
+
+    def test_deep_search_dict_returns_none_when_absent(self):
+        """Should return None when key is not present anywhere."""
+        extractor = WalmartPriceExtractor()
+        data = {'a': {'b': 'c'}}
+        result = extractor._deep_search_dict(data, 'priceInfo')
+        assert result is None
+
+
+class TestTargetPriceExtractor:
+    """Tests for the TargetPriceExtractor class."""
+
+    def test_domain_patterns(self):
+        """Should match Target domain."""
+        assert 'target.com' in TargetPriceExtractor.domain_patterns
+
+    def test_matches_target_url(self):
+        """Should match Target URLs."""
+        assert TargetPriceExtractor.matches_url('https://www.target.com/p/product/-/A-1') is True
+
+    def test_extract_from_json_ld_offers(self):
+        """Should extract price from JSON-LD offers dict (first strategy)."""
+        extractor = TargetPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": {"price": "39.99"}
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 39.99
+
+    def test_extract_from_json_ld_graph_nesting(self):
+        """Should find price nested inside a top-level @graph list."""
+        extractor = TargetPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {"@type": "BreadcrumbList", "itemListElement": []},
+                    {"@type": "Product", "offers": {"price": "12.34"}}
+                ]
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 12.34
+
+    def test_extract_from_json_ld_malformed_falls_through_to_selector(self):
+        """Should ignore malformed JSON-LD and fall back to CSS selector."""
+        extractor = TargetPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            { not valid json
+            </script>
+            <div data-test="product-price">$27.50</div>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 27.50
+
+    def test_extract_from_data_test_product_price_selector(self):
+        """Should extract price via [data-test="product-price"] selector (second strategy)."""
+        extractor = TargetPriceExtractor()
+        html = '<html><div data-test="product-price">$45.00</div></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 45.00
+
+    def test_extract_from_current_price_selector(self):
+        """Should extract price via [data-test="current-price"] selector."""
+        extractor = TargetPriceExtractor()
+        html = '<html><span data-test="current-price">$16.20</span></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 16.20
+
+    def test_extract_returns_none_on_empty_page(self):
+        """Should return None when no JSON-LD or selectors match."""
+        extractor = TargetPriceExtractor()
+        html = '<html><body>Empty page</body></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
+
+    def test_extract_handles_exception(self):
+        """Should return None on exception."""
+        extractor = TargetPriceExtractor()
+        price = extractor.extract_from_soup(None)
+        assert price is None
+
+    def test_find_price_in_json_ld_direct_price_field(self):
+        """Should find a direct top-level 'price' field with no offers wrapper."""
+        extractor = TargetPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {"@type": "Product", "price": "51.23"}
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 51.23
+
+    def test_find_price_in_json_ld_offers_list(self):
+        """Should extract price from JSON-LD offers list."""
+        extractor = TargetPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": [{"price": "62.10"}]
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 62.10
+
+    def test_find_price_in_json_ld_top_level_list(self):
+        """Should find price when JSON-LD root is a list of objects."""
+        extractor = TargetPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            [
+                {"@type": "BreadcrumbList"},
+                {"@type": "Product", "offers": {"price": "73.45"}}
+            ]
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 73.45
+
+
+class TestBestBuyPriceExtractor:
+    """Tests for the BestBuyPriceExtractor class."""
+
+    def test_domain_patterns(self):
+        """Should match Best Buy domains."""
+        assert 'bestbuy.com' in BestBuyPriceExtractor.domain_patterns
+        assert 'bestbuy.ca' in BestBuyPriceExtractor.domain_patterns
+
+    def test_matches_bestbuy_url(self):
+        """Should match Best Buy URLs."""
+        assert BestBuyPriceExtractor.matches_url('https://www.bestbuy.com/site/p/123') is True
+
+    def test_extract_from_hero_price_selector(self):
+        """Should extract price from .priceView-hero-price span selector (first strategy)."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <div class="priceView-hero-price">
+                <span>$599.99</span>
+            </div>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 599.99
+
+    def test_extract_from_customer_price_testid_selector(self):
+        """Should extract price from [data-testid="customer-price"] span selector."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <div data-testid="customer-price">
+                <span>$129.99</span>
+            </div>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 129.99
+
+    def test_extract_from_json_ld_fallback(self):
+        """Should fall back to JSON-LD when no CSS selector matches (second strategy)."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": {"price": "899.00"}
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 899.00
+
+    def test_extract_from_json_ld_offers_list(self):
+        """Should extract price from JSON-LD offers list."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": [{"price": "349.99"}]
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 349.99
+
+    def test_extract_from_json_ld_low_price(self):
+        """Should extract lowPrice from JSON-LD when no direct price present."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "Product",
+                "offers": {"lowPrice": "199.99", "highPrice": "249.99"}
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 199.99
+
+    def test_extract_from_json_ld_malformed_ignored(self):
+        """Should ignore malformed JSON-LD and return None if nothing else matches."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            { not valid json
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
+
+    def test_extract_returns_none_when_nothing_matches(self):
+        """Should return None when no strategy finds a price."""
+        extractor = BestBuyPriceExtractor()
+        html = '<html><body>No price info here</body></html>'
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
+
+    def test_extract_handles_exception(self):
+        """Should return None on exception."""
+        extractor = BestBuyPriceExtractor()
+        price = extractor.extract_from_soup(None)
+        assert price is None
+
+    def test_find_price_in_json_ld_direct_price_field(self):
+        """Should find a direct top-level 'price' field with no offers wrapper."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {"@type": "Product", "price": "409.99"}
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 409.99
+
+    def test_find_price_in_json_ld_recurses_into_nested_dict(self):
+        """Should recurse into nested dict values to find offers."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "WebPage",
+                "mainEntity": {
+                    "@type": "Product",
+                    "offers": {"price": "77.77"}
+                }
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 77.77
+
+    def test_find_price_in_json_ld_top_level_list(self):
+        """Should find price when JSON-LD root is a list of objects."""
+        extractor = BestBuyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            [
+                {"@type": "BreadcrumbList"},
+                {"@type": "Product", "offers": {"price": "88.88"}}
+            ]
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 88.88
+
+
+class TestEtsyPriceExtractorJsonLdGaps:
+    """Additional tests to cover recursive JSON-LD paths in EtsyPriceExtractor."""
+
+    def test_extract_from_json_ld_top_level_list(self):
+        """Should find price when JSON-LD root is a list of objects."""
+        extractor = EtsyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            [
+                {"@type": "BreadcrumbList"},
+                {"@type": "Product", "offers": {"price": "22.50"}}
+            ]
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 22.50
+
+    def test_extract_from_json_ld_nested_dict_recursion(self):
+        """Should recurse into nested dict values to find offers."""
+        extractor = EtsyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            {
+                "@type": "WebPage",
+                "mainEntity": {
+                    "@type": "Product",
+                    "offers": {"price": "17.25"}
+                }
+            }
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price == 17.25
+
+    def test_extract_from_json_ld_malformed_script_ignored(self):
+        """Should ignore malformed JSON-LD scripts and return None if nothing else matches."""
+        extractor = EtsyPriceExtractor()
+        html = '''
+        <html>
+            <script type="application/ld+json">
+            { not valid json
+            </script>
+        </html>
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        price = extractor.extract_from_soup(soup)
+        assert price is None
