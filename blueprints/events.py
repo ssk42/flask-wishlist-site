@@ -6,6 +6,8 @@ from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 
 from models import db, Event, Item
+from services.form_validators import FormValidator
+from services.view_helpers import flash_and_redirect
 
 bp = Blueprint('events', __name__, url_prefix='/events')
 
@@ -32,21 +34,14 @@ def events_list():
 def new_event():
     """Create a new event."""
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        date_str = request.form.get('date', '').strip()
+        validator = FormValidator(request.form)
+        name = validator.required('name', 'Event name is required.')
+        event_date = validator.parse_date('date', required=True, error_message='Event date is required.',
+                                          format_error='Invalid date format. Please use YYYY-MM-DD.')
 
-        if not name:
-            flash('Event name is required.', 'danger')
-            return render_template('event_form.html', form_data=request.form.to_dict())
-
-        if not date_str:
-            flash('Event date is required.', 'danger')
-            return render_template('event_form.html', form_data=request.form.to_dict())
-
-        try:
-            event_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
+        if not validator.is_valid():
+            for error in validator.errors:
+                flash(error, 'danger')
             return render_template('event_form.html', form_data=request.form.to_dict())
 
         new_event = Event(
@@ -57,8 +52,7 @@ def new_event():
         db.session.add(new_event)
         db.session.commit()
         current_app.logger.info(f'Event created by user_id={current_user.id}: {name}')
-        flash(f'Event "{name}" created successfully!', 'success')
-        return redirect(url_for('events.events_list'))
+        return flash_and_redirect(f'Event "{name}" created successfully!', 'success', 'events.events_list')
 
     return render_template('event_form.html', form_data={})
 
@@ -72,32 +66,23 @@ def edit_event(event_id):
         abort(404)
 
     if event.created_by_id != current_user.id:
-        flash('You can only edit events you created.', 'danger')
-        return redirect(url_for('events.events_list'))
+        return flash_and_redirect('You can only edit events you created.', 'danger', 'events.events_list')
 
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        date_str = request.form.get('date', '').strip()
+        validator = FormValidator(request.form)
+        name = validator.required('name', 'Event name is required.')
+        event_date = validator.parse_date('date', required=True, error_message='Event date is required.',
+                                          format_error='Invalid date format. Please use YYYY-MM-DD.')
 
-        if not name:
-            flash('Event name is required.', 'danger')
-            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
-
-        if not date_str:
-            flash('Event date is required.', 'danger')
-            return render_template('event_form.html', event=event, form_data=request.form.to_dict())
-
-        try:
-            event_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
+        if not validator.is_valid():
+            for error in validator.errors:
+                flash(error, 'danger')
             return render_template('event_form.html', event=event, form_data=request.form.to_dict())
 
         event.name = name
         event.date = event_date
         db.session.commit()
-        flash(f'Event "{name}" updated successfully!', 'success')
-        return redirect(url_for('events.events_list'))
+        return flash_and_redirect(f'Event "{name}" updated successfully!', 'success', 'events.events_list')
 
     form_data = {
         'name': event.name,
@@ -115,12 +100,11 @@ def delete_event(event_id):
         abort(404)
 
     if event.created_by_id != current_user.id:
-        flash('You can only delete events you created.', 'danger')
-        return redirect(url_for('events.events_list'))
+        return flash_and_redirect('You can only delete events you created.', 'danger', 'events.events_list')
 
     # Remove event association from items but don't delete items
+    event_name = event.name
     Item.query.filter_by(event_id=event_id).update({'event_id': None})
     db.session.delete(event)
     db.session.commit()
-    flash(f'Event "{event.name}" deleted.', 'info')
-    return redirect(url_for('events.events_list'))
+    return flash_and_redirect(f'Event "{event_name}" deleted.', 'info', 'events.events_list')

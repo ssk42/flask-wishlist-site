@@ -62,9 +62,15 @@ class TestCoverageGaps:
             u = User(name="Exporter", email="export@example.com")
             db.session.add(u)
             db.session.commit()
+            user_id = u.id
             item = Item(description="Export Item", user_id=u.id, price=10.0)
             db.session.add(item)
             db.session.commit()
+
+        # Login is required for export_items
+        with client.session_transaction() as session:
+            session["_user_id"] = str(user_id)
+            session["_fresh"] = True
 
         response = client.get('/export_items')
         assert response.status_code == 200

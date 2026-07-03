@@ -52,7 +52,7 @@ class Item(db.Model):
     price = db.Column(db.Float, nullable=True)
     status = db.Column(db.String(20), nullable=False, default='Available', index=True)
     question = db.Column(db.String(100))
-    year = db.Column(db.Integer, default=datetime.datetime.now().year)
+    year = db.Column(db.Integer, default=lambda: datetime.datetime.now(datetime.timezone.utc).year)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     category = db.Column(db.String(50), index=True)
     image_url = db.Column(db.String(2048))

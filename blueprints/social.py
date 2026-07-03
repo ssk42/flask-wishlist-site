@@ -1,6 +1,6 @@
 """Social blueprint for comments and notifications."""
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
 
 from models import db, User, Item, Comment, Notification
@@ -13,7 +13,9 @@ bp = Blueprint('social', __name__)
 @login_required
 def add_comment(item_id):
     """Add a comment to an item."""
-    item = Item.query.get_or_404(item_id)
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
     text = request.form.get('text', '').strip()
 
     if not text:
