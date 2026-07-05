@@ -3,8 +3,13 @@
 # Downloads the Playwright Chromium binary into the slug; system libraries
 # come from the apt buildpack (Aptfile). set -e makes a failed browser
 # install fail the build instead of silently shipping without a browser.
+#
+# PLAYWRIGHT_BROWSERS_PATH=0 stores browsers inside the playwright package
+# (site-packages), which persists into the slug. The default ~/.cache path
+# points at the build sandbox and is dropped, leaving no browser at runtime.
+# The matching runtime config var PLAYWRIGHT_BROWSERS_PATH=0 must be set.
 set -euo pipefail
 
-echo "-----> Installing Playwright Chromium browser"
-playwright install chromium
+echo "-----> Installing Playwright Chromium browser (PLAYWRIGHT_BROWSERS_PATH=0)"
+PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium
 echo "-----> Playwright Chromium installed"
