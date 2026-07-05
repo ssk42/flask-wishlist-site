@@ -1,7 +1,7 @@
 """Events blueprint for event management."""
 
 import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app
+from flask import Blueprint, render_template, request, flash, abort, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 

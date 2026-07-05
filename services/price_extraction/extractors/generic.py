@@ -161,9 +161,9 @@ class GenericPriceExtractor(BasePriceExtractor):
             elements = soup.select(selector)
             for element in elements:
                 price_text = (
-                    element.get('data-price') or
-                    element.get('content') or
-                    element.get_text(strip=True)
+                    element.get('data-price')
+                    or element.get('content')
+                    or element.get_text(strip=True)
                 )
                 price = self.parse_price(price_text)
                 if price is not None and price > 0 and price < 100000:

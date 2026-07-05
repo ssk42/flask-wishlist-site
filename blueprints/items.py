@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import pandas as pd
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, abort, session, send_file, current_app
+    flash, abort, send_file, current_app
 )
 from flask_login import login_required, current_user
 from sqlalchemy import case

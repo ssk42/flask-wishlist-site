@@ -8,7 +8,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from services.amazon_stealth.identities import BrowserIdentity
-from services.amazon_stealth.behaviors import interact_like_human, handle_cookie_banner
+from services.amazon_stealth.behaviors import interact_like_human
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +112,11 @@ async def stealth_fetch_amazon(
 
             # Navigate with timeout
             try:
-                response = await page.goto(
+                await page.goto(
                     url,
                     timeout=30000,
                     wait_until='domcontentloaded'
                 )
-                status_code = response.status if response else 0
             except Exception as e:
                 logger.warning(f"Navigation failed for {url}: {e}")
                 return ExtractionResult(
