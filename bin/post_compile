@@ -1,5 +1,10 @@
 #!/bin/bash
-echo "-----> Running post-compile hook"
-echo "-----> Installing Playwright browsers..."
+# Heroku Python buildpack hook: runs after pip install.
+# Downloads the Playwright Chromium binary into the slug; system libraries
+# come from the apt buildpack (Aptfile). set -e makes a failed browser
+# install fail the build instead of silently shipping without a browser.
+set -euo pipefail
+
+echo "-----> Installing Playwright Chromium browser"
 playwright install chromium
-echo "-----> Playwright installation complete"
+echo "-----> Playwright Chromium installed"
