@@ -53,7 +53,7 @@ class TestCoverageGaps:
             session["_user_id"] = str(attacker_id)
             session["_fresh"] = True
 
-        response = client.get(f'/delete_item/{item_id}', follow_redirects=True)
+        response = client.post(f'/delete_item/{item_id}', follow_redirects=True)
         assert b'You do not have permission' in response.data
 
     def test_export_items_download(self, client, app):
@@ -168,4 +168,3 @@ class TestCoverageGaps:
         # Or we can invoke the processor directly if we import it?
         # The coverage will be hit by the request.
         assert response.status_code == 200
-

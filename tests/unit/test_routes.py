@@ -404,7 +404,7 @@ def test_delete_item_owner_success(client, app, user):
         db.session.commit()
         item_id = item.id
 
-    response = client.get(f"/delete_item/{item_id}", follow_redirects=False)
+    response = client.post(f"/delete_item/{item_id}", follow_redirects=False)
 
     assert response.status_code == 302
     with app.app_context():
@@ -425,7 +425,7 @@ def test_delete_item_not_owner(client, app, user, other_user):
 
     login_via_post(client, "other@example.com")
 
-    response = client.get(f"/delete_item/{item_id}", follow_redirects=True)
+    response = client.post(f"/delete_item/{item_id}", follow_redirects=True)
 
     assert response.status_code == 200
     assert b"do not have permission" in response.data

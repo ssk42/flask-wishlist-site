@@ -7,19 +7,20 @@
     <div class="col-lg-8">
         <h1 class="h3 mb-3">Edit item</h1>
         <p class="text-muted mb-4">Make updates and keep everyone in the loop.</p>
-        <form action="{{ url_for('items.edit_item', item_id=item.id) }}" method="post" class="glass-card p-4">
+        <form action="{{ url_for('items.edit_item', item_id=item.id) }}" method="post" class="glass-card p-4" data-item-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="submission_token" value="{{ form_data.submission_token or '' }}" />
             {% if item.user_id == current_user.id %}
             <div class="row g-3">
                 <div class="col-md-6">
                     <label for="description" class="form-label">Description</label>
                     <input type="text" class="form-control" id="description" name="description" maxlength="750" required
-                        value="{{ item.description }}">
+                        value="{{ form_data.description if form_data.description is defined else item.description }}">
                 </div>
                 <div class="col-md-6">
                     <label for="link" class="form-label">Link</label>
                     <div class="input-group">
-                        <input type="url" class="form-control" id="link" name="link" value="{{ item.link or '' }}">
+                        <input type="url" class="form-control" id="link" name="link" value="{{ form_data.link if form_data.link is defined else item.link or '' }}">
                         <button class="btn btn-outline-secondary" type="button" id="autofill-btn"
                             title="Autofill details from URL">
                             🪄 Autofill
@@ -34,14 +35,14 @@
                     <div class="input-group">
                         <span class="input-group-text">$</span>
                         <input type="number" class="form-control" id="price" name="price" step="0.01" min="0"
-                            value="{{ item.price or '' }}">
+                            value="{{ form_data.price if form_data.price is defined else item.price or '' }}">
                     </div>
                 </div>
                 <div class="col-md-3">
                     <label for="priority" class="form-label">Priority</label>
                     <select class="form-select" id="priority" name="priority">
                         {% for priority in priority_choices %}
-                        <option value="{{ priority }}" {% if item.priority==priority %}selected{% endif %}>{{ priority
+                        <option value="{{ priority }}" {% if (form_data.priority if form_data.priority is defined else item.priority)==priority %}selected{% endif %}>{{ priority
                             }}</option>
                         {% endfor %}
                     </select>
@@ -49,12 +50,12 @@
                 <div class="col-md-3">
                     <label for="category" class="form-label">Category</label>
                     <input type="text" class="form-control" id="category" name="category"
-                        value="{{ item.category or '' }}">
+                        value="{{ form_data.category if form_data.category is defined else item.category or '' }}">
                 </div>
                 <div class="col-md-3">
                     <label for="image_url" class="form-label">Image URL</label>
                     <input type="url" class="form-control" id="image_url" name="image_url"
-                        value="{{ item.image_url or '' }}">
+                        value="{{ form_data.image_url if form_data.image_url is defined else item.image_url or '' }}">
                 </div>
             </div>
 
@@ -65,7 +66,7 @@
                     <select id="event_id" name="event_id" class="form-select">
                         <option value="">No event</option>
                         {% for event in events %}
-                        <option value="{{ event.id }}" {% if item.event_id==event.id %}selected{% endif %}>
+                        <option value="{{ event.id }}" {% if (form_data.event_id if form_data.event_id is defined else item.event_id)|string==event.id|string %}selected{% endif %}>
                             {{ event.name }} ({{ event.date.strftime('%b %d, %Y') }})
                         </option>
                         {% endfor %}
@@ -81,15 +82,15 @@
                 </div>
                 <div class="col-md-4">
                     <label for="size" class="form-label">Size</label>
-                    <input type="text" class="form-control" id="size" name="size" maxlength="50" placeholder="M, L, XL..." value="{{ item.size or '' }}">
+                    <input type="text" class="form-control" id="size" name="size" maxlength="50" placeholder="M, L, XL..." value="{{ form_data.size if form_data.size is defined else item.size or '' }}">
                 </div>
                 <div class="col-md-4">
                     <label for="color" class="form-label">Color</label>
-                    <input type="text" class="form-control" id="color" name="color" maxlength="50" placeholder="Blue, Red..." value="{{ item.color or '' }}">
+                    <input type="text" class="form-control" id="color" name="color" maxlength="50" placeholder="Blue, Red..." value="{{ form_data.color if form_data.color is defined else item.color or '' }}">
                 </div>
                 <div class="col-md-4">
                     <label for="quantity" class="form-label">Quantity</label>
-                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" max="99" placeholder="1" value="{{ item.quantity or '' }}">
+                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" max="99" placeholder="1" value="{{ form_data.quantity if form_data.quantity is defined else item.quantity or '' }}">
                 </div>
                 <div class="col-12">
                     <small class="form-text text-muted">Specify size, color, or quantity if it matters for this item.</small>
@@ -104,18 +105,18 @@
 
             {% if item.user_id != current_user.id %}
             <div class="mt-3">
-                <label for="status" class="form-label">Status</label>
-                <select class="form-select" id="status" name="status">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
                     {% for status in status_choices %}
-                    <option value="{{ status }}" {% if item.status==status %}selected{% endif %}>{{ status }}</option>
+                    <option value="{{ status }}" {% if (form_data.status if form_data.status is defined else item.status)==status %}selected{% endif %}>{{ status }}</option>
                     {% endfor %}
-                </select>
+                    </select>
             </div>
             {% endif %}
 
             <div class="d-flex justify-content-end mt-4 gap-2">
                 <a href="{{ url_for('items.items_list') }}" class="btn btn-outline-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save changes</button>
+                <button type="submit" class="btn btn-primary" data-saving-label="Saving changes…">Save changes</button>
             </div>
         </form>
     </div>
@@ -172,5 +173,15 @@
             btn.innerHTML = originalText;
         }
     });
+</script>
+<script>
+document.querySelector('[data-item-form]').addEventListener('submit', function() {
+    const button = this.querySelector('button[type="submit"]');
+    if (button && !button.disabled) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + button.dataset.savingLabel;
+    }
+});
 </script>
 {% endblock %}

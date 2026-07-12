@@ -107,6 +107,7 @@ class Config:
         'X-XSS-Protection': '1; mode=block',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
         'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Cache-Control': 'no-store, max-age=0',
     }
 
 
@@ -144,6 +145,15 @@ class TestingConfig(Config):
     # Use SimpleCache (memory) for tests
     CACHE_TYPE = 'SimpleCache'
     CACHE_REDIS_URL = None
+
+    # Remove Cache-Control from tests to prevent Playwright hangs with Service Worker
+    SECURITY_HEADERS = {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+    }
 
 
 class ProductionConfig(Config):

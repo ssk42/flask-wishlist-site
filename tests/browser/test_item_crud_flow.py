@@ -234,7 +234,7 @@ def test_delete_item_flow(page, live_server):
     # Delete item
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
     page.on("dialog", lambda dialog: dialog.accept())
-    item_card.locator('a:has-text("Delete")').click()
+    item_card.locator('button:has-text("Delete")').click()
 
     # Verify deleted
     expect(page.locator('.alert')).to_contain_text("deleted")
@@ -277,7 +277,7 @@ def test_delete_item_other_user_cannot_delete(page, live_server):
     # View items - should not see Delete button
     page.goto(f"{live_server}/items")
     item_card = page.locator(f'.glass-card:has-text("{item_desc}")')
-    delete_button = item_card.locator('a:has-text("Delete")')
+    delete_button = item_card.locator('button:has-text("Delete")')
     expect(delete_button).not_to_be_visible()
 
 

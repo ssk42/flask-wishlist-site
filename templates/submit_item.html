@@ -10,8 +10,9 @@
             <h1 class="h3 mb-2 fw-bold gradient-text">Add a new wishlist item</h1>
             <p class="text-muted">Give as much detail as you can so your family knows exactly what to look for.</p>
         </div>
-        <form action="{{ url_for('items.submit_item') }}" method="post" class="filter-panel">
+        <form action="{{ url_for('items.submit_item') }}" method="post" class="filter-panel" data-item-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="submission_token" value="{{ form_data.submission_token or '' }}"/>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
@@ -106,7 +107,7 @@
 
             <div class="d-flex justify-content-end mt-4 gap-2">
                 <a href="{{ url_for('items.items_list') }}" class="btn btn-outline-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save item</button>
+                <button type="submit" class="btn btn-primary" data-saving-label="Saving item…">Save item</button>
             </div>
         </form>
     </div>
@@ -164,6 +165,16 @@ document.getElementById('autofill-btn').addEventListener('click', async function
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
+    }
+});
+</script>
+<script>
+document.querySelector('[data-item-form]').addEventListener('submit', function() {
+    const button = this.querySelector('button[type="submit"]');
+    if (button && !button.disabled) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + button.dataset.savingLabel;
     }
 });
 </script>

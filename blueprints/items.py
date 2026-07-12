@@ -1,6 +1,7 @@
 """Items blueprint for item management, claims, and exports."""
 
 import datetime
+import secrets
 from collections import OrderedDict, defaultdict
 from types import SimpleNamespace
 from urllib.parse import urlparse
@@ -8,7 +9,7 @@ from urllib.parse import urlparse
 import pandas as pd
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, abort, send_file, current_app
+    flash, abort, send_file, current_app, session
 )
 from flask_login import login_required, current_user
 from sqlalchemy import case
@@ -23,6 +24,69 @@ from services.session_filter_manager import SessionFilterManager
 bp = Blueprint('items', __name__)
 
 DEFAULT_IMAGE_URL = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
+
+
+def _new_submission_token():
+    """Return a token used to make browser form submissions idempotent."""
+    return secrets.token_urlsafe(24)
+
+
+def _completed_submission(token):
+    """Return whether this browser has already completed this mutation."""
+    return bool(token and token in session.get('item_mutations', {}))
+
+
+def _remember_submission(token, item_id):
+    """Remember successful browser submissions without growing the session forever."""
+    if not token:
+        return
+    mutations = session.get('item_mutations', {})
+    mutations[token] = item_id
+    # Keep only the most recent completed actions; token ordering is insertion order.
+    while len(mutations) > 20:
+        mutations.pop(next(iter(mutations)))
+    session['item_mutations'] = mutations
+
+
+def _is_http_url(value):
+    """Accept blank optional values or absolute HTTP(S) URLs only."""
+    if not value:
+        return True
+    parsed = urlparse(value)
+    return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
+
+
+def _validate_item_fields(validator, description, link, image_url, price, event_id):
+    """Apply server-side validations shared by item create and owner edit."""
+    if description and len(description) > 750:
+        validator.errors.append('Description must be 750 characters or fewer.')
+    if price is not None and price < 0:
+        validator.errors.append('Price cannot be negative.')
+    if not _is_http_url(link):
+        validator.errors.append('Link must be a valid http or https URL.')
+    if not _is_http_url(image_url):
+        validator.errors.append('Image URL must be a valid http or https URL.')
+    if event_id is not None and db.session.get(Event, event_id) is None:
+        validator.errors.append('Please choose an existing event.')
+
+
+def _item_form_data(item, submission_token=None):
+    """Return item values in the same shape as a submitted form."""
+    data = {
+        'description': item.description,
+        'link': item.link or '',
+        'price': item.price if item.price is not None else '',
+        'category': item.category or '',
+        'image_url': item.image_url or '',
+        'priority': item.priority or '',
+        'event_id': item.event_id or '',
+        'size': item.size or '',
+        'color': item.color or '',
+        'quantity': item.quantity if item.quantity is not None else '',
+    }
+    if submission_token:
+        data['submission_token'] = submission_token
+    return data
 
 
 def _get_item_or_404(item_id):
@@ -213,6 +277,10 @@ def submit_item():
 
     if request.method == 'POST':
         form_data = request.form.to_dict()
+        submission_token = form_data.get('submission_token')
+        if _completed_submission(submission_token):
+            flash('This item was already added.', 'info')
+            return redirect(get_items_url_with_filters())
         validator = FormValidator(form_data)
 
         description = validator.required('description', 'A description is required to create an item.')
@@ -227,10 +295,12 @@ def submit_item():
         color = validator.optional('color', max_length=50)
         quantity = validator.parse_int('quantity', 'Quantity must be a valid number.',
                                        min_value=1, max_value=99, range_error='Quantity must be between 1 and 99.')
+        _validate_item_fields(validator, description, link, image_url, price, event_id)
 
         if not validator.is_valid():
             for error in validator.errors:
                 flash(error, 'danger')
+            form_data['submission_token'] = submission_token or _new_submission_token()
             return render_template('submit_item.html', status_choices=STATUS_CHOICES,
                                    priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
@@ -252,6 +322,7 @@ def submit_item():
         try:
             db.session.add(new_item)
             db.session.commit()
+            _remember_submission(submission_token, new_item.id)
             current_app.logger.info(f'Item created by user_id={current_user.id}: {description[:50]}')
             flash('Item added to your wishlist!', 'success')
             return redirect(get_items_url_with_filters())
@@ -259,11 +330,13 @@ def submit_item():
             current_app.logger.error(f'Failed to create item for user_id={current_user.id}: {str(exc)}', exc_info=True)
             db.session.rollback()
             flash('Failed to create item. Please try again.', 'danger')
+            form_data['submission_token'] = submission_token or _new_submission_token()
             return render_template('submit_item.html', status_choices=STATUS_CHOICES,
                                    priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
     return render_template('submit_item.html', status_choices=STATUS_CHOICES,
-                           priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data={})
+                           priority_choices=PRIORITY_CHOICES, events=upcoming_events,
+                           form_data={'submission_token': _new_submission_token()})
 
 
 @bp.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
@@ -278,6 +351,11 @@ def edit_item(item_id):
 
     if request.method == 'POST':
         form_data = request.form.to_dict()
+        submission_token = form_data.get('submission_token')
+
+        if _completed_submission(submission_token):
+            flash('Those changes were already saved.', 'info')
+            return redirect(get_items_url_with_filters())
 
         if item.user_id != current_user.id:
             # Non-owner can only update status
@@ -287,44 +365,67 @@ def edit_item(item_id):
             else:
                 item.status = status
                 item.last_updated_by_id = current_user.id
-                db.session.commit()
-                flash('Status updated successfully.', 'success')
-                return redirect(get_items_url_with_filters())
+                try:
+                    db.session.commit()
+                    _remember_submission(submission_token, item.id)
+                    flash('Status updated successfully.', 'success')
+                    return redirect(get_items_url_with_filters())
+                except Exception as exc:
+                    current_app.logger.error(f'Failed to update status for item_id={item.id}: {exc}', exc_info=True)
+                    db.session.rollback()
+                    flash('Failed to update status. Please try again.', 'danger')
+                    return render_template('edit_item.html', item=item, current_user=current_user,
+                                           status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
+                                           events=upcoming_events, form_data=form_data)
         else:
             # Owner can edit all fields
             validator = FormValidator(form_data)
             description = validator.required('description', 'Description cannot be empty.')
+            link = validator.optional('link')
             price = validator.parse_float('price', 'Price must be a valid number.')
+            image_url = validator.optional('image_url')
             quantity = validator.parse_int('quantity', 'Quantity must be a valid number.',
                                            min_value=1, max_value=99, range_error='Quantity must be between 1 and 99.')
+            event_id = validator.parse_int('event_id')
+            priority = validator.choice('priority', PRIORITY_CHOICES, error_message='Please choose a valid priority.')
+            _validate_item_fields(validator, description, link, image_url, price, event_id)
 
             if not validator.is_valid():
                 for error in validator.errors:
                     flash(error, 'danger')
                 return render_template('edit_item.html', item=item, current_user=current_user,
                                        status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                                       events=upcoming_events)
+                                       events=upcoming_events, form_data=form_data)
 
             item.description = description
-            item.link = validator.optional('link')
+            item.link = link
             item.price = price
             item.category = validator.optional('category')
-            item.image_url = validator.optional('image_url')
-            priority = validator.choice('priority', PRIORITY_CHOICES)
+            item.image_url = image_url
             if priority:
                 item.priority = priority
-            item.event_id = validator.parse_int('event_id')
+            item.event_id = event_id
             item.size = validator.optional('size', max_length=50)
             item.color = validator.optional('color', max_length=50)
             item.quantity = quantity
 
-            db.session.commit()
-            flash('Item updated successfully.', 'success')
-            return redirect(get_items_url_with_filters())
+            try:
+                db.session.commit()
+                _remember_submission(submission_token, item.id)
+                flash('Item updated successfully.', 'success')
+                return redirect(get_items_url_with_filters())
+            except Exception as exc:
+                current_app.logger.error(f'Failed to update item_id={item.id}: {exc}', exc_info=True)
+                db.session.rollback()
+                flash('Failed to update item. Please try again.', 'danger')
+                return render_template('edit_item.html', item=item, current_user=current_user,
+                                       status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
+                                       events=upcoming_events, form_data=form_data)
 
     return render_template('edit_item.html', item=item, current_user=current_user,
                            status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                           events=upcoming_events)
+                           events=upcoming_events,
+                           form_data=_item_form_data(item, _new_submission_token()))
 
 
 @bp.route('/claim_item/<int:item_id>', methods=['POST'])
@@ -421,18 +522,26 @@ def refresh_price(item_id):
     return redirect(get_items_url_with_filters())
 
 
-@bp.route('/delete_item/<int:item_id>')
+@bp.route('/delete_item/<int:item_id>', methods=['POST'])
 @login_required
 def delete_item(item_id):
     """Delete an item (owner only)."""
     item = db.session.get(Item, item_id)
-    if item is None or item.user_id != current_user.id:
+    if item is None:
+        flash('Item not found or already deleted.', 'warning')
+        return redirect(get_items_url_with_filters())
+    if item.user_id != current_user.id:
         flash('You do not have permission to delete this item.', 'danger')
         return redirect(get_items_url_with_filters())
 
-    db.session.delete(item)
-    db.session.commit()
-    flash('Item deleted.', 'info')
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        flash('Item deleted.', 'info')
+    except Exception as exc:
+        current_app.logger.error(f'Failed to delete item_id={item_id}: {exc}', exc_info=True)
+        db.session.rollback()
+        flash('Failed to delete item. Please try again.', 'danger')
     return redirect(get_items_url_with_filters())
 
 
