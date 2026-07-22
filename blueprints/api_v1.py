@@ -17,6 +17,10 @@ from extensions import limiter
 from models import Item, User, db
 from services.api_auth import issue_token, revoke_token
 from services.api_serializers import serialize_item, serialize_user
+from config import PRIORITY_CHOICES
+from services import item_service
+from services.form_validators import FormValidator, validate_item_fields
+from services.item_service import ItemActionError
 
 bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 
@@ -118,3 +122,121 @@ def my_claims():
         .all()
     )
     return jsonify({'items': [serialize_item(i, current_user) for i in items]})
+
+
+def _get_item_or_none(item_id):
+    return db.session.get(Item, item_id)
+
+
+def _stringified(data):
+    """JSON payloads carry numbers; FormValidator expects form-style strings."""
+    return {k: ('' if v is None else str(v)) for k, v in data.items()}
+
+
+def _validated_item_fields(data, *, require_description=True):
+    """Run the shared web validations over a JSON payload.
+
+    Returns (fields_dict, errors_list); exactly one is meaningful.
+    """
+    validator = FormValidator(_stringified(data))
+    description = (
+        validator.required('description', 'A description is required.')
+        if require_description else validator.optional('description')
+    )
+    link = validator.optional('link')
+    image_url = validator.optional('image_url')
+    category = validator.optional('category')
+    priority = validator.choice('priority', PRIORITY_CHOICES, default=PRIORITY_CHOICES[0])
+    event_id = validator.parse_int('event_id')
+    price = validator.parse_float('price', 'Price must be a valid number.')
+    size = validator.optional('size', max_length=50)
+    color = validator.optional('color', max_length=50)
+    quantity = validator.parse_int('quantity', 'Quantity must be a valid number.',
+                                   min_value=1, max_value=99,
+                                   range_error='Quantity must be between 1 and 99.')
+    validate_item_fields(validator, description, link, image_url, price, event_id)
+    if not validator.is_valid():
+        return None, validator.errors
+    return {
+        'description': description, 'link': link, 'image_url': image_url,
+        'category': category, 'priority': priority, 'event_id': event_id,
+        'price': price, 'size': size, 'color': color, 'quantity': quantity,
+    }, None
+
+
+@bp.route('/items', methods=['POST'])
+def create_item():
+    data = request.get_json(silent=True) or {}
+    fields, errors = _validated_item_fields(data)
+    if errors:
+        return jsonify({'errors': errors}), 400
+
+    item = Item(user_id=current_user.id, status='Available', **fields)
+    db.session.add(item)
+    db.session.commit()
+    current_app.logger.info(f'API item created by user_id={current_user.id}: {item.description[:50]}')
+    return jsonify({'item': serialize_item(item, current_user)}), 201
+
+
+@bp.route('/items/<int:item_id>', methods=['PATCH'])
+def update_item(item_id):
+    item = _get_item_or_none(item_id)
+    if item is None:
+        return _json_error(404, 'not_found')
+    if item.user_id != current_user.id:
+        return _json_error(403, 'forbidden')
+
+    # Merge current values with the patch so partial updates validate correctly.
+    merged = {
+        'description': item.description, 'link': item.link, 'image_url': item.image_url,
+        'category': item.category, 'priority': item.priority, 'event_id': item.event_id,
+        'price': item.price, 'size': item.size, 'color': item.color,
+        'quantity': item.quantity,
+    }
+    merged.update(request.get_json(silent=True) or {})
+    fields, errors = _validated_item_fields(merged)
+    if errors:
+        return jsonify({'errors': errors}), 400
+
+    for key, value in fields.items():
+        setattr(item, key, value)
+    db.session.commit()
+    return jsonify({'item': serialize_item(item, current_user)})
+
+
+@bp.route('/items/<int:item_id>', methods=['DELETE'])
+def delete_item(item_id):
+    item = _get_item_or_none(item_id)
+    if item is None:
+        return _json_error(404, 'not_found')
+    if item.user_id != current_user.id:
+        return _json_error(403, 'forbidden')
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+def _item_action(item_id, action):
+    item = _get_item_or_none(item_id)
+    if item is None:
+        return _json_error(404, 'not_found')
+    try:
+        action(item, current_user.id)
+    except ItemActionError as err:
+        return _json_error(409, err.code, err.message)
+    return jsonify({'item': serialize_item(item, current_user)})
+
+
+@bp.route('/items/<int:item_id>/claim', methods=['POST'])
+def claim_item(item_id):
+    return _item_action(item_id, item_service.claim_item)
+
+
+@bp.route('/items/<int:item_id>/unclaim', methods=['POST'])
+def unclaim_item(item_id):
+    return _item_action(item_id, item_service.unclaim_item)
+
+
+@bp.route('/items/<int:item_id>/purchase', methods=['POST'])
+def purchase_item(item_id):
+    return _item_action(item_id, item_service.purchase_item)
