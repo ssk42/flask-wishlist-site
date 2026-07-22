@@ -14,7 +14,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from extensions import limiter
-from models import Item, Notification, User, db
+from models import Device, Item, Notification, User, db
 from services.api_auth import issue_token, revoke_token
 from services.api_serializers import serialize_item, serialize_notification, serialize_user
 from config import PRIORITY_CHOICES
@@ -274,6 +274,33 @@ def mark_notification_read(notification_id):
 def mark_all_notifications_read():
     Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
     db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bp.route('/devices', methods=['POST'])
+def register_device():
+    data = request.get_json(silent=True) or {}
+    apns_token = (data.get('apns_token') or '').strip()
+    if not apns_token:
+        return _json_error(400, 'missing_apns_token')
+
+    device = Device.query.filter_by(apns_token=apns_token).first()
+    if device is None:
+        device = Device(apns_token=apns_token, user_id=current_user.id,
+                        platform=(data.get('platform') or 'ios'))
+        db.session.add(device)
+    else:
+        device.user_id = current_user.id  # phone changed hands / re-login
+    db.session.commit()
+    return jsonify({'ok': True}), 201
+
+
+@bp.route('/devices/<path:apns_token>', methods=['DELETE'])
+def delete_device(apns_token):
+    device = Device.query.filter_by(apns_token=apns_token, user_id=current_user.id).first()
+    if device is not None:
+        db.session.delete(device)
+        db.session.commit()
     return jsonify({'ok': True})
 
 
