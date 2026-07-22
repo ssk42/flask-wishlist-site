@@ -49,6 +49,18 @@ def test_patch_own_item(app, client, user):
     assert response.get_json()["item"]["description"] == "Renamed"
 
 
+def test_patch_preserves_untouched_priority(app, client, user):
+    # Item stored with an explicit priority; a patch touching only description
+    # must not change priority.
+    item_id = _make_item(app, user, priority="Medium")
+    response = client.patch(f"/api/v1/items/{item_id}", headers=_auth(client),
+                            json={"description": "Only desc changed"})
+    assert response.status_code == 200
+    with app.app_context():
+        from models import db, Item
+        assert db.session.get(Item, item_id).priority == "Medium"
+
+
 def test_patch_rejects_non_owner(app, client, user, other_user):
     item_id = _make_item(app, other_user)
     response = client.patch(f"/api/v1/items/{item_id}", headers=_auth(client),

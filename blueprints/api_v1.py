@@ -133,16 +133,13 @@ def _stringified(data):
     return {k: ('' if v is None else str(v)) for k, v in data.items()}
 
 
-def _validated_item_fields(data, *, require_description=True):
+def _validated_item_fields(data):
     """Run the shared web validations over a JSON payload.
 
     Returns (fields_dict, errors_list); exactly one is meaningful.
     """
     validator = FormValidator(_stringified(data))
-    description = (
-        validator.required('description', 'A description is required.')
-        if require_description else validator.optional('description')
-    )
+    description = validator.required('description', 'A description is required.')
     link = validator.optional('link')
     image_url = validator.optional('image_url')
     category = validator.optional('category')
@@ -193,13 +190,19 @@ def update_item(item_id):
         'price': item.price, 'size': item.size, 'color': item.color,
         'quantity': item.quantity,
     }
-    merged.update(request.get_json(silent=True) or {})
+    patch = request.get_json(silent=True) or {}
+    merged.update(patch)
     fields, errors = _validated_item_fields(merged)
     if errors:
         return jsonify({'errors': errors}), 400
 
+    # Only persist fields the patch actually sent. Validation ran over the full
+    # merged dict for context, but choice()/optional() coercion can rewrite
+    # fields the patch never touched (e.g. a stored priority of None becomes the
+    # default), which would silently lose the item's real value.
     for key, value in fields.items():
-        setattr(item, key, value)
+        if key in patch:
+            setattr(item, key, value)
     db.session.commit()
     return jsonify({'item': serialize_item(item, current_user)})
 
