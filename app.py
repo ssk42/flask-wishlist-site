@@ -76,7 +76,7 @@ def create_app(config_name=None):
     # Initialize extensions
     db.init_app(app)
     Migrate(app, db)
-    CSRFProtect(app)
+    csrf = CSRFProtect(app)
     Mail(app)
     Compress(app)
     # Configure Limiter (storage options configured via RATELIMIT_STORAGE_URI in config)
@@ -108,9 +108,11 @@ def create_app(config_name=None):
         return None
 
     # Register blueprints
-    from blueprints import auth_bp, api_bp, dashboard_bp, events_bp, social_bp, items_bp
+    from blueprints import auth_bp, api_bp, api_v1_bp, dashboard_bp, events_bp, social_bp, items_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(api_v1_bp)
+    csrf.exempt(api_v1_bp)  # token auth replaces CSRF for the JSON API
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(events_bp)
     app.register_blueprint(social_bp)
