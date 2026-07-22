@@ -14,9 +14,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from extensions import limiter
-from models import Item, User, db
+from models import Item, Notification, User, db
 from services.api_auth import issue_token, revoke_token
-from services.api_serializers import serialize_item, serialize_user
+from services.api_serializers import serialize_item, serialize_notification, serialize_user
 from config import PRIORITY_CHOICES
 from services import item_service
 from services.form_validators import FormValidator, validate_item_fields
@@ -243,3 +243,50 @@ def unclaim_item(item_id):
 @bp.route('/items/<int:item_id>/purchase', methods=['POST'])
 def purchase_item(item_id):
     return _item_action(item_id, item_service.purchase_item)
+
+
+@bp.route('/notifications', methods=['GET'])
+def list_notifications():
+    notifications = (
+        Notification.query.filter_by(user_id=current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    unread = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    return jsonify({
+        'notifications': [serialize_notification(n) for n in notifications],
+        'unread_count': unread,
+    })
+
+
+@bp.route('/notifications/<int:notification_id>/read', methods=['POST'])
+def mark_notification_read(notification_id):
+    notification = db.session.get(Notification, notification_id)
+    if notification is None or notification.user_id != current_user.id:
+        return _json_error(404, 'not_found')
+    notification.is_read = True
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bp.route('/notifications/read-all', methods=['POST'])
+def mark_all_notifications_read():
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bp.route('/metadata', methods=['POST'])
+def fetch_url_metadata():
+    import services.price_service as price_service
+
+    data = request.get_json(silent=True) or {}
+    url = data.get('url')
+    if not url:
+        return _json_error(400, 'missing_url')
+    try:
+        return jsonify(price_service.fetch_metadata(url))
+    except Exception as exc:
+        current_app.logger.error(f'API metadata fetch failed: {exc}')
+        return _json_error(502, 'fetch_failed')
