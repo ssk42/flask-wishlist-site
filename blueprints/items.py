@@ -20,6 +20,8 @@ from config import PRIORITY_CHOICES, STATUS_CHOICES
 from services.utils import get_items_url_with_filters
 from services.form_validators import FormValidator
 from services.session_filter_manager import SessionFilterManager
+from services import item_service
+from services.item_service import ItemActionError
 
 bp = Blueprint('items', __name__)
 
@@ -434,17 +436,11 @@ def claim_item(item_id):
     """Claim an item for purchase."""
     item = _get_item_or_404(item_id)
 
-    if item.user_id == current_user.id:
-        flash('You cannot claim your own item.', 'warning')
+    try:
+        item_service.claim_item(item, current_user.id)
+    except ItemActionError as err:
+        flash(err.message, 'warning')
         return redirect(get_items_url_with_filters())
-
-    if item.status != 'Available':
-        flash('This item is no longer available to claim.', 'warning')
-        return redirect(get_items_url_with_filters())
-
-    item.status = 'Claimed'
-    item.last_updated_by_id = current_user.id
-    db.session.commit()
 
     # For htmx requests, return the updated item card
     if request.headers.get('HX-Request'):
@@ -460,19 +456,16 @@ def unclaim_item(item_id):
     """Unclaim an item back to Available status."""
     item = _get_item_or_404(item_id)
 
-    # Allow unclaim if it's Claimed and the current user was the last to update it (the claimer)
-    if item.status == 'Claimed' and item.last_updated_by_id == current_user.id:
-        item.status = 'Available'
-        item.last_updated_by_id = current_user.id
-        db.session.commit()
-
-        if request.headers.get('HX-Request'):
-            return _item_card_response(item, f'You have unclaimed "{item.description}".', 'info')
-
-        flash(f'You have unclaimed "{item.description}".', 'info')
-    else:
+    try:
+        item_service.unclaim_item(item, current_user.id)
+    except ItemActionError:
         flash('You cannot unclaim this item.', 'danger')
+        return redirect(get_items_url_with_filters())
 
+    if request.headers.get('HX-Request'):
+        return _item_card_response(item, f'You have unclaimed "{item.description}".', 'info')
+
+    flash(f'You have unclaimed "{item.description}".', 'info')
     return redirect(get_items_url_with_filters())
 
 
