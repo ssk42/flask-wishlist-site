@@ -98,6 +98,15 @@ def create_app(config_name=None):
     def load_user(user_id):
         return db.session.get(User, int(user_id))
 
+    @login_manager.request_loader
+    def load_user_from_request(req):
+        """Authenticate API clients via 'Authorization: Bearer <token>'."""
+        auth_header = req.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            from services.api_auth import resolve_token
+            return resolve_token(auth_header[len('Bearer '):])
+        return None
+
     # Register blueprints
     from blueprints import auth_bp, api_bp, dashboard_bp, events_bp, social_bp, items_bp
     app.register_blueprint(auth_bp)
