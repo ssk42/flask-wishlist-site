@@ -50,6 +50,7 @@ final class APIClientTests: XCTestCase {
     }
 
     // testMaps409ToConflictWithCode is intentionally omitted from this task:
-    // it exercises `client.claim(itemID:)`, which is not implemented until
-    // Task 6. It will be added back then.
+    // it exercises `client.claim(itemID:)`, which wasn't implemented until
+    // Task 6. It landed there as `testClaimConflictThrows` in
+    // APIClientWriteTests.swift.
 }

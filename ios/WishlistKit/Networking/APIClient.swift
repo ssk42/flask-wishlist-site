@@ -104,7 +104,7 @@ public actor APIClient {
         return ItemDraft(description: obj["title"] as? String,
                          link: url,
                          price: obj["price"] as? Double,
-                         imageURL: obj["image"] as? String)
+                         imageURL: obj["image_url"] as? String)
     }
 
     // MARK: Request machinery

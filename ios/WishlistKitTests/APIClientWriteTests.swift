@@ -82,6 +82,19 @@ final class APIClientWriteTests: XCTestCase {
         XCTAssertEqual(sentBody.count, 1)
     }
 
+    func testFetchMetadataMapsServerKeys() async throws {
+        StubURLProtocol.handler = { req in
+            XCTAssertEqual(req.url?.path, "/api/v1/metadata")
+            let body = #"{"title":"Cool Bike","price":249.99,"image_url":"https://ex.com/b.jpg"}"#
+            return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        let draft = try await client().fetchMetadata(url: "https://ex.com/bike")
+        XCTAssertEqual(draft.description, "Cool Bike")
+        XCTAssertEqual(draft.price, 249.99)
+        XCTAssertEqual(draft.imageURL, "https://ex.com/b.jpg")
+        XCTAssertEqual(draft.link, "https://ex.com/bike")
+    }
+
     func testRegisterDevicePostsToken() async throws {
         var captured: URLRequest?
         StubURLProtocol.handler = { req in
