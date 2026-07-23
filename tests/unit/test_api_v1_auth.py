@@ -21,6 +21,27 @@ def test_login_wrong_family_code(client, user):
     assert response.get_json()["error"] == "invalid_family_code"
 
 
+def test_login_empty_family_code_rejected(client, user):
+    """An empty supplied family_code must never authenticate."""
+    response = _login(client, code="")
+    assert response.status_code == 401
+    assert response.get_json()["error"] == "invalid_family_code"
+
+
+def test_login_empty_configured_family_password_never_authenticates(app, client, user):
+    """Regression guard: if FAMILY_PASSWORD is unset/empty,
+    hmac.compare_digest(b'', b'') is True, so an empty supplied code must
+    still be rejected rather than silently authenticating any known email."""
+    original = app.config.get("FAMILY_PASSWORD")
+    app.config["FAMILY_PASSWORD"] = ""
+    try:
+        response = _login(client, code="")
+        assert response.status_code == 401
+        assert response.get_json()["error"] == "invalid_family_code"
+    finally:
+        app.config["FAMILY_PASSWORD"] = original
+
+
 def test_login_unknown_email(client, user):
     response = _login(client, email="ghost@example.com")
     assert response.status_code == 401

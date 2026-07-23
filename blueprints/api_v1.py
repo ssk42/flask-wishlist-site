@@ -57,6 +57,9 @@ def login():
     supplied_code = data.get('family_code') or ''
     family_code = current_app.config.get('FAMILY_PASSWORD') or ''
 
+    if not supplied_code or not family_code:
+        return _json_error(401, 'invalid_family_code')
+
     if not hmac.compare_digest(supplied_code.encode(), family_code.encode()):
         return _json_error(401, 'invalid_family_code')
 
