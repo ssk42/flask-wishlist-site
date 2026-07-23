@@ -27,35 +27,52 @@ public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
         self.accessGroup = accessGroup
     }
 
-    private func baseQuery() -> [String: Any] {
+    /// Try the shared access group first — it works on signed device/TestFlight
+    /// builds and lets the Share Extension read the same token. Fall back to the
+    /// app's default keychain (no group), which is what works on unsigned
+    /// simulator builds that lack the keychain-access-groups entitlement.
+    private var groupsToTry: [String?] {
+        if let accessGroup { return [accessGroup, nil] }
+        return [nil]
+    }
+
+    private func query(group: String?) -> [String: Any] {
         var q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: account,
             kSecAttrService as String: service,
         ]
-        if let accessGroup { q[kSecAttrAccessGroup as String] = accessGroup }
+        if let group { q[kSecAttrAccessGroup as String] = group }
         return q
     }
 
     public func read() -> String? {
-        var q = baseQuery()
-        q[kSecReturnData as String] = true
-        q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var out: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess,
-              let data = out as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        for group in groupsToTry {
+            var q = query(group: group)
+            q[kSecReturnData as String] = true
+            q[kSecMatchLimit as String] = kSecMatchLimitOne
+            var out: CFTypeRef?
+            if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess,
+               let data = out as? Data, let token = String(data: data, encoding: .utf8) {
+                return token
+            }
+        }
+        return nil
     }
 
     public func save(_ token: String) {
         clear()
-        var q = baseQuery()
-        q[kSecValueData as String] = Data(token.utf8)
-        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        SecItemAdd(q as CFDictionary, nil)
+        for group in groupsToTry {
+            var q = query(group: group)
+            q[kSecValueData as String] = Data(token.utf8)
+            q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            if SecItemAdd(q as CFDictionary, nil) == errSecSuccess { return }
+        }
     }
 
     public func clear() {
-        SecItemDelete(baseQuery() as CFDictionary)
+        for group in groupsToTry {
+            SecItemDelete(query(group: group) as CFDictionary)
+        }
     }
 }

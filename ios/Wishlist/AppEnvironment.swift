@@ -11,7 +11,7 @@ import WishlistKit
 enum AppEnvironment {
     static let tokenStore = KeychainTokenStore()
     static let client = APIClient(
-        baseURL: URL(string: "http://localhost:5000")!,
+        baseURL: URL(string: "http://localhost:8000")!,
         tokenProvider: { tokenStore.read() }
     )
 
