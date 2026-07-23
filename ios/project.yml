@@ -1,0 +1,102 @@
+name: Wishlist
+options:
+  bundleIdPrefix: com.reitz
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    # No signing team is configured on this machine/CI. Simulator builds don't need
+    # provisioning, so code signing is disabled entirely for all targets here. Real
+    # device / TestFlight builds will need DEVELOPMENT_TEAM set and these two flipped
+    # back (or overridden per-destination) — entitlements files are kept as-is for that.
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGNING_REQUIRED: "NO"
+targets:
+  WishlistKit:
+    type: framework
+    platform: iOS
+    sources: [ios/WishlistKit]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.reitz.WishlistKit
+        GENERATE_INFOPLIST_FILE: "YES"
+        DEFINES_MODULE: "YES"
+  Wishlist:
+    type: application
+    platform: iOS
+    sources:
+      - path: ios/Wishlist
+        # Info.plist and the entitlements file are consumed directly via
+        # INFOPLIST_FILE / CODE_SIGN_ENTITLEMENTS below; excluding them here
+        # avoids xcodegen also adding them to Copy Bundle Resources, which
+        # produces a "Multiple commands produce .../Info.plist" build error.
+        excludes:
+          - Info.plist
+          - "*.entitlements"
+    dependencies:
+      - target: WishlistKit
+        embed: true
+      - target: ShareExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.reitz.wishlist
+        # NOTE: paths here are relative to SRCROOT (the directory containing the
+        # generated .xcodeproj, i.e. ios/), NOT the repo root — unlike `sources:`
+        # paths above, which xcodegen resolves against --project-root. Using the
+        # brief's literal "ios/Wishlist/Info.plist" here doubles to
+        # ios/ios/Wishlist/Info.plist and fails at build time, so the ios/ prefix
+        # is dropped for these two settings only.
+        INFOPLIST_FILE: Wishlist/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Wishlist/Wishlist.entitlements
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ios/ShareExtension
+        # See note on the Wishlist target above.
+        excludes:
+          - Info.plist
+          - "*.entitlements"
+    dependencies:
+      - target: WishlistKit
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.reitz.wishlist.ShareExtension
+        # See note on the Wishlist target above re: SRCROOT-relative paths.
+        INFOPLIST_FILE: ShareExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+  WishlistKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [ios/WishlistKitTests]
+    dependencies:
+      - target: WishlistKit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: "YES"
+schemes:
+  WishlistKit:
+    build:
+      targets:
+        WishlistKit: all
+        WishlistKitTests: [test]
+    test:
+      targets: [WishlistKitTests]
+  Wishlist:
+    build:
+      targets:
+        Wishlist: all
+    run:
+      config: Debug
+  ShareExtension:
+    build:
+      targets:
+        ShareExtension: all
