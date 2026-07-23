@@ -5,24 +5,32 @@ struct ItemRow: View {
     let item: Item
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.description).lineLimit(2)
-                if let price = item.price {
-                    Text(price, format: .currency(code: "USD"))
-                        .font(.caption).foregroundStyle(.secondary)
+        HStack(spacing: 13) {
+            PriorityDot(priority: item.priority)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.description)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Color.wlInk)
+                    .lineLimit(2)
+                HStack(spacing: 8) {
+                    if let price = item.price {
+                        Text(price, format: .currency(code: "USD"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.wlAccent)
+                    }
+                    if let category = item.category, !category.isEmpty {
+                        Text(category)
+                            .font(.caption)
+                            .foregroundStyle(Color.wlSecondary)
+                    }
                 }
             }
-            Spacer()
-            // Claim badge shows ONLY for other people's items (status non-nil).
-            // Own items have nil status (server hides it) and never show a badge.
+            Spacer(minLength: 8)
+            // Claim badge only for others' items (own items have nil status).
             if let status = item.status, status != "Available" {
-                Text(status)
-                    .font(.caption2)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(status == "Purchased" ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
-                    .clipShape(Capsule())
+                StatusPill(status: status)
             }
         }
+        .padding(.vertical, 2)
     }
 }

@@ -12,29 +12,39 @@ struct ClaimsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let error = vm.error {
-                    Text(error).foregroundStyle(.red).font(.footnote)
-                }
-                ForEach(vm.items) { item in
-                    ItemRow(item: item)
-                        .swipeActions(edge: .trailing) {
-                            if item.status == "Claimed" {
-                                Button("Unclaim", role: .destructive) { Task { await vm.unclaim(item) } }
-                                Button("Purchased") { Task { await vm.purchase(item) } }.tint(.green)
-                            }
-                        }
-                }
-            }
-            .overlay {
+            ZStack {
+                Color.wlBg.ignoresSafeArea()
                 if vm.items.isEmpty && !vm.isLoading {
                     ContentUnavailableView("No claims yet", systemImage: "gift",
                                            description: Text("Items you claim for others appear here."))
+                } else {
+                    List {
+                        if let error = vm.error {
+                            Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
+                                .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                        }
+                        ForEach(vm.items) { item in
+                            ItemRow(item: item)
+                                .wlCard()
+                                .listRowInsets(.init(top: 6, leading: 18, bottom: 6, trailing: 18))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing) {
+                                    if item.status == "Claimed" {
+                                        Button("Unclaim", role: .destructive) { Task { await vm.unclaim(item) } }
+                                        Button("Purchased") { Task { await vm.purchase(item) } }.tint(.wlGreen)
+                                    }
+                                }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .refreshable { await vm.load() }
                 }
             }
             .navigationTitle("My Claims")
-            .refreshable { await vm.load() }
             .task { if vm.items.isEmpty { await vm.load() } }
         }
+        .tint(.wlAccent)
     }
 }

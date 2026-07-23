@@ -12,24 +12,27 @@ struct FamilyView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if vm.isLoading && vm.users.isEmpty {
-                    ProgressView()
-                } else if let error = vm.error, vm.users.isEmpty {
-                    ContentUnavailableView("Couldn't load", systemImage: "wifi.slash", description: Text(error))
-                } else {
-                    List(vm.users) { user in
-                        NavigationLink(value: user) {
-                            HStack {
-                                Text(user.name)
-                                Spacer()
-                                if let count = user.itemCount {
-                                    Text("\(count)").foregroundStyle(.secondary)
+            ZStack {
+                Color.wlBg.ignoresSafeArea()
+                Group {
+                    if vm.isLoading && vm.users.isEmpty {
+                        ProgressView().tint(.wlAccent)
+                    } else if let error = vm.error, vm.users.isEmpty {
+                        ContentUnavailableView("Couldn't load", systemImage: "wifi.slash",
+                                               description: Text(error))
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(vm.users) { user in
+                                    NavigationLink(value: user) { memberCard(user) }
+                                        .buttonStyle(.plain)
                                 }
                             }
+                            .padding(.horizontal, 18)
+                            .padding(.top, 8)
                         }
+                        .refreshable { await vm.load() }
                     }
-                    .refreshable { await vm.load() }
                 }
             }
             .navigationTitle("Family")
@@ -37,6 +40,26 @@ struct FamilyView: View {
                 MemberItemsView(client: client, member: user)
             }
         }
+        .tint(.wlAccent)
         .task { if vm.users.isEmpty { await vm.load() } }
+    }
+
+    private func memberCard(_ user: User) -> some View {
+        HStack(spacing: 14) {
+            Monogram(name: user.name)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.wlInk)
+                Text("\(user.itemCount ?? 0) \(user.itemCount == 1 ? "item" : "items")")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.wlSecondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.wlSecondary.opacity(0.6))
+        }
+        .wlCard()
     }
 }

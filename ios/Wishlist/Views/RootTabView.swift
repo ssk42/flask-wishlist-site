@@ -18,5 +18,6 @@ struct RootTabView: View {
             ActivityView(client: session.client)
                 .tabItem { Label("Activity", systemImage: "bell") }
         }
+        .tint(.wlAccent)
     }
 }

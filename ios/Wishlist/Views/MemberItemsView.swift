@@ -11,24 +11,40 @@ struct MemberItemsView: View {
     }
 
     var body: some View {
-        List {
-            if let error = vm.error {
-                Text(error).foregroundStyle(.red).font(.footnote)
-            }
-            ForEach(vm.items) { item in
-                NavigationLink(value: item) { ItemRow(item: item) }
-            }
-        }
-        .overlay {
+        ZStack {
+            Color.wlBg.ignoresSafeArea()
             if vm.items.isEmpty && !vm.isLoading {
                 ContentUnavailableView("No items yet", systemImage: "gift")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        if let error = vm.error {
+                            Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        ForEach(vm.items) { item in
+                            NavigationLink(value: item) {
+                                HStack {
+                                    ItemRow(item: item)
+                                    Image(systemName: "chevron.right")
+                                        .font(.footnote.weight(.semibold))
+                                        .foregroundStyle(Color.wlSecondary.opacity(0.5))
+                                }
+                                .wlCard()
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 18).padding(.top, 8)
+                }
+                .refreshable { await vm.load() }
             }
         }
         .navigationTitle(vm.member.name)
+        .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Item.self) { item in
             ItemDetailView(item: item, vm: vm)
         }
-        .refreshable { await vm.load() }
         .task { if vm.items.isEmpty { await vm.load() } }
     }
 }

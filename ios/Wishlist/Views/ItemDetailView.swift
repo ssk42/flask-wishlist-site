@@ -6,47 +6,129 @@ struct ItemDetailView: View {
     let vm: MemberItemsViewModel
     @State private var working = false
 
-    /// Reads the live item from the view model so claim/purchase actions reflect
-    /// immediately; falls back to the passed item.
     private var current: Item { vm.items.first(where: { $0.id == item.id }) ?? item }
 
     var body: some View {
-        Form {
-            Section {
-                Text(current.description)
-                if let price = current.price {
-                    LabeledContent("Price", value: price, format: .currency(code: "USD"))
-                }
-                if let category = current.category { LabeledContent("Category", value: category) }
-                if let priority = current.priority { LabeledContent("Priority", value: priority) }
-                if let size = current.size { LabeledContent("Size", value: size) }
-                if let color = current.color { LabeledContent("Color", value: color) }
-                if let quantity = current.quantity { LabeledContent("Quantity", value: "\(quantity)") }
-                if let link = current.link, let url = URL(string: link) {
-                    Link("View product", destination: url)
-                }
-            }
+        ZStack {
+            Color.wlBg.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Header card
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(current.description)
+                            .font(.wlTitle)
+                            .foregroundStyle(Color.wlInk)
+                        if let price = current.price {
+                            Text(price, format: .currency(code: "USD"))
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(Color.wlAccent)
+                        }
+                        HStack(spacing: 14) {
+                            if let priority = current.priority {
+                                Label(priority, systemImage: "flag.fill")
+                                    .font(.caption).foregroundStyle(Color.wlSecondary)
+                            }
+                            if let category = current.category, !category.isEmpty {
+                                Label(category, systemImage: "tag.fill")
+                                    .font(.caption).foregroundStyle(Color.wlSecondary)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .wlCard(padding: 20)
 
-            if let status = current.status {
-                Section("Gift status") {
-                    LabeledContent("Status", value: status)
-                    if status == "Available" {
-                        Button("Claim") { act { await vm.claim(current) } }
-                        Button("Mark purchased") { act { await vm.purchase(current) } }
-                    } else if status == "Claimed" {
-                        Button("Unclaim", role: .destructive) { act { await vm.unclaim(current) } }
-                        Button("Mark purchased") { act { await vm.purchase(current) } }
+                    // Variants
+                    if hasVariants {
+                        VStack(spacing: 0) {
+                            variantRow("Size", current.size)
+                            variantRow("Color", current.color)
+                            variantRow("Quantity", current.quantity.map(String.init))
+                        }
+                        .wlCard(padding: 4)
+                    }
+
+                    if let link = current.link, let url = URL(string: link) {
+                        Link(destination: url) {
+                            Label("View product", systemImage: "safari")
+                                .font(.subheadline.weight(.medium))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundStyle(Color.wlAccent)
+                                .background(Color.wlAccentSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+
+                    // Gift actions — only for others' items (status non-nil)
+                    if let status = current.status {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Gift status").font(.headline).foregroundStyle(Color.wlInk)
+                                Spacer()
+                                StatusPill(status: status)
+                            }
+                            actionButtons(status: status)
+                            if let error = vm.error {
+                                Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .wlCard(padding: 20)
                     }
                 }
-                .disabled(working)
-            }
-
-            if let error = vm.error {
-                Text(error).foregroundStyle(.red).font(.footnote)
+                .padding(.horizontal, 18).padding(.top, 8)
             }
         }
         .navigationTitle("Item")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var hasVariants: Bool {
+        current.size != nil || current.color != nil || current.quantity != nil
+    }
+
+    @ViewBuilder
+    private func variantRow(_ label: String, _ value: String?) -> some View {
+        if let value, !value.isEmpty {
+            HStack {
+                Text(label).foregroundStyle(Color.wlSecondary)
+                Spacer()
+                Text(value).foregroundStyle(Color.wlInk).fontWeight(.medium)
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+        }
+    }
+
+    @ViewBuilder
+    private func actionButtons(status: String) -> some View {
+        VStack(spacing: 10) {
+            if status == "Available" {
+                primary("Claim it", "hand.raised.fill") { await vm.claim(current) }
+                secondary("Mark purchased", "checkmark.circle") { await vm.purchase(current) }
+            } else if status == "Claimed" {
+                secondary("Unclaim", "arrow.uturn.backward") { await vm.unclaim(current) }
+                primary("Mark purchased", "checkmark.circle.fill") { await vm.purchase(current) }
+            }
+        }
+        .disabled(working)
+    }
+
+    private func primary(_ title: String, _ icon: String, _ work: @escaping () async -> Void) -> some View {
+        Button { act(work) } label: {
+            Label(title, systemImage: icon).font(.headline)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(Color.wlAccent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .foregroundStyle(.white)
+        }
+    }
+
+    private func secondary(_ title: String, _ icon: String, _ work: @escaping () async -> Void) -> some View {
+        Button { act(work) } label: {
+            Label(title, systemImage: icon).font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity).padding(.vertical, 13)
+                .foregroundStyle(Color.wlInk)
+                .background(Color.wlHairline.opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
     }
 
     private func act(_ work: @escaping () async -> Void) {
