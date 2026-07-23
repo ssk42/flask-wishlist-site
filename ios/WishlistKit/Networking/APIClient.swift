@@ -64,6 +64,49 @@ public actor APIClient {
         return (env.notifications, env.unread_count)
     }
 
+    // MARK: Writes
+    private struct ItemEnvelope: Decodable { let item: Item }
+
+    public func createItem(_ draft: ItemDraft) async throws -> Item {
+        try await (send(.post, "/api/v1/items", body: draft.payload) as ItemEnvelope).item
+    }
+    public func updateItem(id: Int, _ patch: ItemDraft) async throws -> Item {
+        try await (send(.patch, "/api/v1/items/\(id)", body: patch.payload) as ItemEnvelope).item
+    }
+    public func deleteItem(id: Int) async throws {
+        _ = try await sendRaw(.delete, "/api/v1/items/\(id)", body: nil, authenticated: true)
+    }
+    public func claim(itemID: Int) async throws -> Item {
+        try await (send(.post, "/api/v1/items/\(itemID)/claim") as ItemEnvelope).item
+    }
+    public func unclaim(itemID: Int) async throws -> Item {
+        try await (send(.post, "/api/v1/items/\(itemID)/unclaim") as ItemEnvelope).item
+    }
+    public func purchase(itemID: Int) async throws -> Item {
+        try await (send(.post, "/api/v1/items/\(itemID)/purchase") as ItemEnvelope).item
+    }
+    public func markNotificationRead(id: Int) async throws {
+        _ = try await sendRaw(.post, "/api/v1/notifications/\(id)/read", body: nil, authenticated: true)
+    }
+    public func markAllNotificationsRead() async throws {
+        _ = try await sendRaw(.post, "/api/v1/notifications/read-all", body: nil, authenticated: true)
+    }
+    public func registerDevice(apnsToken: String) async throws {
+        _ = try await sendRaw(.post, "/api/v1/devices",
+                              body: ["apns_token": apnsToken, "platform": "ios"], authenticated: true)
+    }
+    public func unregisterDevice(apnsToken: String) async throws {
+        _ = try await sendRaw(.delete, "/api/v1/devices/\(apnsToken)", body: nil, authenticated: true)
+    }
+    public func fetchMetadata(url: String) async throws -> ItemDraft {
+        let data = try await sendRaw(.post, "/api/v1/metadata", body: ["url": url], authenticated: true)
+        let obj = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        return ItemDraft(description: obj["title"] as? String,
+                         link: url,
+                         price: obj["price"] as? Double,
+                         imageURL: obj["image"] as? String)
+    }
+
     // MARK: Request machinery
     enum Method: String { case get = "GET", post = "POST", patch = "PATCH", delete = "DELETE" }
 
