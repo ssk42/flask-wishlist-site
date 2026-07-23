@@ -30,6 +30,40 @@ public actor APIClient {
         _ = try await sendRaw(.post, "/api/v1/auth/logout", body: nil, authenticated: true)
     }
 
+    // MARK: Reads
+    private struct UsersEnvelope: Decodable { let users: [User] }
+    private struct ItemsEnvelope: Decodable { let items: [Item] }
+    private struct NotificationsEnvelope: Decodable {
+        let notifications: [WishlistNotification]
+        let unread_count: Int
+    }
+
+    public func users() async throws -> [User] {
+        try await (send(.get, "/api/v1/users") as UsersEnvelope).users
+    }
+
+    public func items(userID: Int? = nil, status: String? = nil,
+                      category: String? = nil, query: String? = nil) async throws -> [Item] {
+        var comps = URLComponents()
+        var q: [URLQueryItem] = []
+        if let userID { q.append(.init(name: "user_id", value: String(userID))) }
+        if let status { q.append(.init(name: "status", value: status)) }
+        if let category { q.append(.init(name: "category", value: category)) }
+        if let query { q.append(.init(name: "q", value: query)) }
+        comps.queryItems = q.isEmpty ? nil : q
+        let path = "/api/v1/items" + (comps.query.map { "?\($0)" } ?? "")
+        return try await (send(.get, path) as ItemsEnvelope).items
+    }
+
+    public func myClaims() async throws -> [Item] {
+        try await (send(.get, "/api/v1/my-claims") as ItemsEnvelope).items
+    }
+
+    public func notifications() async throws -> (items: [WishlistNotification], unreadCount: Int) {
+        let env: NotificationsEnvelope = try await send(.get, "/api/v1/notifications")
+        return (env.notifications, env.unread_count)
+    }
+
     // MARK: Request machinery
     enum Method: String { case get = "GET", post = "POST", patch = "PATCH", delete = "DELETE" }
 
