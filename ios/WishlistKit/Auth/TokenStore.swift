@@ -18,10 +18,17 @@ public final class InMemoryTokenStore: TokenStoring, @unchecked Sendable {
 
 /// Stores the API token in the shared Keychain access group so the app and the
 /// Share Extension authenticate with the same credential.
+///
+/// An in-memory cache fronts the Keychain: within a process, reads always see
+/// the last saved token even if every Keychain write fails (e.g. unsigned
+/// simulator builds without the keychain entitlement). The Keychain remains
+/// the persistent layer for relaunches and the Share Extension.
 public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
     private let account = "api-token"
     private let service = "com.reitz.wishlist"
     private let accessGroup: String?
+    private let lock = NSLock()
+    private var cached: String?
 
     public init(accessGroup: String? = "com.reitz.wishlist.shared") {
         self.accessGroup = accessGroup
@@ -47,6 +54,7 @@ public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
     }
 
     public func read() -> String? {
+        if let token = lock.withLock({ cached }) { return token }
         for group in groupsToTry {
             var q = query(group: group)
             q[kSecReturnData as String] = true
@@ -54,6 +62,7 @@ public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
             var out: CFTypeRef?
             if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess,
                let data = out as? Data, let token = String(data: data, encoding: .utf8) {
+                lock.withLock { cached = token }
                 return token
             }
         }
@@ -61,7 +70,8 @@ public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
     }
 
     public func save(_ token: String) {
-        clear()
+        lock.withLock { cached = token }
+        clearKeychain()
         for group in groupsToTry {
             var q = query(group: group)
             q[kSecValueData as String] = Data(token.utf8)
@@ -71,6 +81,11 @@ public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
     }
 
     public func clear() {
+        lock.withLock { cached = nil }
+        clearKeychain()
+    }
+
+    private func clearKeychain() {
         for group in groupsToTry {
             SecItemDelete(query(group: group) as CFDictionary)
         }
