@@ -54,6 +54,9 @@ def test_metadata_endpoint(client, user, monkeypatch):
     import services.price_service as price_service
     monkeypatch.setattr(price_service, "fetch_metadata",
                         lambda url: {"title": "Widget", "price": 9.99, "image": None})
+    # The SSRF guard resolves hostnames via DNS; stub it so unit tests stay offline.
+    import blueprints.api_v1 as api_v1
+    monkeypatch.setattr(api_v1, "_is_public_http_url", lambda url: True)
 
     response = client.post("/api/v1/metadata", headers=_auth(client),
                            json={"url": "https://example.com/widget"})
@@ -65,3 +68,19 @@ def test_metadata_endpoint(client, user, monkeypatch):
 def test_metadata_requires_url(client, user):
     response = client.post("/api/v1/metadata", headers=_auth(client), json={})
     assert response.status_code == 400
+
+
+def test_metadata_rejects_non_public_urls(client, user):
+    """SSRF guard: local/private/non-http targets are refused before any fetch."""
+    headers = _auth(client)
+    for url in [
+        "http://localhost:8000/admin",        # loopback via hostname
+        "http://127.0.0.1/latest",            # loopback literal
+        "http://192.168.1.10/router",         # RFC1918
+        "http://169.254.169.254/meta-data",   # link-local / cloud metadata
+        "ftp://example.com/file",             # non-http scheme
+        "not a url",
+    ]:
+        response = client.post("/api/v1/metadata", headers=headers, json={"url": url})
+        assert response.status_code == 400, url
+        assert response.get_json()["error"] == "invalid_url", url

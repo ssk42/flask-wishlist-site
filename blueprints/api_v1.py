@@ -307,6 +307,36 @@ def delete_device(apns_token):
     return jsonify({'ok': True})
 
 
+def _is_public_http_url(url):
+    """SSRF guard for the metadata fetcher.
+
+    Only absolute http(s) URLs whose host resolves exclusively to public,
+    globally-routable addresses are allowed — this blocks localhost, RFC1918
+    ranges, link-local (169.254.x, incl. cloud metadata), and reserved space.
+    """
+    import socket
+    from ipaddress import ip_address
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+        return False
+    try:
+        infos = socket.getaddrinfo(parsed.hostname, parsed.port or 80, proto=socket.IPPROTO_TCP)
+    except (socket.gaierror, UnicodeError):
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            addr = ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not addr.is_global or addr.is_multicast:
+            return False
+    return True
+
+
 @bp.route('/metadata', methods=['POST'])
 def fetch_url_metadata():
     import services.price_service as price_service
@@ -315,6 +345,8 @@ def fetch_url_metadata():
     url = data.get('url')
     if not url:
         return _json_error(400, 'missing_url')
+    if not _is_public_http_url(url):
+        return _json_error(400, 'invalid_url')
     try:
         return jsonify(price_service.fetch_metadata(url))
     except Exception as exc:
