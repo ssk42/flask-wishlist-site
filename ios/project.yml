@@ -55,6 +55,7 @@ targets:
         # is dropped for these two settings only.
         INFOPLIST_FILE: Wishlist/Info.plist
         CODE_SIGN_ENTITLEMENTS: Wishlist/Wishlist.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   ShareExtension:
     type: app-extension
     platform: iOS
