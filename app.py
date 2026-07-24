@@ -3,7 +3,7 @@
 import os
 import logging
 import click
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -76,7 +76,7 @@ def create_app(config_name=None):
     # Initialize extensions
     db.init_app(app)
     Migrate(app, db)
-    CSRFProtect(app)
+    csrf = CSRFProtect(app)
     Mail(app)
     Compress(app)
     # Configure Limiter (storage options configured via RATELIMIT_STORAGE_URI in config)
@@ -98,10 +98,21 @@ def create_app(config_name=None):
     def load_user(user_id):
         return db.session.get(User, int(user_id))
 
+    @login_manager.request_loader
+    def load_user_from_request(req):
+        """Authenticate API clients via 'Authorization: Bearer <token>'."""
+        auth_header = req.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            from services.api_auth import resolve_token
+            return resolve_token(auth_header[len('Bearer '):])
+        return None
+
     # Register blueprints
-    from blueprints import auth_bp, api_bp, dashboard_bp, events_bp, social_bp, items_bp
+    from blueprints import auth_bp, api_bp, api_v1_bp, dashboard_bp, events_bp, social_bp, items_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(api_v1_bp)
+    csrf.exempt(api_v1_bp)  # token auth replaces CSRF for the JSON API
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(events_bp)
     app.register_blueprint(social_bp)
@@ -130,9 +141,39 @@ def create_app(config_name=None):
 
 
     # Global Error Handlers
+    #
+    # /api/v1 is a JSON-only API consumed by native clients; every error
+    # under that prefix (including framework-level ones Flask/Werkzeug
+    # raises before any blueprint code runs, e.g. unmatched routes, wrong
+    # HTTP method, or the rate limiter) must return the documented
+    # {"error": <code>} envelope instead of an HTML page. All other paths
+    # keep the existing HTML behavior unchanged.
+    # Note: 400 and 401 under /api/v1 are already covered without an
+    # app-level handler here — the blueprint returns its own JSON
+    # {"error": ...} directly (see _json_error in blueprints/api_v1.py,
+    # used for both validation 400s and the before_request 401 auth gate),
+    # and adding a global 400 handler would also intercept web-side
+    # CSRFError (a 400 subclass), which is outside this fix's scope.
+    def _is_api_v1_request():
+        return request.path.startswith('/api/v1')
+
     @app.errorhandler(404)
     def not_found_error(error):
+        if _is_api_v1_request():
+            return jsonify({'error': 'not_found'}), 404
         return render_template('errors/404.html'), 404
+
+    @app.errorhandler(405)
+    def method_not_allowed_error(error):
+        if _is_api_v1_request():
+            return jsonify({'error': 'method_not_allowed'}), 405
+        return error.get_response()
+
+    @app.errorhandler(429)
+    def rate_limited_error(error):
+        if _is_api_v1_request():
+            return jsonify({'error': 'rate_limited'}), 429
+        return error.get_response()
 
     @app.errorhandler(500)
     def internal_error(error):
@@ -140,10 +181,14 @@ def create_app(config_name=None):
         # Explicit capture for Sentry as requested
         if os.getenv('SENTRY_DSN'):
             sentry_sdk.capture_exception(error)
+        if _is_api_v1_request():
+            return jsonify({'error': 'server_error'}), 500
         return render_template('errors/500.html'), 500
 
     @app.errorhandler(403)
     def forbidden_error(error):
+        if _is_api_v1_request():
+            return jsonify({'error': 'forbidden'}), 403
         return render_template('errors/403.html'), 403
 
     # CLI commands

@@ -100,6 +100,13 @@ class Config:
     # Amazon stealth extraction settings
     AMAZON_STEALTH_ENABLED = os.environ.get('AMAZON_STEALTH_ENABLED', 'true').lower() == 'true'
 
+    # APNs push notifications (feature-flagged: push is skipped unless all are set)
+    APNS_KEY_ID = os.getenv('APNS_KEY_ID')
+    APNS_TEAM_ID = os.getenv('APNS_TEAM_ID')
+    APNS_KEY_P8 = os.getenv('APNS_KEY_P8')  # contents of the .p8 key file
+    APNS_BUNDLE_ID = os.getenv('APNS_BUNDLE_ID')
+    APNS_USE_SANDBOX = os.getenv('APNS_USE_SANDBOX', 'false').lower() == 'true'
+
     # Security Headers (configured in app.py)
     SECURITY_HEADERS = {
         'X-Content-Type-Options': 'nosniff',

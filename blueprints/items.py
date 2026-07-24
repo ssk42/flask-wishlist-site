@@ -18,8 +18,10 @@ from sqlalchemy.orm import joinedload
 from models import db, User, Item, Event, Comment, Contribution
 from config import PRIORITY_CHOICES, STATUS_CHOICES
 from services.utils import get_items_url_with_filters
-from services.form_validators import FormValidator
+from services.form_validators import FormValidator, validate_item_fields
 from services.session_filter_manager import SessionFilterManager
+from services import item_service
+from services.item_service import ItemActionError
 
 bp = Blueprint('items', __name__)
 
@@ -46,28 +48,6 @@ def _remember_submission(token, item_id):
     while len(mutations) > 20:
         mutations.pop(next(iter(mutations)))
     session['item_mutations'] = mutations
-
-
-def _is_http_url(value):
-    """Accept blank optional values or absolute HTTP(S) URLs only."""
-    if not value:
-        return True
-    parsed = urlparse(value)
-    return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
-
-
-def _validate_item_fields(validator, description, link, image_url, price, event_id):
-    """Apply server-side validations shared by item create and owner edit."""
-    if description and len(description) > 750:
-        validator.errors.append('Description must be 750 characters or fewer.')
-    if price is not None and price < 0:
-        validator.errors.append('Price cannot be negative.')
-    if not _is_http_url(link):
-        validator.errors.append('Link must be a valid http or https URL.')
-    if not _is_http_url(image_url):
-        validator.errors.append('Image URL must be a valid http or https URL.')
-    if event_id is not None and db.session.get(Event, event_id) is None:
-        validator.errors.append('Please choose an existing event.')
 
 
 def _item_form_data(item, submission_token=None):
@@ -295,7 +275,7 @@ def submit_item():
         color = validator.optional('color', max_length=50)
         quantity = validator.parse_int('quantity', 'Quantity must be a valid number.',
                                        min_value=1, max_value=99, range_error='Quantity must be between 1 and 99.')
-        _validate_item_fields(validator, description, link, image_url, price, event_id)
+        validate_item_fields(validator, description, link, image_url, price, event_id)
 
         if not validator.is_valid():
             for error in validator.errors:
@@ -388,7 +368,7 @@ def edit_item(item_id):
                                            min_value=1, max_value=99, range_error='Quantity must be between 1 and 99.')
             event_id = validator.parse_int('event_id')
             priority = validator.choice('priority', PRIORITY_CHOICES, error_message='Please choose a valid priority.')
-            _validate_item_fields(validator, description, link, image_url, price, event_id)
+            validate_item_fields(validator, description, link, image_url, price, event_id)
 
             if not validator.is_valid():
                 for error in validator.errors:
@@ -434,17 +414,11 @@ def claim_item(item_id):
     """Claim an item for purchase."""
     item = _get_item_or_404(item_id)
 
-    if item.user_id == current_user.id:
-        flash('You cannot claim your own item.', 'warning')
+    try:
+        item_service.claim_item(item, current_user.id)
+    except ItemActionError as err:
+        flash(err.message, 'warning')
         return redirect(get_items_url_with_filters())
-
-    if item.status != 'Available':
-        flash('This item is no longer available to claim.', 'warning')
-        return redirect(get_items_url_with_filters())
-
-    item.status = 'Claimed'
-    item.last_updated_by_id = current_user.id
-    db.session.commit()
 
     # For htmx requests, return the updated item card
     if request.headers.get('HX-Request'):
@@ -460,19 +434,16 @@ def unclaim_item(item_id):
     """Unclaim an item back to Available status."""
     item = _get_item_or_404(item_id)
 
-    # Allow unclaim if it's Claimed and the current user was the last to update it (the claimer)
-    if item.status == 'Claimed' and item.last_updated_by_id == current_user.id:
-        item.status = 'Available'
-        item.last_updated_by_id = current_user.id
-        db.session.commit()
-
-        if request.headers.get('HX-Request'):
-            return _item_card_response(item, f'You have unclaimed "{item.description}".', 'info')
-
-        flash(f'You have unclaimed "{item.description}".', 'info')
-    else:
+    try:
+        item_service.unclaim_item(item, current_user.id)
+    except ItemActionError:
         flash('You cannot unclaim this item.', 'danger')
+        return redirect(get_items_url_with_filters())
 
+    if request.headers.get('HX-Request'):
+        return _item_card_response(item, f'You have unclaimed "{item.description}".', 'info')
+
+    flash(f'You have unclaimed "{item.description}".', 'info')
     return redirect(get_items_url_with_filters())
 
 

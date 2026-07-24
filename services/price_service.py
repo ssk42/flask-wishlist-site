@@ -591,27 +591,19 @@ def _create_price_drop_notifications(item, old_price, new_price, drop_percent, d
     - Item owner
     - User who claimed the item (if any, and not the owner)
     """
+    from services.notification_service import create_notification
+
     # Notification for owner
     owner_message = f"🎉 Price drop! '{item.description[:50]}' is now ${new_price:.2f} (was ${old_price:.2f}) - {drop_percent:.0f}% off!"
-    owner_notif = Notification(
-        message=owner_message,
-        link=f"/items?user_filter={item.user_id}",
-        user_id=item.user_id
-    )
-    db.session.add(owner_notif)
+    create_notification(item.user_id, owner_message, f"/items?user_filter={item.user_id}")
     logger.info(f'Created price drop notification for owner (user_id={item.user_id})')
-    
+
     # Notification for claimer (if different from owner)
     if item.last_updated_by_id and item.last_updated_by_id != item.user_id and item.status in ['Claimed', 'Purchased']:
         claimer_message = f"💰 Price drop on '{item.description[:50]}' you claimed! Now ${new_price:.2f} (was ${old_price:.2f})"
-        claimer_notif = Notification(
-            message=claimer_message,
-            link="/my-claims",
-            user_id=item.last_updated_by_id
-        )
-        db.session.add(claimer_notif)
+        create_notification(item.last_updated_by_id, claimer_message, "/my-claims")
         logger.info(f'Created price drop notification for claimer (user_id={item.last_updated_by_id})')
-    
+
     db.session.commit()
 
 
