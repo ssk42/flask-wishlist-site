@@ -32,7 +32,7 @@ struct MemberItemsView: View {
                                 }
                                 .wlCard()
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(WLCardButtonStyle())
                         }
                     }
                     .padding(.horizontal, 18).padding(.top, 8)

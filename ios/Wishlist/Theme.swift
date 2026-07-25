@@ -17,16 +17,22 @@ extension UIColor {
     fileprivate static func wl(_ light: UInt, _ dark: UInt) -> UIColor {
         UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: dark) : UIColor(rgb: light) }
     }
+
+    // UIKit needs these for the navigation/tab bar appearance below.
+    static let wlBgUI      = UIColor.wl(0xFBF6EF, 0x16120E)
+    static let wlInkUI     = UIColor.wl(0x2A2320, 0xF3ECE3)
+    static let wlAccentUI  = UIColor.wl(0xA5324F, 0xE5738D)
+    static let wlSecondaryUI = UIColor.wl(0x8B7F74, 0xAA9E91)
 }
 
 extension Color {
-    static let wlBg        = Color(uiColor: .wl(0xFBF6EF, 0x16120E))
+    static let wlBg        = Color(uiColor: .wlBgUI)
     static let wlSurface   = Color(uiColor: .wl(0xFFFFFF, 0x231D18))
-    static let wlAccent    = Color(uiColor: .wl(0xA5324F, 0xE5738D))
+    static let wlAccent    = Color(uiColor: .wlAccentUI)
     static let wlAccentSoft = Color(uiColor: .wl(0xF4E3E6, 0x3A2028))
     static let wlGold      = Color(uiColor: .wl(0xB0872F, 0xD9AE5A))
-    static let wlInk       = Color(uiColor: .wl(0x2A2320, 0xF3ECE3))
-    static let wlSecondary = Color(uiColor: .wl(0x8B7F74, 0xAA9E91))
+    static let wlInk       = Color(uiColor: .wlInkUI)
+    static let wlSecondary = Color(uiColor: .wlSecondaryUI)
     static let wlHairline  = Color(uiColor: .wl(0xEBE1D4, 0x342A22))
     static let wlGreen     = Color(uiColor: .wl(0x3F7A54, 0x76C08C))
 }
@@ -41,6 +47,57 @@ extension Font {
         .system(size: size, weight: weight, design: .serif)
     }
     static var wlTitle: Font { .system(.title2, design: .serif).weight(.semibold) }
+}
+
+// MARK: - Screen heading
+//
+// SwiftUI renders navigation titles in SF, which reads as "default app" beside
+// the serif wordmark. Restyling them means UIKit appearance proxies, which are
+// fragile (dynamic colors get snapshotted, and proxy changes race bar creation
+// — both produced a blank title here). Rendering the heading as ordinary
+// content is fully controllable and, for an editorial layout, better anyway:
+// the title scrolls with the page like a magazine masthead.
+
+struct WLScreenTitle: View {
+    let text: String
+    var accessory: AnyView?
+
+    init(_ text: String) {
+        self.text = text
+        self.accessory = nil
+    }
+
+    init<A: View>(_ text: String, @ViewBuilder accessory: () -> A) {
+        self.text = text
+        self.accessory = AnyView(accessory())
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(text)
+                .font(.wlDisplay(34))
+                .foregroundStyle(Color.wlInk)
+            Spacer()
+            if let accessory { accessory }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 4)
+        .padding(.bottom, 10)
+    }
+}
+
+// MARK: - Press feedback
+//
+// Cards are the primary tap target and default `.plain` gives no feedback at
+// all, which makes the app feel inert. A slight scale + dim on press is enough.
+
+struct WLCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.88 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
 }
 
 // MARK: - Reusable surface

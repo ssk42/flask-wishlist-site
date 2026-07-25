@@ -22,20 +22,21 @@ struct FamilyView: View {
                                                description: Text(error))
                     } else {
                         ScrollView {
+                            WLScreenTitle("Family")
                             LazyVStack(spacing: 12) {
                                 ForEach(vm.users) { user in
                                     NavigationLink(value: user) { memberCard(user) }
-                                        .buttonStyle(.plain)
+                                        .buttonStyle(WLCardButtonStyle())
                                 }
                             }
                             .padding(.horizontal, 18)
-                            .padding(.top, 8)
                         }
                         .refreshable { await vm.load() }
                     }
                 }
             }
-            .navigationTitle("Family")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: User.self) { user in
                 MemberItemsView(client: client, member: user)
             }

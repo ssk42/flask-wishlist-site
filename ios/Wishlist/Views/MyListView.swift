@@ -17,47 +17,53 @@ struct MyListView: View {
         NavigationStack {
             ZStack {
                 Color.wlBg.ignoresSafeArea()
-                if vm.items.isEmpty && !vm.isLoading {
-                    ContentUnavailableView("Your list is empty", systemImage: "sparkles",
-                                           description: Text("Tap + to add something you're wishing for."))
-                } else {
-                    List {
-                        if let error = vm.error {
-                            Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
-                                .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                VStack(spacing: 0) {
+                    WLScreenTitle("My List") {
+                        Button { showingAdd = true } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color.wlAccent)
                         }
-                        ForEach(vm.items) { item in
-                            Button { editingItem = item } label: {
-                                HStack {
-                                    ItemRow(item: item)
-                                    Image(systemName: "pencil")
-                                        .font(.footnote).foregroundStyle(Color.wlSecondary.opacity(0.5))
-                                }
-                                .wlCard()
+                    }
+
+                    if vm.items.isEmpty && !vm.isLoading {
+                        Spacer()
+                        ContentUnavailableView("Your list is empty", systemImage: "sparkles",
+                                               description: Text("Tap + to add something you're wishing for."))
+                        Spacer()
+                    } else {
+                        List {
+                            if let error = vm.error {
+                                Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
+                                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
                             }
-                            .buttonStyle(.plain)
-                            .listRowInsets(.init(top: 6, leading: 18, bottom: 6, trailing: 18))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
+                            ForEach(vm.items) { item in
+                                Button { editingItem = item } label: {
+                                    HStack {
+                                        ItemRow(item: item)
+                                        Image(systemName: "pencil")
+                                            .font(.footnote).foregroundStyle(Color.wlSecondary.opacity(0.5))
+                                    }
+                                    .wlCard()
+                                }
+                                .buttonStyle(WLCardButtonStyle())
+                                .listRowInsets(.init(top: 6, leading: 18, bottom: 6, trailing: 18))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                            }
+                            .onDelete { indexSet in
+                                let toDelete = indexSet.map { vm.items[$0] }
+                                Task { for item in toDelete { await vm.delete(item) } }
+                            }
                         }
-                        .onDelete { indexSet in
-                            let toDelete = indexSet.map { vm.items[$0] }
-                            Task { for item in toDelete { await vm.delete(item) } }
-                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .refreshable { await vm.load() }
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .refreshable { await vm.load() }
                 }
             }
-            .navigationTitle("My List")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showingAdd = true } label: {
-                        Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Color.wlAccent)
-                    }
-                }
-            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .task { if vm.items.isEmpty { await vm.load() } }
             .sheet(isPresented: $showingAdd) {
                 ItemEditView(title: "Add Item") { draft in await vm.create(draft) }
