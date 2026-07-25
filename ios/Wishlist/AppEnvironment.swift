@@ -17,4 +17,12 @@ enum AppEnvironment {
 
     @MainActor
     static func makeSession() -> Session { Session(client: client, tokenStore: tokenStore) }
+
+    /// Non-isolated so App Intents can reach it outside the main actor.
+    static let intentService = IntentService(client: client, tokenStore: tokenStore)
+
+    /// Must run before any intent executes or entity resolves.
+    static func configureIntents() {
+        IntentService.shared = intentService
+    }
 }

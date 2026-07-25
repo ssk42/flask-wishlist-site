@@ -73,6 +73,49 @@ final class IntentServiceTests: XCTestCase {
         }
     }
 
+    func testAddFromLinkPrefillsDescriptionFromMetadata() async throws {
+        var paths: [String] = []
+        let svc = service { req in
+            paths.append(req.url?.path ?? "")
+            if req.url?.path.contains("metadata") == true {
+                return (200, #"{"description":"Cashmere Blanket","price":89.0,"link":"https://shop.test/b"}"#)
+            }
+            return (201, #"{"item":{"id":4,"description":"Cashmere Blanket","user_id":1}}"#)
+        }
+
+        let item = try await svc.addFromLink("https://shop.test/b")
+
+        XCTAssertEqual(item.description, "Cashmere Blanket")
+        XCTAssertTrue(paths.contains { $0.contains("metadata") }, "should fetch metadata first")
+    }
+
+    func testAddFromLinkFallsBackToURLWhenMetadataFails() async throws {
+        let svc = service { req in
+            if req.url?.path.contains("metadata") == true {
+                return (502, #"{"error":"fetch_failed"}"#)
+            }
+            return (201, #"{"item":{"id":5,"description":"https://shop.test/b","user_id":1}}"#)
+        }
+
+        // A dead scraper must not block saving the link — it is still useful.
+        let item = try await svc.addFromLink("https://shop.test/b")
+
+        XCTAssertEqual(item.description, "https://shop.test/b")
+    }
+
+    func testAddFromLinkRejectsNonURLText() async {
+        let svc = service { _ in (201, "{}") }
+
+        do {
+            _ = try await svc.addFromLink("just some words")
+            XCTFail("expected message")
+        } catch IntentError.message(let text) {
+            XCTAssertEqual(text, "That doesn't look like a link.")
+        } catch {
+            XCTFail("wrong error: \(error)")
+        }
+    }
+
     static func jsonBody(_ req: URLRequest) -> [String: Any]? {
         if let data = req.httpBody {
             return try? JSONSerialization.jsonObject(with: data) as? [String: Any]

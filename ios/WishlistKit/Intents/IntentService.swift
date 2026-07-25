@@ -39,6 +39,36 @@ public struct IntentService: Sendable {
         }
     }
 
+    /// Saves a URL, prefilling name and price from `/api/v1/metadata`.
+    ///
+    /// Metadata failure is deliberately non-fatal: the scrapers are best-effort
+    /// and a saved bare link still beats a spoken error.
+    public func addFromLink(_ raw: String) async throws -> Item {
+        try requireToken()
+
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host != nil else {
+            throw IntentError.message("That doesn't look like a link.")
+        }
+
+        // ItemDraft.description is `String?`; the URL is the fallback name.
+        var draft = ItemDraft(description: trimmed, link: trimmed)
+        if let fetched = try? await client.fetchMetadata(url: trimmed) {
+            if let name = fetched.description, !name.isEmpty { draft.description = name }
+            draft.price = fetched.price
+            draft.imageURL = fetched.imageURL
+        }
+
+        do {
+            return try await client.createItem(draft)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
     /// Maps API errors onto something Siri can say out loud.
     static func translate(_ error: Error) -> IntentError {
         switch error {
