@@ -92,6 +92,7 @@ class CachedResponse:
     def raise_for_status(self):
         pass
 
+
 # Hosts needing site-specific handling. Matched as an exact host or a subdomain,
 # never as a substring: `'amazon' in 'amazon.evil.com'` is True, which would send
 # Amazon-specific headers and referer to an attacker-controlled host.
