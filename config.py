@@ -104,6 +104,9 @@ class Config:
     APNS_KEY_ID = os.getenv('APNS_KEY_ID')
     APNS_TEAM_ID = os.getenv('APNS_TEAM_ID')
     APNS_KEY_P8 = os.getenv('APNS_KEY_P8')  # contents of the .p8 key file
+    # Preferred over APNS_KEY_P8: path to a mounted .p8 file, so a multi-line
+    # private key never has to be embedded in .env or compose environment.
+    APNS_KEY_P8_PATH = os.getenv('APNS_KEY_P8_PATH')
     APNS_BUNDLE_ID = os.getenv('APNS_BUNDLE_ID')
     APNS_USE_SANDBOX = os.getenv('APNS_USE_SANDBOX', 'false').lower() == 'true'
 

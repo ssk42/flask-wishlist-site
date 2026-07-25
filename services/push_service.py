@@ -16,9 +16,31 @@ APNS_HOST_PROD = 'https://api.push.apple.com'
 APNS_HOST_SANDBOX = 'https://api.sandbox.push.apple.com'
 
 
+def apns_signing_key():
+    """The .p8 signing key contents, or None if unavailable.
+
+    `APNS_KEY_P8_PATH` is preferred over inline `APNS_KEY_P8`: a PKCS8 key is
+    multi-line PEM, which .env files and compose `environment:` lists handle
+    badly, so keeping it a mounted 600-perm file avoids pasting a private key
+    into configuration. Read per call rather than cached, so rotating the key
+    is a file swap and the secret isn't held in memory longer than needed.
+    """
+    cfg = current_app.config
+    path = cfg.get('APNS_KEY_P8_PATH')
+    if path:
+        try:
+            with open(path, 'r', encoding='utf-8') as handle:
+                return handle.read()
+        except OSError as exc:
+            # Misconfigured path must disable push, not crash a request.
+            current_app.logger.error(f'APNs signing key unreadable at {path}: {exc}')
+            return None
+    return cfg.get('APNS_KEY_P8')
+
+
 def apns_enabled():
     cfg = current_app.config
-    return bool(cfg.get('APNS_KEY_P8') and cfg.get('APNS_KEY_ID')
+    return bool(apns_signing_key() and cfg.get('APNS_KEY_ID')
                 and cfg.get('APNS_TEAM_ID') and cfg.get('APNS_BUNDLE_ID'))
 
 
@@ -27,7 +49,7 @@ def _apns_jwt():
     now = datetime.datetime.now(datetime.timezone.utc)
     return jwt.encode(
         {'iss': cfg['APNS_TEAM_ID'], 'iat': int(now.timestamp())},
-        cfg['APNS_KEY_P8'],
+        apns_signing_key(),
         algorithm='ES256',
         headers={'kid': cfg['APNS_KEY_ID']},
     )

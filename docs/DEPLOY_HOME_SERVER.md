@@ -294,12 +294,26 @@ The API is fully functional without these; push simply no-ops until all four are
 set. Add to the service's environment (systemd drop-in or compose `environment:`):
 
 ```
-APNS_KEY_ID=<10-char key id>
+APNS_KEY_ID=<10-char key id, e.g. the XXXX in AuthKey_XXXX.p8>
 APNS_TEAM_ID=<10-char team id>
-APNS_KEY_P8=<contents of AuthKey_XXXX.p8>
 APNS_BUNDLE_ID=com.reitz.wishlist
-APNS_USE_SANDBOX=true
+APNS_USE_SANDBOX=true      # true for dev-signed builds, false for TestFlight
 ```
+
+The signing key itself is a **file**, not an env var — a PKCS8 key is multi-line
+PEM and `.env`/compose `environment:` handle that badly. Mount it and point at
+it (`APNS_KEY_P8_PATH` takes precedence over inline `APNS_KEY_P8`):
+
+```yaml
+    volumes:
+      - ./secrets/AuthKey_XXXXXXXXXX.p8:/run/secrets/apns.p8:ro
+    environment:
+      - APNS_KEY_P8_PATH=/run/secrets/apns.p8
+```
+
+All of it goes on **both** `flask_app` and `celery_worker` — the web app decides
+whether push is enabled, the worker does the sending. An unreadable path logs an
+error and leaves push disabled rather than failing the request that triggered it.
 
 Get the `.p8` from the Apple Developer portal (Keys → new key → APNs). Delivery
 runs through the existing Celery worker, so that must be running for pushes to
