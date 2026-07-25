@@ -150,3 +150,36 @@ def test_make_request_only_validates_when_enforcing(monkeypatch):
     with restrict_outbound_to_public_urls():
         price_service._make_request("https://example.com/p")
     assert calls["allow_redirects"] is False
+
+
+# --- host matching (py/incomplete-url-substring-sanitization) ---------------
+
+@pytest.mark.parametrize("domain", [
+    "amazon.com", "www.amazon.com", "smile.amazon.com", "amazon.co.uk",
+    "amazon.com.au", "a.co", "amzn.to",
+])
+def test_amazon_hosts_match(domain):
+    assert price_service._host_matches(domain, price_service.AMAZON_HOSTS) is True
+
+
+@pytest.mark.parametrize("domain", [
+    "amazon.evil.com",        # substring check would wrongly match this
+    "notamazon.com",
+    "amazon.com.evil.net",
+    "target.com.evil.net",
+    "myamazon.org",
+    "",
+    None,
+])
+def test_lookalike_hosts_do_not_match(domain):
+    assert price_service._host_matches(domain, price_service.AMAZON_HOSTS) is False
+
+
+def test_target_host_matching():
+    assert price_service._host_matches("www.target.com", price_service.TARGET_HOSTS) is True
+    assert price_service._host_matches("target.com.evil.net", price_service.TARGET_HOSTS) is False
+
+
+def test_host_matching_ignores_port_and_trailing_dot():
+    assert price_service._host_matches("www.amazon.com:443", price_service.AMAZON_HOSTS) is True
+    assert price_service._host_matches("amazon.com.", price_service.AMAZON_HOSTS) is True

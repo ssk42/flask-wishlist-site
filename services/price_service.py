@@ -92,6 +92,26 @@ class CachedResponse:
     def raise_for_status(self):
         pass
 
+# Hosts needing site-specific handling. Matched as an exact host or a subdomain,
+# never as a substring: `'amazon' in 'amazon.evil.com'` is True, which would send
+# Amazon-specific headers and referer to an attacker-controlled host.
+AMAZON_HOSTS = (
+    'amazon.com', 'amazon.co.uk', 'amazon.ca', 'amazon.de', 'amazon.fr',
+    'amazon.it', 'amazon.es', 'amazon.nl', 'amazon.se', 'amazon.pl',
+    'amazon.ie', 'amazon.com.be', 'amazon.com.au', 'amazon.com.mx',
+    'amazon.com.br', 'amazon.com.tr', 'amazon.co.jp', 'amazon.cn',
+    'amazon.in', 'amazon.sg', 'amazon.ae', 'amazon.sa', 'amazon.eg',
+    'a.co', 'amzn.to', 'amzn.eu',
+)
+TARGET_HOSTS = ('target.com',)
+
+
+def _host_matches(domain, hosts):
+    """True when `domain` is exactly one of `hosts`, or a subdomain of one."""
+    host = (domain or '').lower().split(':')[0].rstrip('.')
+    return any(host == h or host.endswith('.' + h) for h in hosts)
+
+
 def _get_following_validated_redirects(session, url):
     """Fetch `url`, following redirects one hop at a time and validating each.
 
@@ -174,9 +194,9 @@ def fetch_price(url):
 
         # Amazon and Target need special fetching (stealth / Playwright fallback);
         # everything else is fetch-then-extract with the registry.
-        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
+        if _host_matches(domain, AMAZON_HOSTS):
             price = _fetch_amazon_price(url)
-        elif 'target.com' in domain:
+        elif _host_matches(domain, TARGET_HOSTS):
             price = _fetch_target_price(url)
         else:
             price = _fetch_standard_price(url)
@@ -227,7 +247,7 @@ def fetch_metadata(url):
         metadata['domain'] = domain
 
         # Site-specific extractors
-        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
+        if _host_matches(domain, AMAZON_HOSTS):
             data = _fetch_amazon_metadata(url)
             if data:
                 metadata.update(data)
