@@ -305,6 +305,78 @@ Get the `.p8` from the Apple Developer portal (Keys → new key → APNs). Deliv
 runs through the existing Celery worker, so that must be running for pushes to
 send.
 
+## Cloudflare blocks non-browser clients (must fix for the iOS app)
+
+Verified 2026-07-25: every request to `https://gifts.stevereitz.dev/api/v1/…`
+from a non-browser client returns **HTTP 403 with Cloudflare's "Just a moment…"
+managed-challenge page**, not JSON. TLS itself is healthy (valid cert, HTTP/2).
+
+`URLSession` cannot solve a JavaScript challenge, so **the iOS app cannot use
+this hostname until the API path is exempted.** In the Cloudflare dashboard:
+
+> **Security → WAF → Custom rules → Create rule**
+> - Field `URI Path`, operator `starts with`, value `/api/v1/`
+> - Action: **Skip** → check *Managed Challenge* (and "All remaining custom
+>   rules"), or use Configuration Rules to set Security Level → *Essentially Off*
+>   for that path.
+
+Verify from any machine — a JSON body rather than HTML means it worked:
+
+```bash
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
+  https://gifts.stevereitz.dev/api/v1/users     # want: 401 application/json
+```
+
+**Tradeoff to accept knowingly:** exempting `/api/v1/` removes Cloudflare's bot
+protection from `POST /api/v1/auth/login`, leaving the family code exposed to
+automated guessing. The app's own `5/min` limit is the only remaining brake —
+and without Redis that limit is per-worker in memory (see below). Adding Redis
+matters more once this exemption exists.
+
+## Adding Redis + a Celery worker
+
+Fixes two gaps at once: APNs push currently cannot deliver (no broker), and
+Flask-Limiter silently falls back to per-process memory, so `5/min` is really
+"5 per minute per gunicorn worker, reset on restart".
+
+Add to `~/home-server/docker-compose.yml`:
+
+```yaml
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - ./redis-data:/data
+
+  celery_worker:
+    build: ./flask-app
+    container_name: celery_worker
+    restart: always
+    command: celery -A celery_app worker --loglevel=info
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - FAMILY_PASSWORD=${FAMILY_PASSWORD}
+      - FLASK_ENV=${FLASK_ENV}
+```
+
+…and add `REDIS_URL=redis://redis:6379/0` to `flask_app`'s `environment:` too
+(both processes need it — the web app to enqueue and rate-limit, the worker to
+consume). Then:
+
+```bash
+cd ~/home-server && docker compose up -d redis celery_worker flask_app && docker compose logs --tail=20 celery_worker
+```
+
+The worker log should show it connecting to `redis://redis:6379/0` and listing
+the registered tasks (including `tasks.send_push`). Note `celery_worker` reuses
+the same `build: ./flask-app`, so it stays in lockstep with the web image.
+
 ## Public exposure
 
 `cloudflared` fronts this box, so anything on `:5000` is reachable from the
