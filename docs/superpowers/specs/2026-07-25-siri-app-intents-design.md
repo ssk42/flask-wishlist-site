@@ -16,16 +16,64 @@ on iOS 27 — by referring to what is on screen ("claim this").
 call into a third-party app, so this is not optional polish — it is the supported
 integration surface going forward.
 
-## Key finding: no system schema fits a wishlist
+## Schemas: which we adopt, and which we deliberately refuse
 
-Apple's assistant schema domains cover books, browser, camera, documents, files,
-journal, mail, photos, presentations, spreadsheets, whiteboard and word
-processing. **None covers lists, shopping, or wishlists.**
+Verified against Apple's current documentation (2026). The full domain list:
 
-So we ship **custom `AppIntent`s** rather than conforming to `@AssistantIntent`.
-This is not a downgrade: Siri AI discovers and chains custom App Intents.
-Conforming to a schema would only buy Apple's canonical phrasing for a domain we
-do not belong to, at the cost of contorting our model to fit it.
+- **Primary** (Apple Intelligence + Siri): audio, calendar, camera, clock, files,
+  mail, maps, messages, notes, phone, photos, **reminders**,
+  **system and in-app search**
+- **Single-purpose**: assistant, visual intelligence
+- **Shortcuts-only** (no Apple Intelligence/Siri discoverability): books, browser,
+  journaling, presentation, reader, spreadsheet, whiteboard, word processor
+
+Schemas are applied with `@AppIntent(schema:)`, `@AppEntity(schema:)` and
+`@AppEnum(schema:)`. Xcode generates template implementations when you type the
+domain prefix (`system_`, `reminders_`) and pick from the suggestion list.
+
+### Adopt: `.system` (search and open)
+
+The `.system` domain is explicitly **not** category-specific — "any app that
+enables searching or opening content can adopt these schemas". Two schemas, both
+a genuine fit:
+
+| Schema | Purpose | Example phrases |
+|---|---|---|
+| `.system.search` | Search within the app | "Find bicycle", "Search for mountains" |
+| `.system.open` | Open a specific item | "Open my screenshot.png file" |
+
+Adopting these gives the read side real Apple Intelligence discoverability —
+"find the cashmere blanket in Wishlist" — which custom intents alone would not.
+
+### Refuse: `.reminders`
+
+The reminders domain is the only one offering "create an item inside a list"
+(`createList`, `createReminder`, `createSection`, `deleteReminders`,
+`updateReminder`, `updateGroup`, `updateList`, `updateSection`, with `list`,
+`reminder`, `section`, `group` and `locationTrigger` entities). On paper a
+wishlist looks like a list of items, so it is worth saying explicitly why we do
+not use it:
+
+1. **It would hijack real reminders.** Conforming to `.reminders.createReminder`
+   enters Wishlist into the pool of apps Siri may pick for "create a reminder".
+   Someone asking for a grocery reminder could silently get a wishlist item.
+   That is a worse failure than lacking the integration.
+2. **The shape does not fit.** Reminder schemas carry due dates, completion
+   state, location triggers, sections and groups. A gift has a price, a link, a
+   priority and a claim state — modelling it as a reminder means either
+   discarding our fields or faking theirs.
+3. **"Mark as completed" is not "claim".** `updateReminder`'s semantics would
+   invite Siri to phrase claiming as completion, which misdescribes the one
+   behaviour this app most needs to get right.
+
+### Therefore: custom intents for add and claim
+
+No schema covers "add an item to a wishlist" except the reminders one we are
+refusing, so `AddWishlistItem` and `ClaimItem` are **custom** `AppIntent`s
+surfaced through `AppShortcutsProvider`. Post-SiriKit-deprecation, custom App
+Intents remain a first-class Siri surface — they simply lack Apple's canonical
+cross-app phrasing, which for a bespoke concept like a family wishlist does not
+exist anyway.
 
 ## What is and isn't reachable by voice
 
@@ -61,9 +109,19 @@ APIClient  →  /api/v1       (existing, unchanged)
 - **`ItemEntity`** (new, `WishlistKit/Intents/ItemEntity.swift`) — `AppEntity`
   wrapper over `Item` with an `EntityQuery`. Carries `id`, `description`,
   `price`, owner name, and an **optional** `status`.
-- **Intent structs** (new, `Wishlist/Intents/`) — `AddWishlistItemIntent`,
-  `FindWishlistItemsIntent`, `ClaimItemIntent`, `MyClaimsIntent`, plus
-  `WishlistShortcuts: AppShortcutsProvider`.
+- **Intent structs** (new, `Wishlist/Intents/`), plus
+  `WishlistShortcuts: AppShortcutsProvider`:
+
+| Intent | Schema | Example phrase |
+|---|---|---|
+| `AddWishlistItemIntent` | custom | "Add AirPods to my wishlist" |
+| `SearchWishlistIntent` | `@AppIntent(schema: .system.search)` | "Find the cashmere blanket in Wishlist" |
+| `OpenWishlistItemIntent` | `@AppIntent(schema: .system.open)` | "Open the blanket in Wishlist" |
+| `ClaimItemIntent` | custom | "Claim this" / "Claim the blanket" |
+| `MyClaimsIntent` | custom | "What have I claimed?" |
+
+The two `.system` conformances are what give the read side genuine Apple
+Intelligence discoverability; the rest ride on `AppShortcutsProvider` phrases.
 
 Nothing in the existing app, API, or `APIClient` changes. This is additive.
 
@@ -89,7 +147,7 @@ Rules, enforced in `IntentService` and `ItemEntity`:
 
 1. `ItemEntity.status` is **optional** and absent for the viewer's own items,
    mirroring `serialize_item`. Never default a missing status.
-2. `FindWishlistItems` **must not** voice claim status for items the requester
+2. `SearchWishlistIntent` **must not** voice claim status for items the requester
    owns — for their own list it reports items only.
 3. `ClaimItem` must refuse an item the requester owns, with a spoken reason
    (the API already returns `409 own_item`; the intent translates it).
@@ -133,8 +191,11 @@ Each phase is independently shippable and useful.
    `WishlistShortcuts` with spoken-name and clipboard phrases. iOS 17 compatible.
 2. **Shortcuts / Action button** — optional `url` parameter on the same intent,
    `/api/v1/metadata` prefill, and an `AppShortcut` shaped for a URL input.
-3. **Read intents** — `ItemEntity` + `EntityQuery`, `FindWishlistItemsIntent`,
-   `MyClaimsIntent`, with the surprise-protection tests.
+3. **Read intents** — `ItemEntity` + `EntityQuery`, `SearchWishlistIntent`
+   (`.system.search`), `OpenWishlistItemIntent` (`.system.open`) and
+   `MyClaimsIntent`, with the surprise-protection tests. Schema conformance is
+   verifiable at build time: the macros fail to compile if the intent's shape
+   does not match the schema, so a mistake here is caught by CI, not by Siri.
 4. **iOS 27 on-screen awareness** — `.appEntityIdentifier` on `ItemRow` and
    `ItemDetailView`, `.userActivity` on the member list as primary content,
    `ClaimItemIntent` resolving "this". All behind `@available(iOS 27, *)`.
@@ -157,7 +218,9 @@ implementing phase 4, verify signatures against the current SDK and WWDC26
 sessions 343 ("Explore advanced App Intents features") and 240 ("Build
 intelligent Siri experiences with App Schemas").
 
-Phases 1–3 carry no such risk and should not be blocked by phase 4.
+Phases 1–3 carry no such risk and should not be blocked by phase 4. The
+`.system.search` / `.system.open` schemas used in phase 3 were read directly from
+Apple's current documentation and their conformance is compiler-checked.
 
 ## Out of scope
 
