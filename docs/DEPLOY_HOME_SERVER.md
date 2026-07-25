@@ -11,10 +11,50 @@ peer hosts, so it cannot SSH to `192.168.1.251` itself. Your terminal can.
 
 | | |
 |---|---|
-| Host | `hp-server` → `192.168.1.251`, MAC `e4:a4:71:ce:55:d6` |
+| Host | `hp-server` → `192.168.1.251`, **Ubuntu 26.04 LTS**, Linux 7.0.0-28 |
 | Access | SSH key installed for `steve@hp-server` (`ssh-copy-id` done) |
-| Listening | `22` (ssh), `5000` (the wishlist app) |
 | Sleep | The box sleeps and ignored Wake-on-LAN — see [Keeping it awake](#keeping-it-awake) |
+
+### Actual topology (from Phase 0)
+
+Docker Compose, **not** systemd, and **not** this repo's `docker-compose.yml` —
+it's a separate compose project in `~/home-server`:
+
+| Container | Image | Ports |
+|---|---|---|
+| `flask_app` | `home-server-flask_app` (locally built) | `0.0.0.0:5000→5000` |
+| `postgres_db` | `postgres:15-alpine` | `5432` (internal) |
+| `cloudflared` | `cloudflare/cloudflared` | — (public ingress) |
+| `vaultwarden` | `vaultwarden/server` | `0.0.0.0:8080→80` |
+| `watchtower` | `containrrr/watchtower` | — (auto-updates containers) |
+
+Four consequences that change this deploy:
+
+1. **Postgres, not SQLite** → back up with `pg_dump`, and migrations run inside
+   the container. Note it's Postgres **15**, while this repo's own compose file
+   pins 16 — don't "helpfully" align them; upgrading a live cluster is a
+   separate, riskier job.
+2. **No Redis and no Celery worker.** APNs push fan-out enqueues to Celery, so
+   **push cannot deliver** as configured. This is safe rather than broken:
+   `create_notification` commits the notification row *before* enqueuing and
+   swallows enqueue failures, so in-app notifications work and only push is
+   inert. Adding push means adding a redis service + a celery worker.
+3. **`cloudflared` means the app is publicly reachable**, so `/api/v1` will be
+   too. The only gate is the family code, and `POST /api/v1/auth/login` is rate
+   limited to 5/min — but Flask-Limiter without Redis falls back to per-process
+   in-memory storage, so that limit is weaker than it looks. See
+   [Public exposure](#public-exposure).
+4. **watchtower may restart containers on its own.** If it auto-pulls
+   `home-server-flask_app`, an unexpected restart mid-deploy is possible;
+   consider pausing it during the migration.
+
+### Still unknown (Phase 0.5 answers these)
+
+- Where the wishlist source lives, and whether it's **bind-mounted** into
+  `flask_app` (a `git pull` on the host is enough) or **baked into the image**
+  (requires `docker compose build`).
+- The container's `DATABASE_URL` / `FAMILY_PASSWORD` / `REDIS_URL` wiring.
+- The live Alembic revision.
 
 ## What this deploy changes
 
@@ -264,6 +304,21 @@ APNS_USE_SANDBOX=true
 Get the `.p8` from the Apple Developer portal (Keys → new key → APNs). Delivery
 runs through the existing Celery worker, so that must be running for pushes to
 send.
+
+## Public exposure
+
+`cloudflared` fronts this box, so anything on `:5000` is reachable from the
+internet — including `/api/v1`. Worth doing before or soon after this deploy:
+
+- **Verify the rate limit actually applies.** Flask-Limiter with no Redis uses
+  per-process memory, so `5/min` on login is per-worker and resets on restart.
+  Adding a redis service fixes this *and* unblocks Celery/push.
+- **Confirm the family code is strong.** It is the only credential for both the
+  website and the API; the config default (`wishlist2025`) should not be what's
+  running in production.
+- **Prefer HTTPS via the tunnel** for the iOS app's base URL — a Cloudflare
+  hostname gives you TLS for free, which means no ATS exceptions in the app and
+  no plaintext family code on the wire.
 
 ## Keeping it awake
 
