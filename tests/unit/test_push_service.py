@@ -90,3 +90,38 @@ def test_create_notification_survives_missing_celery(app, user):
 
         assert notif.id is not None
         assert Notification.query.count() == 1
+
+
+# --- signing key source (APNS_KEY_P8_PATH vs inline) ------------------------
+
+def test_signing_key_read_from_path(app, tmp_path):
+    """A mounted .p8 file is preferred, so no PEM in env/compose."""
+    key_file = tmp_path / "AuthKey_TEST123456.p8"
+    key_file.write_text("-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n")
+    with app.app_context():
+        app.config.update(APNS_KEY_P8_PATH=str(key_file), APNS_KEY_P8=None)
+        assert "BEGIN PRIVATE KEY" in push_service.apns_signing_key()
+
+
+def test_signing_key_path_wins_over_inline(app, tmp_path):
+    key_file = tmp_path / "key.p8"
+    key_file.write_text("from-file")
+    with app.app_context():
+        app.config.update(APNS_KEY_P8_PATH=str(key_file), APNS_KEY_P8="from-env")
+        assert push_service.apns_signing_key() == "from-file"
+
+
+def test_signing_key_falls_back_to_inline(app):
+    with app.app_context():
+        app.config.update(APNS_KEY_P8_PATH=None, APNS_KEY_P8="inline-pem")
+        assert push_service.apns_signing_key() == "inline-pem"
+
+
+def test_unreadable_key_path_disables_push_without_raising(app, user):
+    """A bad path must turn push off, not 500 a request that creates a notification."""
+    with app.app_context():
+        app.config.update(APNS_KEY_P8_PATH="/nonexistent/apns.p8", APNS_KEY_P8=None,
+                          APNS_KEY_ID="K", APNS_TEAM_ID="T", APNS_BUNDLE_ID="B")
+        assert push_service.apns_signing_key() is None
+        assert push_service.apns_enabled() is False
+        assert push_service.send_push_to_user(user, "hi") == 0
