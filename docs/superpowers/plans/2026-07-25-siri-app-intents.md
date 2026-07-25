@@ -12,7 +12,14 @@ Spec: `docs/superpowers/specs/2026-07-25-siri-app-intents-design.md`. Read it fi
 
 ## Global Constraints
 
-- **Deployment target stays iOS 17.0.** Tasks 1–5 use iOS 16/17 APIs. Task 6 is `@available(iOS 27, *)`-gated and must not raise the floor.
+- **Deployment target stays iOS 17.0.** Tasks 1–3 and 5 use iOS 16/17 APIs. **Tasks 4 and 6 are `@available(iOS 27, *)`-gated** and must not raise the floor.
+- **Assistant-schema facts, read from the SDK — do not re-derive from memory.**
+  `.system.search` is **deprecated** ("Use .system.searchInApp instead").
+  `.system.searchInApp` and `.system.open` are `@available(anyAppleOS 27.0, *)`.
+  The `@AppIntent(schema:)` macro itself is iOS 18+. Underlying protocols are
+  older (`ShowInAppSearchResultsIntent` 17.2, `OpenIntent` 16.0, which supplies a
+  default `perform()`), but this project uses the **iOS 27 schemas**, gated.
+  Source: `AppIntents.swiftinterface` in the Xcode-beta iPhoneOS SDK.
 - Regenerate after adding files: `xcodegen generate --spec ios/project.yml --project-root .` — **the `--project-root .` flag is required.**
 - Build/test with the beta toolchain: `export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer`
 - Test command: `xcodebuild -project ios/Wishlist.xcodeproj -scheme WishlistKit -destination 'platform=iOS Simulator,name=iPhone 17' test`
@@ -791,7 +798,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Schema-conformant search and open
+### Task 4: Schema-conformant search and open (iOS 27)
 
 **Files:**
 - Create: `ios/Wishlist/Intents/SearchWishlistIntent.swift`
@@ -800,12 +807,20 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `ItemEntity`, `IntentService.searchItems(matching:)`.
-- Produces: `SearchWishlistIntent` conforming to `.system.search`; `OpenWishlistItemIntent` conforming to `.system.open`; `Notification.Name.wishlistOpenItem`.
+- Produces: `SearchWishlistIntent` conforming to `.system.searchInApp`; `OpenWishlistItemIntent` conforming to `.system.open`; `Notification.Name.wishlistOpenItem`. Both intents are `@available(iOS 27, *)`.
+
+> **Availability, decided and verified — do not "fix" this.** The schemas used
+> here are iOS 27-only, so both intents are gated. The app still targets iOS 17;
+> on older systems these two intents simply do not exist and the add/claim
+> intents from Tasks 2 and 5 continue to work. `.system.search` (no `InApp`) is
+> deprecated in this SDK — do not use it.
 
 - [ ] **Step 1: Discover the schemas' required shape (do this first)**
 
-The `@AppIntent(schema:)` macro is **compiler-checked**: it fails the build with
-the exact members a schema requires. Use that rather than guessing. Create
+The `@AppIntent(schema:)` macro is **compiler-checked**: it fails the build
+naming the exact members a schema requires. Use that rather than guessing —
+the schema identifiers are validated strings, so the required shape is not
+readable from the SDK interface. Create
 `ios/Wishlist/Intents/SearchWishlistIntent.swift` with a deliberately incomplete
 conformance:
 
@@ -813,7 +828,8 @@ conformance:
 import AppIntents
 import WishlistKit
 
-@AppIntent(schema: .system.search)
+@available(iOS 27, *)
+@AppIntent(schema: .system.searchInApp)
 struct SearchWishlistIntent: AppIntent {
     static var title: LocalizedStringResource = "Search Wishlist"
 
@@ -834,16 +850,19 @@ but must be reconciled with whatever the macro demands.
 
 - [ ] **Step 2: Implement search against the schema**
 
-Adjust to satisfy the macro. The expected shape:
+Adjust to satisfy the macro. The expected shape — `StringSearchCriteria` is a
+real SDK type with a `term: String` and a defaulted `searchScopes` of
+`[.general]`, so a bare `criteria` parameter should suffice:
 
 ```swift
 import AppIntents
 import WishlistKit
 
-/// Conforms to `.system.search`, which is explicitly not category-specific —
-/// any app that can search its content may adopt it. This is what gives the
+/// Conforms to `.system.searchInApp`, which is explicitly not category-specific
+/// — any app that can search its content may adopt it. This is what gives the
 /// read side Apple Intelligence discoverability.
-@AppIntent(schema: .system.search)
+@available(iOS 27, *)
+@AppIntent(schema: .system.searchInApp)
 struct SearchWishlistIntent: AppIntent {
     static var title: LocalizedStringResource = "Search Wishlist"
 
@@ -871,6 +890,10 @@ import WishlistKit
 
 /// Conforms to `.system.open` so "open the blanket in Wishlist" works and pairs
 /// with search results.
+///
+/// `OpenIntent` supplies a default `perform()`, but this one is overridden so the
+/// app can route to the right screen rather than only coming to the foreground.
+@available(iOS 27, *)
 @AppIntent(schema: .system.open)
 struct OpenWishlistItemIntent: AppIntent {
     static var title: LocalizedStringResource = "Open Wishlist Item"
@@ -893,6 +916,10 @@ public extension Notification.Name {
 }
 ```
 
+> `Notification.Name.wishlistOpenItem` is declared outside the availability gate
+> on purpose — Step 4's receiver runs on every supported iOS, and gating the name
+> would force the gate into `RootTabView` for no benefit.
+
 - [ ] **Step 4: Route the open request to the Family tab**
 
 In `ios/Wishlist/Views/RootTabView.swift`, add alongside the existing
@@ -912,6 +939,14 @@ xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist -destination 'platfo
 Expected: `BUILD SUCCEEDED`. A successful build *is* the schema-conformance test —
 the macro would reject a mismatched shape.
 
+Then confirm the iOS 17 floor still holds — the gate must not have leaked:
+
+```bash
+grep -rn "@available(iOS 27" ios/Wishlist/Intents/SearchWishlistIntent.swift ios/Wishlist/Intents/OpenWishlistItemIntent.swift
+grep -n "iOS:" ios/project.yml
+```
+Expected: both intents gated; `project.yml` still reads `iOS: "17.0"`.
+
 - [ ] **Step 6: Commit**
 
 Substitute the real text for `REPLACE_WITH_STEP_1_OUTPUT` — do not commit the
@@ -919,10 +954,12 @@ token literally. It exists because only the run can know what the macro said.
 
 ```bash
 git add ios/Wishlist/Intents ios/Wishlist/Views/RootTabView.swift
-git commit -m "feat(ios): schema-conformant search and open intents
+git commit -m "feat(ios): schema-conformant search and open intents (iOS 27)
 
-Conforms to .system.search and .system.open. Required member list reported by
-the macro: REPLACE_WITH_STEP_1_OUTPUT.
+Conforms to .system.searchInApp and .system.open, both iOS 27-only per the SDK;
+gated with @available so the iOS 17 floor is unchanged. .system.search is
+deprecated and deliberately not used. Required member list reported by the
+macro: REPLACE_WITH_STEP_1_OUTPUT.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```

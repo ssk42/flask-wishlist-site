@@ -37,13 +37,32 @@ The `.system` domain is explicitly **not** category-specific — "any app that
 enables searching or opening content can adopt these schemas". Two schemas, both
 a genuine fit:
 
-| Schema | Purpose | Example phrases |
+| Schema | Purpose | Availability |
 |---|---|---|
-| `.system.search` | Search within the app | "Find bicycle", "Search for mountains" |
-| `.system.open` | Open a specific item | "Open my screenshot.png file" |
+| `.system.searchInApp` | Search within the app | iOS 27+ |
+| `.system.open` | Open a specific item | iOS 27+ |
 
 Adopting these gives the read side real Apple Intelligence discoverability —
 "find the cashmere blanket in Wishlist" — which custom intents alone would not.
+
+**Availability, read from `AppIntents.swiftinterface` in the Xcode-beta SDK
+rather than from memory:**
+
+- `.system.search` (no `InApp`) is **deprecated**: *"Use .system.searchInApp
+  instead"*. Do not use it.
+- `.system.searchInApp` and `.system.open` are `@available(anyAppleOS 27.0, *)`.
+- The `@AppIntent(schema:)` macro itself is iOS 18+; the `.system` domain is 18+.
+- The underlying protocols are much older — `ShowInAppSearchResultsIntent` is
+  iOS 17.2 and `OpenIntent` is iOS 16.0 (and supplies a default `perform()`).
+  Conforming to those directly would reach the app's iOS 17 floor but forgoes
+  schema registration.
+
+**Decision:** use the iOS 27 schemas behind `@available(iOS 27, *)`. The read
+intents therefore do not exist below iOS 27; the add and claim intents, which
+are custom and ungated, still work on the iOS 17 floor. This was chosen over
+raw-protocol conformance because Apple Intelligence discoverability is the whole
+reason for adopting a schema, and over the deprecated `.system.search` because
+building on an already-deprecated API is a known future break.
 
 ### Refuse: `.reminders`
 
@@ -115,8 +134,8 @@ APIClient  →  /api/v1       (existing, unchanged)
 | Intent | Schema | Example phrase |
 |---|---|---|
 | `AddWishlistItemIntent` | custom | "Add AirPods to my wishlist" |
-| `SearchWishlistIntent` | `@AppIntent(schema: .system.search)` | "Find the cashmere blanket in Wishlist" |
-| `OpenWishlistItemIntent` | `@AppIntent(schema: .system.open)` | "Open the blanket in Wishlist" |
+| `SearchWishlistIntent` | `@AppIntent(schema: .system.searchInApp)`, iOS 27+ | "Find the cashmere blanket in Wishlist" |
+| `OpenWishlistItemIntent` | `@AppIntent(schema: .system.open)`, iOS 27+ | "Open the blanket in Wishlist" |
 | `ClaimItemIntent` | custom | "Claim this" / "Claim the blanket" |
 | `MyClaimsIntent` | custom | "What have I claimed?" |
 
@@ -192,8 +211,9 @@ Each phase is independently shippable and useful.
 2. **Shortcuts / Action button** — optional `url` parameter on the same intent,
    `/api/v1/metadata` prefill, and an `AppShortcut` shaped for a URL input.
 3. **Read intents** — `ItemEntity` + `EntityQuery`, `SearchWishlistIntent`
-   (`.system.search`), `OpenWishlistItemIntent` (`.system.open`) and
-   `MyClaimsIntent`, with the surprise-protection tests. Schema conformance is
+   (`.system.searchInApp`), `OpenWishlistItemIntent` (`.system.open`) and
+   `MyClaimsIntent`, with the surprise-protection tests. The two schema
+   conformances are iOS 27-gated; `ItemEntity` and `MyClaimsIntent` are not. Schema conformance is
    verifiable at build time: the macros fail to compile if the intent's shape
    does not match the schema, so a mistake here is caught by CI, not by Siri.
 4. **iOS 27 on-screen awareness** — `.appEntityIdentifier` on `ItemRow` and
@@ -202,8 +222,9 @@ Each phase is independently shippable and useful.
 
 ## Constraints
 
-- **Deployment target stays iOS 17.0.** Phases 1–3 use stable iOS 16/17 APIs.
-  Phase 4 is additive and availability-gated, so the app keeps running on 17.
+- **Deployment target stays iOS 17.0.** Phases 1–2 use stable iOS 16/17 APIs.
+  The two schema conformances in phase 3 and all of phase 4 are
+  `@available(iOS 27, *)`-gated, so the app keeps running on 17 without them.
 - Apple Intelligence features are region-limited; the intents must still work as
   plain Shortcuts actions where Apple Intelligence is unavailable.
 
@@ -219,8 +240,9 @@ sessions 343 ("Explore advanced App Intents features") and 240 ("Build
 intelligent Siri experiences with App Schemas").
 
 Phases 1–3 carry no such risk and should not be blocked by phase 4. The
-`.system.search` / `.system.open` schemas used in phase 3 were read directly from
-Apple's current documentation and their conformance is compiler-checked.
+`.system.searchInApp` / `.system.open` schemas used in phase 3 were read directly
+from the SDK's `AppIntents.swiftinterface` and their conformance is
+compiler-checked, so a wrong shape fails the build rather than reaching a user.
 
 ## Out of scope
 
