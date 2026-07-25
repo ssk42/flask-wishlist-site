@@ -55,8 +55,8 @@ def test_metadata_endpoint(client, user, monkeypatch):
     monkeypatch.setattr(price_service, "fetch_metadata",
                         lambda url: {"title": "Widget", "price": 9.99, "image": None})
     # The SSRF guard resolves hostnames via DNS; stub it so unit tests stay offline.
-    import blueprints.api_v1 as api_v1
-    monkeypatch.setattr(api_v1, "_is_public_http_url", lambda url: True)
+    import services.url_guard as url_guard
+    monkeypatch.setattr(url_guard, "is_public_http_url", lambda url: True)
 
     response = client.post("/api/v1/metadata", headers=_auth(client),
                            json={"url": "https://example.com/widget"})

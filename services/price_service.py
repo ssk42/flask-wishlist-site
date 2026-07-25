@@ -92,8 +92,34 @@ class CachedResponse:
     def raise_for_status(self):
         pass
 
+def _get_following_validated_redirects(session, url):
+    """Fetch `url`, following redirects one hop at a time and validating each.
+
+    Prevents an SSRF bypass where a public URL redirects to an internal
+    address: validating only the submitted URL leaves the redirect chain
+    unchecked, and requests would happily follow it.
+    """
+    from urllib.parse import urljoin
+    from services.url_guard import MAX_REDIRECT_HOPS, is_public_http_url
+
+    current = url
+    for _ in range(MAX_REDIRECT_HOPS + 1):
+        if not is_public_http_url(current):
+            raise requests.RequestException(f'Blocked non-public URL: {current}')
+        response = session.get(current, timeout=REQUEST_TIMEOUT, allow_redirects=False)
+        if not response.is_redirect:
+            return response
+        location = response.headers.get('Location')
+        if not location:
+            return response
+        current = urljoin(current, location)
+    raise requests.RequestException(f'Too many redirects for {url}')
+
+
 def _make_request(url, session=None, retries=MAX_RETRIES):
     """Make a request with retry logic and caching."""
+    from services.url_guard import is_enforcing
+
     # Check cache first
     cached_text = price_cache.get_cached_response(url)
     if cached_text:
@@ -106,7 +132,11 @@ def _make_request(url, session=None, retries=MAX_RETRIES):
 
     for attempt in range(retries + 1):
         try:
-            response = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if is_enforcing():
+                # User-supplied URL (API): validate every redirect hop.
+                response = _get_following_validated_redirects(session, url)
+            else:
+                response = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
             response.raise_for_status()
             
             # Cache successful responses (if text content)
@@ -377,6 +407,8 @@ def _fetch_target_price(url):
 
 def _fetch_amazon_metadata(url):
     """Fetch all metadata from Amazon."""
+    from services.url_guard import is_enforcing
+
     try:
         session = _get_session()
         session.headers.update({
@@ -388,6 +420,12 @@ def _fetch_amazon_metadata(url):
 
         if response and 'captcha' not in response.text.lower() and 'robot check' not in response.text.lower():
             soup = BeautifulSoup(response.text, 'html.parser')
+        elif is_enforcing():
+            # Playwright follows redirects internally, so its chain can't be
+            # validated hop-by-hop; skip the fallback rather than risk an SSRF
+            # bypass. Callers get whatever partial metadata we already have.
+            logger.warning(f'Amazon CAPTCHA detected; skipping Playwright fallback under SSRF enforcement: {url}')
+            soup = None
         else:
             logger.warning(f'Amazon CAPTCHA detected, switching to Playwright for metadata: {url}')
             soup = _fetch_with_playwright(url)
