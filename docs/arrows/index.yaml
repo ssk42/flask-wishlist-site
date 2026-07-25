@@ -1,0 +1,73 @@
+arrows:
+  - id: boundary-auth
+    status: GROUP
+    parent: null
+    children: [auth-flow, account-recovery]
+  - id: auth-flow
+    status: MAPPED
+    parent: boundary-auth
+    detail: boundary-auth/auth-flow.md
+  - id: account-recovery
+    status: MAPPED
+    parent: boundary-auth
+    detail: boundary-auth/account-recovery.md
+  - id: boundary-owner
+    status: GROUP
+    parent: null
+    children: [item-curation, event-management, owner-visibility]
+  - id: item-curation
+    status: MAPPED
+    parent: boundary-owner
+    detail: boundary-owner/item-curation.md
+  - id: event-management
+    status: MAPPED
+    parent: boundary-owner
+    detail: boundary-owner/event-management.md
+  - id: owner-visibility
+    status: MAPPED
+    parent: boundary-owner
+    detail: boundary-owner/owner-visibility.md
+  - id: boundary-giver
+    status: GROUP
+    parent: null
+    children: [item-claiming, split-contributions, secret-coordination]
+  - id: item-claiming
+    status: MAPPED
+    parent: boundary-giver
+    detail: boundary-giver/item-claiming.md
+  - id: split-contributions
+    status: MAPPED
+    parent: boundary-giver
+    detail: boundary-giver/split-contributions.md
+  - id: secret-coordination
+    status: MAPPED
+    parent: boundary-giver
+    detail: boundary-giver/secret-coordination.md
+  - id: boundary-viewer
+    status: GROUP
+    parent: null
+    children: [feed-filtering, ui-state]
+  - id: feed-filtering
+    status: MAPPED
+    parent: boundary-viewer
+    detail: boundary-viewer/feed-filtering.md
+  - id: ui-state
+    status: MAPPED
+    parent: boundary-viewer
+    detail: boundary-viewer/ui-state.md
+  - id: boundary-autonomous
+    status: GROUP
+    parent: null
+    children: [price-stealth, price-processing, system-tasks]
+  - id: price-stealth
+    status: MAPPED
+    parent: boundary-autonomous
+    detail: boundary-autonomous/price-stealth.md
+  - id: price-processing
+    status: MAPPED
+    parent: boundary-autonomous
+    detail: boundary-autonomous/price-processing.md
+  - id: system-tasks
+    status: MAPPED
+    parent: boundary-autonomous
+    detail: boundary-autonomous/system-tasks.md
