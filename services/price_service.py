@@ -92,8 +92,55 @@ class CachedResponse:
     def raise_for_status(self):
         pass
 
+
+# Hosts needing site-specific handling. Matched as an exact host or a subdomain,
+# never as a substring: `'amazon' in 'amazon.evil.com'` is True, which would send
+# Amazon-specific headers and referer to an attacker-controlled host.
+AMAZON_HOSTS = (
+    'amazon.com', 'amazon.co.uk', 'amazon.ca', 'amazon.de', 'amazon.fr',
+    'amazon.it', 'amazon.es', 'amazon.nl', 'amazon.se', 'amazon.pl',
+    'amazon.ie', 'amazon.com.be', 'amazon.com.au', 'amazon.com.mx',
+    'amazon.com.br', 'amazon.com.tr', 'amazon.co.jp', 'amazon.cn',
+    'amazon.in', 'amazon.sg', 'amazon.ae', 'amazon.sa', 'amazon.eg',
+    'a.co', 'amzn.to', 'amzn.eu',
+)
+TARGET_HOSTS = ('target.com',)
+
+
+def _host_matches(domain, hosts):
+    """True when `domain` is exactly one of `hosts`, or a subdomain of one."""
+    host = (domain or '').lower().split(':')[0].rstrip('.')
+    return any(host == h or host.endswith('.' + h) for h in hosts)
+
+
+def _get_following_validated_redirects(session, url):
+    """Fetch `url`, following redirects one hop at a time and validating each.
+
+    Prevents an SSRF bypass where a public URL redirects to an internal
+    address: validating only the submitted URL leaves the redirect chain
+    unchecked, and requests would happily follow it.
+    """
+    from urllib.parse import urljoin
+    from services.url_guard import MAX_REDIRECT_HOPS, is_public_http_url
+
+    current = url
+    for _ in range(MAX_REDIRECT_HOPS + 1):
+        if not is_public_http_url(current):
+            raise requests.RequestException(f'Blocked non-public URL: {current}')
+        response = session.get(current, timeout=REQUEST_TIMEOUT, allow_redirects=False)
+        if not response.is_redirect:
+            return response
+        location = response.headers.get('Location')
+        if not location:
+            return response
+        current = urljoin(current, location)
+    raise requests.RequestException(f'Too many redirects for {url}')
+
+
 def _make_request(url, session=None, retries=MAX_RETRIES):
     """Make a request with retry logic and caching."""
+    from services.url_guard import is_enforcing
+
     # Check cache first
     cached_text = price_cache.get_cached_response(url)
     if cached_text:
@@ -106,7 +153,11 @@ def _make_request(url, session=None, retries=MAX_RETRIES):
 
     for attempt in range(retries + 1):
         try:
-            response = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if is_enforcing():
+                # User-supplied URL (API): validate every redirect hop.
+                response = _get_following_validated_redirects(session, url)
+            else:
+                response = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
             response.raise_for_status()
             
             # Cache successful responses (if text content)
@@ -144,9 +195,9 @@ def fetch_price(url):
 
         # Amazon and Target need special fetching (stealth / Playwright fallback);
         # everything else is fetch-then-extract with the registry.
-        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
+        if _host_matches(domain, AMAZON_HOSTS):
             price = _fetch_amazon_price(url)
-        elif 'target.com' in domain:
+        elif _host_matches(domain, TARGET_HOSTS):
             price = _fetch_target_price(url)
         else:
             price = _fetch_standard_price(url)
@@ -197,7 +248,7 @@ def fetch_metadata(url):
         metadata['domain'] = domain
 
         # Site-specific extractors
-        if 'amazon' in domain or domain in ['a.co', 'amzn.to', 'amzn.eu']:
+        if _host_matches(domain, AMAZON_HOSTS):
             data = _fetch_amazon_metadata(url)
             if data:
                 metadata.update(data)
@@ -377,6 +428,8 @@ def _fetch_target_price(url):
 
 def _fetch_amazon_metadata(url):
     """Fetch all metadata from Amazon."""
+    from services.url_guard import is_enforcing
+
     try:
         session = _get_session()
         session.headers.update({
@@ -388,6 +441,12 @@ def _fetch_amazon_metadata(url):
 
         if response and 'captcha' not in response.text.lower() and 'robot check' not in response.text.lower():
             soup = BeautifulSoup(response.text, 'html.parser')
+        elif is_enforcing():
+            # Playwright follows redirects internally, so its chain can't be
+            # validated hop-by-hop; skip the fallback rather than risk an SSRF
+            # bypass. Callers get whatever partial metadata we already have.
+            logger.warning(f'Amazon CAPTCHA detected; skipping Playwright fallback under SSRF enforcement: {url}')
+            soup = None
         else:
             logger.warning(f'Amazon CAPTCHA detected, switching to Playwright for metadata: {url}')
             soup = _fetch_with_playwright(url)
@@ -591,27 +650,19 @@ def _create_price_drop_notifications(item, old_price, new_price, drop_percent, d
     - Item owner
     - User who claimed the item (if any, and not the owner)
     """
+    from services.notification_service import create_notification
+
     # Notification for owner
     owner_message = f"🎉 Price drop! '{item.description[:50]}' is now ${new_price:.2f} (was ${old_price:.2f}) - {drop_percent:.0f}% off!"
-    owner_notif = Notification(
-        message=owner_message,
-        link=f"/items?user_filter={item.user_id}",
-        user_id=item.user_id
-    )
-    db.session.add(owner_notif)
+    create_notification(item.user_id, owner_message, f"/items?user_filter={item.user_id}")
     logger.info(f'Created price drop notification for owner (user_id={item.user_id})')
-    
+
     # Notification for claimer (if different from owner)
     if item.last_updated_by_id and item.last_updated_by_id != item.user_id and item.status in ['Claimed', 'Purchased']:
         claimer_message = f"💰 Price drop on '{item.description[:50]}' you claimed! Now ${new_price:.2f} (was ${old_price:.2f})"
-        claimer_notif = Notification(
-            message=claimer_message,
-            link="/my-claims",
-            user_id=item.last_updated_by_id
-        )
-        db.session.add(claimer_notif)
+        create_notification(item.last_updated_by_id, claimer_message, "/my-claims")
         logger.info(f'Created price drop notification for claimer (user_id={item.last_updated_by_id})')
-    
+
     db.session.commit()
 
 

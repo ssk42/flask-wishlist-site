@@ -199,3 +199,32 @@ class PriceHistory(db.Model):
 
     def __repr__(self):
         return f'<PriceHistory Item={self.item_id} Price={self.price} Date={self.recorded_at}>'
+
+
+class ApiToken(db.Model):
+    """Bearer token for the JSON API (v1). Only the SHA-256 hash is stored."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    revoked = db.Column(db.Boolean, default=False, nullable=False)
+
+    user = db.relationship('User', backref='api_tokens')
+
+    def __repr__(self):
+        return f'<ApiToken user={self.user_id} revoked={self.revoked}>'
+
+
+class Device(db.Model):
+    """A registered mobile device that can receive push notifications."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    apns_token = db.Column(db.String(200), unique=True, nullable=False)
+    platform = db.Column(db.String(20), nullable=False, default='ios')
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+
+    user = db.relationship('User', backref='devices')
+
+    def __repr__(self):
+        return f'<Device user={self.user_id} platform={self.platform}>'

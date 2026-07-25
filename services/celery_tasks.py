@@ -48,3 +48,25 @@ def update_stale_prices_async(self, force_all=False):
     except Exception as exc:
         logger.error(f'update_stale_prices failed: {exc}')
         raise self.retry(exc=exc, countdown=60)
+
+
+@celery_app.task(bind=True, max_retries=3)
+def send_push_task(self, user_id, message, link=None):
+    """Celery task: deliver a push notification to all of a user's devices.
+
+    This task requires the Flask app context to access the database and
+    APNs config, so it creates its own app (same pattern as the other
+    tasks in this module).
+    """
+    from app import create_app
+    from services.push_service import send_push_to_user
+
+    try:
+        app = create_app()
+        with app.app_context():
+            result = send_push_to_user(user_id, message, link)
+        logger.info(f'send_push_task completed: {result}')
+        return result
+    except Exception as exc:
+        logger.error(f'send_push_task failed: {exc}')
+        raise self.retry(exc=exc, countdown=60)

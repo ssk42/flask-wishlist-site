@@ -172,3 +172,27 @@ class FormValidator:
         except ValueError:
             self.errors.append(format_error or 'Invalid date format. Please use YYYY-MM-DD.')
             return None
+
+
+def is_http_url(value):
+    """Accept blank optional values or absolute HTTP(S) URLs only."""
+    from urllib.parse import urlparse
+    if not value:
+        return True
+    parsed = urlparse(value)
+    return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
+
+
+def validate_item_fields(validator, description, link, image_url, price, event_id):
+    """Server-side validations shared by item create and owner edit (web + API)."""
+    from models import db, Event
+    if description and len(description) > 750:
+        validator.errors.append('Description must be 750 characters or fewer.')
+    if price is not None and price < 0:
+        validator.errors.append('Price cannot be negative.')
+    if not is_http_url(link):
+        validator.errors.append('Link must be a valid http or https URL.')
+    if not is_http_url(image_url):
+        validator.errors.append('Image URL must be a valid http or https URL.')
+    if event_id is not None and db.session.get(Event, event_id) is None:
+        validator.errors.append('Please choose an existing event.')

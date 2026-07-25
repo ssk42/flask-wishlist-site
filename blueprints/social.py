@@ -41,8 +41,8 @@ def add_comment(item_id):
     for recipient in previous_commenters:
         msg = f"{current_user.name} commented on an item for {item.user.name}: {item.description[:30]}..."
         link = url_for('items.items_list', _anchor=f'item-{item.id}')
-        notif = Notification(user_id=recipient.id, message=msg, link=link)
-        db.session.add(notif)
+        from services.notification_service import create_notification
+        create_notification(recipient.id, msg, link)
 
     db.session.commit()
     flash('Comment added!', 'success')
