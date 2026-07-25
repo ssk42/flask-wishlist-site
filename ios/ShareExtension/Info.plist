@@ -20,12 +20,25 @@
   <string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key>
   <string>$(CURRENT_PROJECT_VERSION)</string>
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+      <key>localhost</key>
+      <dict>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+      </dict>
+    </dict>
+  </dict>
   <key>NSExtension</key>
   <dict>
     <key>NSExtensionPointIdentifier</key>
     <string>com.apple.share-services</string>
+    <!-- Must be module-qualified: a bare Swift class name can't be resolved by
+         the Obj-C runtime, and iOS then presents an empty share sheet. -->
     <key>NSExtensionPrincipalClass</key>
-    <string>ShareViewController</string>
+    <string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
     <key>NSExtensionAttributes</key>
     <dict>
       <key>NSExtensionActivationRule</key>

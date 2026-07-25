@@ -9,9 +9,9 @@ import WishlistKit
 /// client's `@Sendable` token provider can read the token from any context; only
 /// `makeSession()` is main-actor isolated, since `Session` is `@MainActor`.
 enum AppEnvironment {
-    static let tokenStore = KeychainTokenStore()
+    static let tokenStore = KeychainTokenStore(accessGroup: WishlistAPI.sharedKeychainGroup)
     static let client = APIClient(
-        baseURL: URL(string: "http://localhost:8000")!,
+        baseURL: WishlistAPI.defaultBaseURL,
         tokenProvider: { tokenStore.read() }
     )
 
