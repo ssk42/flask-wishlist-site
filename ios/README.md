@@ -52,9 +52,33 @@ xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist \
   -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
-Code signing is disabled for simulator builds (`CODE_SIGNING_ALLOWED=NO`), so no
-developer team is needed. The entitlements files are still present and correct
-for signed device/TestFlight builds.
+Code signing is disabled **for the simulator only**
+(`CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]=NO`), so simulator builds and CI need
+no certificates. Device builds sign normally with `DEVELOPMENT_TEAM`.
+
+## Running on a physical iPhone
+
+Needed for the two things the simulator can't do: APNs device-token registration
+and the Share Extension's authenticated save (both require the shared Keychain
+access group, which only a signed build gets).
+
+1. In the Apple Developer portal, register App IDs for `com.reitz.wishlist` and
+   `com.reitz.wishlist.ShareExtension`, and enable the **Push Notifications**
+   capability on the app's App ID. APNs rejects a topic for an unregistered
+   bundle ID.
+2. Regenerate and open the project, plug in the iPhone, select it as the
+   destination, and run. Signing is already configured — `DEVELOPMENT_TEAM` is
+   set in `project.yml` and the `aps-environment` / keychain-group entitlements
+   are in place.
+3. Log in on the device, then confirm a token reached the server:
+
+```bash
+docker exec postgres_db psql -U <user> -d <db> -c 'select id, user_id, platform, created_at from device;'
+```
+
+A row means push is wired end-to-end. Server-side, `APNS_USE_SANDBOX` must be
+`true` for an Xcode-installed (development-signed) build and `false` for
+TestFlight — a mismatch returns APNs `400 BadDeviceToken`.
 
 ## Pointing at a backend
 
