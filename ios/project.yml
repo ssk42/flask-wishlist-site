@@ -9,14 +9,15 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: J4QUKKF6V3
     CODE_SIGN_STYLE: Automatic
-    # No signing team is configured on this machine/CI. Simulator builds don't need
-    # provisioning, so code signing is disabled entirely for all targets here. Real
-    # device / TestFlight builds will need DEVELOPMENT_TEAM set and these two flipped
-    # back (or overridden per-destination) — entitlements files are kept as-is for that.
-    CODE_SIGNING_ALLOWED: "NO"
-    CODE_SIGNING_REQUIRED: "NO"
+    # Signing is disabled for the SIMULATOR only: simulator builds need no
+    # provisioning, so they keep working on any machine (and in CI) with no certs
+    # installed. Device and TestFlight builds sign normally with the team above,
+    # which is what the keychain-access-group and aps-environment entitlements
+    # require to actually function.
+    CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]: "NO"
+    CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]: "NO"
 targets:
   WishlistKit:
     type: framework
