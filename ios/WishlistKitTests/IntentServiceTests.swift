@@ -75,11 +75,13 @@ final class IntentServiceTests: XCTestCase {
 
     func testAddFromLinkPrefillsDescriptionFromMetadata() async throws {
         var paths: [String] = []
+        var createBody: [String: Any]?
         let svc = service { req in
             paths.append(req.url?.path ?? "")
             if req.url?.path.contains("metadata") == true {
-                return (200, #"{"description":"Cashmere Blanket","price":89.0,"link":"https://shop.test/b"}"#)
+                return (200, #"{"title":"Cashmere Blanket","price":89.0,"link":"https://shop.test/b"}"#)
             }
+            createBody = Self.jsonBody(req)
             return (201, #"{"item":{"id":4,"description":"Cashmere Blanket","user_id":1}}"#)
         }
 
@@ -87,6 +89,8 @@ final class IntentServiceTests: XCTestCase {
 
         XCTAssertEqual(item.description, "Cashmere Blanket")
         XCTAssertTrue(paths.contains { $0.contains("metadata") }, "should fetch metadata first")
+        XCTAssertEqual(createBody?["description"] as? String, "Cashmere Blanket",
+                       "the metadata title should have been merged into the create-item request body")
     }
 
     func testAddFromLinkFallsBackToURLWhenMetadataFails() async throws {
