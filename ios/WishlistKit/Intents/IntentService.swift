@@ -96,3 +96,35 @@ public struct IntentService: Sendable {
         }
     }
 }
+
+extension IntentService {
+    /// Owner names for entity subtitles, resolved once per query.
+    /// Not `private` — Task 5's extension calls it too.
+    func ownerNames() async throws -> [Int: String] {
+        Dictionary(uniqueKeysWithValues: try await client.users().map { ($0.id, $0.name) })
+    }
+
+    public func searchItems(matching text: String) async throws -> [ItemEntity] {
+        try requireToken()
+        do {
+            let names = try await ownerNames()
+            let items = try await client.items(query: text)
+            return items.map { ItemEntity(item: $0, ownerName: names[$0.userID]) }
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    public func entities(for ids: [Int]) async throws -> [ItemEntity] {
+        try requireToken()
+        do {
+            let names = try await ownerNames()
+            let wanted = Set(ids)
+            return try await client.items()
+                .filter { wanted.contains($0.id) }
+                .map { ItemEntity(item: $0, ownerName: names[$0.userID]) }
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+}
