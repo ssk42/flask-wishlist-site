@@ -741,7 +741,7 @@ public struct WishlistItemQuery: EntityStringQuery {
 }
 ```
 
-- [ ] **Step 4: Add the shared instance and query methods**
+- [ ] **Step 4: Add the query methods**
 
 `WishlistItemQuery` is constructed by the system with no arguments, so it needs a
 service it can reach. Add to `ios/WishlistKit/Intents/IntentService.swift`:
