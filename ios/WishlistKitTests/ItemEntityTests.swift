@@ -46,8 +46,14 @@ final class ItemEntityTests: XCTestCase {
     }
 
     func testSearchReturnsMatchingEntities() async throws {
+        // Captured so the test fails if the search term never reaches the
+        // request — asserting only on the stubbed response would pass even
+        // if `matching:` were dropped on the floor.
+        var itemsQuery: String?
         StubURLProtocol.handler = { req in
-            let json = req.url!.path.hasSuffix("/users")
+            let isUsers = req.url!.path.hasSuffix("/users")
+            if !isUsers { itemsQuery = req.url?.query }
+            let json = isUsers
                 ? #"{"users":[{"id":9,"name":"Mom","email":"m@x.com"}]}"#
                 : #"{"items":[{"id":2,"description":"Cashmere throw","user_id":9,"status":"Available"}]}"#
             return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
@@ -64,5 +70,7 @@ final class ItemEntityTests: XCTestCase {
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results.first?.name, "Cashmere throw")
         XCTAssertEqual(results.first?.ownerName, "Mom")
+        XCTAssertTrue(itemsQuery?.contains("cashmere") == true,
+                      "the search term must reach the /items request; got \(itemsQuery ?? "nil")")
     }
 }
