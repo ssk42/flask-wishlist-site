@@ -28,5 +28,9 @@ struct RootTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: PushManager.openLinkNotification)) { _ in
             selectedTab = 3
         }
+        // Siri "open this item" deep-links to the Family tab.
+        .onReceive(NotificationCenter.default.publisher(for: .wishlistOpenItem)) { _ in
+            selectedTab = 0
+        }
     }
 }
