@@ -12,7 +12,7 @@ Spec: `docs/superpowers/specs/2026-07-25-siri-app-intents-design.md`. Read it fi
 
 ## Global Constraints
 
-- **Deployment target stays iOS 17.0.** Tasks 1–3 and 5 use iOS 16/17 APIs. **Tasks 4 and 6 are `@available(iOS 27, *)`-gated** and must not raise the floor.
+- **Deployment target stays iOS 17.0.** Tasks 1–3 and 5 use iOS 16/17 APIs. **Task 4 is `@available(iOS 27, *)`-gated** (the assistant schemas are iOS 27-only) and **Task 6 is `@available(iOS 18.2, *)`-gated** (on-screen awareness is 18.2, verified in the SDK). Neither may raise the floor.
 - **Assistant-schema facts, read from the SDK — do not re-derive from memory.**
   `.system.search` is **deprecated** ("Use .system.searchInApp instead").
   `.system.searchInApp` and `.system.open` are `@available(anyAppleOS 27.0, *)`.
@@ -1179,102 +1179,96 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 6: iOS 27 on-screen awareness
+### Task 6: On-screen awareness (iOS 18.2)
 
 **Files:**
-- Modify: `ios/Wishlist/Views/ItemRow.swift`
 - Modify: `ios/Wishlist/Views/ItemDetailView.swift`
-- Modify: `ios/Wishlist/Views/MemberItemsView.swift`
+- Modify: `ios/Wishlist/Info.plist` (declare the activity type)
 
 **Interfaces:**
 - Consumes: `ItemEntity` (Task 3), `ClaimItemIntent` (Task 5).
-- Produces: no new symbols — annotations only.
+- Produces: no new symbols — one annotation plus a plist key.
 
-⚠️ **The APIs in this task are unverified.** They postdate the plan author's
-knowledge and Apple's documentation pages did not render for automated reading.
-Step 1 is verification, not implementation. Do not skip it, and do not let this
-task block Tasks 1–5, which are already shippable.
+> **The API was verified in the SDK before this task was written.** The earlier
+> draft guessed a SwiftUI `View.appEntityIdentifier(_:)` modifier. **No such
+> modifier exists.** What exists, read from `AppIntents.swiftinterface` in the
+> Xcode-beta iPhoneOS SDK:
+>
+> ```swift
+> @available(macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2, *)
+> public protocol AppEntityAnnotatable {
+>   var appEntityIdentifier: EntityIdentifier? { get set }
+> }
+> extension NSUserActivity: AppEntityAnnotatable { ... }   // same availability
+>
+> public struct EntityIdentifier {
+>   public init<Entity>(for entityType: Entity.Type, identifier: Entity.ID)
+>       where Entity: AppEntity
+> }
+> ```
+> and SwiftUI's existing modifier:
+> ```swift
+> func userActivity(_ activityType: String, isActive: Bool = true,
+>                   _ update: @escaping (NSUserActivity) -> ()) -> some View
+> ```
+>
+> Three consequences, all deliberate:
+> 1. **This is iOS 18.2, not iOS 27.** Gate with `@available(iOS 18.2, *)` /
+>    `if #available(iOS 18.2, *)`. Do NOT gate at 27 — that needlessly denies the
+>    feature to 18.2–26 devices.
+> 2. **Only the detail screen is annotated.** `NSUserActivity` is a screen-level
+>    concept — one activity is current at a time — so annotating every row in a
+>    list is meaningless. The earlier draft's `ItemRow` annotation is dropped.
+> 3. `appEntityUIElementProvider` and `UICollectionViewAppIntentsDataSource`
+>    (named in the spec's risk section) **do not exist** under those names in
+>    this SDK. They are not needed: they are UIKit-side concepts and this is a
+>    SwiftUI app.
 
-- [ ] **Step 1: Verify the actual API before writing anything**
+- [ ] **Step 1: Declare the activity type**
 
-Check all three, and write what you find into the task's commit message:
+`NSUserActivity` types must be declared or the system ignores them. In
+`ios/Wishlist/Info.plist`, add:
 
-```bash
-# 1. Does the modifier exist in this SDK?
-echo 'import SwiftUI
-@available(iOS 27, *)
-func probe(_ v: some View) -> some View { v.appEntityIdentifier(1) }' > /tmp/probe.swift
-xcrun --sdk iphoneos swiftc -parse /tmp/probe.swift -target arm64-apple-ios27.0 2>&1 | head -5
+```xml
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.reitz.wishlist.viewItem</string>
+	</array>
 ```
 
-2. Search the SDK headers:
-
-```bash
-grep -rl "appEntityIdentifier\|AppEntityAnnotatable" "$(xcrun --sdk iphoneos --show-sdk-path)/System/Library/Frameworks/AppIntents.framework" 2>/dev/null | head
-```
-
-3. Watch/skim WWDC26 sessions 343 ("Explore advanced App Intents features") and
-   240 ("Build intelligent Siri experiences with App Schemas").
-
-**If the API does not exist under these names, stop and report.** Ship Tasks 1–5
-and revisit. Guessing at annotation APIs produces code that compiles but silently
-does nothing, which is worse than not shipping the feature.
-
-- [ ] **Step 2: Annotate item rows**
-
-Once verified, in `ios/Wishlist/Views/ItemRow.swift` wrap the returned view:
-
-```swift
-    var body: some View {
-        rowContent
-            .modifier(ItemEntityAnnotation(itemID: item.id))
-    }
-
-    private var rowContent: some View {
-        // ...existing HStack body, unchanged...
-    }
-```
-
-Add at the bottom of the same file:
-
-```swift
-/// Tells Siri which entity a row represents, so "claim this" resolves while the
-/// user is looking at it. iOS 27 only; a no-op below that, which keeps the
-/// deployment target at 17.
-private struct ItemEntityAnnotation: ViewModifier {
-    let itemID: Int
-
-    func body(content: Content) -> some View {
-        if #available(iOS 27, *) {
-            content.appEntityIdentifier(itemID)
-        } else {
-            content
-        }
-    }
-}
-```
-
-- [ ] **Step 3: Annotate the detail screen as primary content**
+- [ ] **Step 2: Annotate the detail screen**
 
 In `ios/Wishlist/Views/ItemDetailView.swift`, add to the outermost `ZStack`:
 
 ```swift
-        .modifier(ItemDetailActivity(itemID: current.id))
+        .modifier(ItemEntityActivity(itemID: current.id, title: current.description))
 ```
 
-and at the bottom of the file:
+and at the bottom of the same file:
 
 ```swift
-/// Marks the detail screen as the primary on-screen content so Siri can resolve
-/// "this" to the item being viewed.
-private struct ItemDetailActivity: ViewModifier {
+/// Publishes the item on screen as the current `NSUserActivity`, tagged with its
+/// `ItemEntity` identifier, so Siri can resolve "claim this" to the item the
+/// user is actually looking at.
+///
+/// iOS 18.2+ — a plain no-op below that, which keeps the deployment target at
+/// 17.0. There is no SwiftUI `appEntityIdentifier` view modifier; the property
+/// lives on `NSUserActivity` via `AppEntityAnnotatable`.
+private struct ItemEntityActivity: ViewModifier {
     let itemID: Int
+    let title: String
 
     func body(content: Content) -> some View {
-        if #available(iOS 27, *) {
-            content.userActivity("com.reitz.wishlist.viewingItem") { activity in
-                activity.title = "Viewing wishlist item"
-                activity.userInfo = ["itemID": itemID]
+        if #available(iOS 18.2, *) {
+            content.userActivity("com.reitz.wishlist.viewItem") { activity in
+                activity.appEntityIdentifier = EntityIdentifier(
+                    for: ItemEntity.self, identifier: itemID
+                )
+                activity.title = title
+                // Deliberately NOT eligibleForSearch/eligibleForPublicIndexing:
+                // an item's name is other people's gift information and must not
+                // be indexed outside the app. See the surprise-protection note.
+                activity.isEligibleForHandoff = false
             }
         } else {
             content
@@ -1283,33 +1277,41 @@ private struct ItemDetailActivity: ViewModifier {
 }
 ```
 
-- [ ] **Step 4: Build for both floors**
+`ItemDetailView.swift` needs `import AppIntents` for `EntityIdentifier`.
+
+- [ ] **Step 3: Build for both floors**
 
 ```bash
-xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist -destination 'platform=iOS Simulator,name=iPhone 17' build 2>&1 | grep -E "BUILD (SUCCEEDED|FAILED)|error:"
+xcodegen generate --spec ios/project.yml --project-root .
+xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist -destination 'id=CBDFB290-C122-4FBB-A24F-D564CE0B6F31' build 2>&1 | grep -E "BUILD (SUCCEEDED|FAILED)|error:"
+grep -n 'iOS:' ios/project.yml
 ```
-Expected: `BUILD SUCCEEDED`, with **no** change to `deploymentTarget` in
-`ios/project.yml` — confirm with `grep -A1 deploymentTarget ios/project.yml`
-(must still read `iOS: "17.0"`).
+Expected: `BUILD SUCCEEDED`, and `project.yml` still reads `iOS: "17.0"`.
 
-- [ ] **Step 5: Smoke-test on the iOS 27 runtime**
+- [ ] **Step 4: Smoke-test the annotation**
 
-An iOS 27 simulator runtime is installed (`27.0 24A5390f`). Create a device if
-needed, install, open a member's item list, and confirm the app behaves normally
-— annotations must not alter layout or interaction. Siri resolution itself cannot
-be asserted here; note in the commit that it is unverified.
+Install on the iOS 27 simulator, open an item's detail screen, and confirm the
+app does not crash and the screen renders normally. **Siri and Apple
+Intelligence behaviour cannot be asserted from a simulator build** — do not
+claim "claim this" works from a build alone. Record exactly what was and was
+not verified.
 
-- [ ] **Step 6: Commit**
-
-Substitute the real text for `REPLACE_WITH_STEP_1_FINDINGS` — do not commit the
-token literally.
+- [ ] **Step 5: Commit**
 
 ```bash
-git add ios/Wishlist/Views
-git commit -m "feat(ios): on-screen awareness annotations for Siri (iOS 27)
+git add ios/Wishlist/Views/ItemDetailView.swift ios/Wishlist/Info.plist
+git commit -m "feat(ios): on-screen awareness for the item detail screen
 
-API verification result: REPLACE_WITH_STEP_1_FINDINGS.
-Gated behind @available(iOS 27, *); deployment target stays 17.0.
+Publishes the viewed item as an NSUserActivity tagged with its ItemEntity
+identifier, so Siri can resolve \"claim this\" to what is on screen.
+
+iOS 18.2, not 27: AppEntityAnnotatable is @available(iOS 18.2). The earlier
+plan guessed a SwiftUI View.appEntityIdentifier(_:) modifier, which does not
+exist in this SDK. Only the detail screen is annotated — NSUserActivity is
+screen-level, so per-row annotation would be meaningless.
+
+The activity is not search- or handoff-eligible: item names are other people's
+gift information and must not leave the app.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
