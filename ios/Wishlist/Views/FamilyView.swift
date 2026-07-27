@@ -8,12 +8,19 @@ import WishlistKit
 private struct PendingItemDestination: Hashable {
     let user: User
     let itemID: Int
+    /// Makes every open a distinct path value. Without it, re-opening the item
+    /// already on screen appends a value equal to the one being removed, the
+    /// update coalesces to "no change", the destination view is never
+    /// recreated, and Siri confirms an open that highlights nothing.
+    let nonce: Int
 }
 
 struct FamilyView: View {
     let client: APIClient
     @State private var vm: FamilyViewModel
     @State private var path = NavigationPath()
+    /// Bumped on every open so each pushed destination is a distinct value.
+    @State private var openNonce = 0
     private let openTarget = OpenTarget.shared
 
     init(client: APIClient) {
@@ -84,8 +91,9 @@ struct FamilyView: View {
         // a second "open" (e.g. two Siri requests back to back) should land
         // on the new target, not stack behind whatever was already pushed.
         if !path.isEmpty { path.removeLast(path.count) }
+        openNonce += 1
         if let itemID = pending?.itemID {
-            path.append(PendingItemDestination(user: user, itemID: itemID))
+            path.append(PendingItemDestination(user: user, itemID: itemID, nonce: openNonce))
         } else {
             path.append(user)
         }

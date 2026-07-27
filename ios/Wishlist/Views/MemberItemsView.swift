@@ -4,15 +4,19 @@ import WishlistKit
 struct MemberItemsView: View {
     let client: APIClient
     @State private var vm: MemberItemsViewModel
-    /// The item Siri (or a deep link) asked to open, if any. Cleared once
-    /// it's been scrolled to and briefly highlighted — this is a one-shot
-    /// focus affordance, not persistent state.
+    /// The item Siri (or a deep link) asked to open, if any. A plain `let`,
+    /// deliberately not an `init`-seeded `@State`: SwiftUI may reuse this view
+    /// for a new path value, and seeded state would keep the previous request's
+    /// answer. The highlight below is derived from this rather than stored.
+    let highlightItemID: Int?
+    /// Which row is currently outlined. One-shot focus affordance, not
+    /// persistent state — set when the item is revealed, cleared 1.5s later.
     @State private var highlightedItemID: Int?
 
     init(client: APIClient, member: User, highlightItemID: Int? = nil) {
         self.client = client
+        self.highlightItemID = highlightItemID
         _vm = State(initialValue: MemberItemsViewModel(client: client, member: member))
-        _highlightedItemID = State(initialValue: highlightItemID)
     }
 
     var body: some View {
@@ -69,9 +73,14 @@ struct MemberItemsView: View {
     /// member simply doesn't have that item — this degrades silently to the
     /// plain list: no scroll, no highlight, no error.
     private func revealHighlightIfNeeded(proxy: ScrollViewProxy) async {
-        guard let id = highlightedItemID, vm.items.contains(where: { $0.id == id }) else { return }
+        guard let id = highlightItemID, vm.items.contains(where: { $0.id == id }) else { return }
+        highlightedItemID = id
         withAnimation { proxy.scrollTo(id, anchor: .center) }
         try? await Task.sleep(for: .seconds(1.5))
+        // A refresh or mutation mid-window cancels this task and starts a new
+        // one. Clearing unconditionally would wipe the highlight the fresh pass
+        // is about to set, so a cancelled pass must leave it alone.
+        guard !Task.isCancelled else { return }
         withAnimation { highlightedItemID = nil }
     }
 }
