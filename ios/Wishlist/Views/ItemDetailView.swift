@@ -144,8 +144,12 @@ struct ItemDetailView: View {
 /// user is actually looking at.
 ///
 /// iOS 18.2+ — a plain no-op below that, which keeps the deployment target at
-/// 17.0. There is no SwiftUI `appEntityIdentifier` view modifier; the property
-/// lives on `NSUserActivity` via `AppEntityAnnotatable`.
+/// 17.0.
+///
+/// This is the DETAIL half of on-screen awareness. The list half is
+/// `.appEntityIdentifier` on each `ItemRow` (iOS 18.4) — Apple's guidance is
+/// both: `.userActivity` when one entity fills the screen, row annotations so
+/// the system knows what's in a list.
 private struct ItemEntityActivity: ViewModifier {
     let itemID: Int
     let title: String

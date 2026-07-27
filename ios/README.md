@@ -114,7 +114,7 @@ worker with a broker — see [`../docs/DEPLOY_HOME_SERVER.md`](../docs/DEPLOY_HO
 
 ## Siri and App Intents
 
-Six intents plus one on-screen-awareness modifier, backed by `IntentService`
+Six intents plus on-screen awareness, backed by `IntentService`
 in `WishlistKit` (testable offline) with thin intent structs in
 `Wishlist/Intents/`:
 
@@ -126,7 +126,8 @@ in `WishlistKit` (testable offline) with thin intent structs in
 | `MyClaimsIntent` | custom | iOS 17+ |
 | `SearchWishlistIntent` | `@AppIntent(schema: .system.searchInApp)` | iOS 27+ |
 | `OpenWishlistItemIntent` | `@AppIntent(schema: .system.open)` | iOS 27+ |
-| On-screen awareness (`ItemDetailView`) | `NSUserActivity.appEntityIdentifier` | iOS 18.2+ |
+| On-screen awareness, detail (`ItemDetailView`) | `NSUserActivity.appEntityIdentifier` | iOS 18.2+ |
+| On-screen awareness, lists (`ItemRow`) | `.appEntityIdentifier` view modifier | iOS 18.4+ |
 
 Add/claim are custom rather than schema-conformant: the only system schema for
 "add to a list" is `.reminders.createReminder`, and adopting it would put this
@@ -134,11 +135,20 @@ app in the pool Siri picks from for actual reminders. `.system.search` is
 deprecated in favour of `.system.searchInApp`; both it and `.system.open` only
 exist from iOS 27 onward. The app's deployment target stays 17.0 — those two
 intents are wrapped in `@available(iOS 27, *)` and simply don't exist on older
-OSes, same idea for the on-screen-awareness modifier at 18.2. There's no
-SwiftUI `appEntityIdentifier` view modifier; the property lives on
-`NSUserActivity` via `AppEntityAnnotatable`, applied only to `ItemDetailView`
-because a `NSUserActivity` is screen-level (one active at a time) — tagging
-every row in a list would mean nothing.
+OSes, same idea for the on-screen-awareness modifiers at 18.2 and 18.4.
+
+On-screen awareness is deliberately **two** annotations, per Apple's guidance:
+`.userActivity` on `ItemDetailView` for when a single item fills the screen, and
+`.appEntityIdentifier` on `ItemRow` so the system knows which items are in a
+list. `ItemRow` is shared by the Family, My List and Claims screens, so one
+annotation covers all three. With only the detail half, "claim this" works when
+you're looking at one item but not while browsing a list — which is where you'd
+more often say it.
+
+Both `.appEntityIdentifier` overloads live in the `_AppIntents_SwiftUI`
+cross-import overlay, not in `SwiftUI` or `AppIntents` proper — importing both
+in the same file is what brings them in. Grepping only those two frameworks
+suggests the modifier doesn't exist; it does.
 
 `AppEnvironment.configureIntents()` (called from `AppDelegate` at launch)
 replaces `IntentService.shared`'s default no-token instance with one wired to

@@ -225,9 +225,12 @@ Each phase is independently shippable and useful.
    verifiable at build time: the macros fail to compile if the intent's shape
    does not match the schema, so a mistake here is caught by CI, not by Siri.
 4. **On-screen awareness** — as built: `NSUserActivity.appEntityIdentifier` on
-   `ItemDetailView` only, behind `@available(iOS 18.2, *)`. There is no SwiftUI
-   `.appEntityIdentifier` view modifier, and `NSUserActivity` is screen-level, so
-   the per-row annotation this section originally described is not a thing.
+   `ItemDetailView` (iOS 18.2) **and** `.appEntityIdentifier` on each `ItemRow`
+   (iOS 18.4). Apple's guidance is both: `.userActivity` when a single entity
+   fills the screen, row annotations so the system knows which entities are in a
+   list. An earlier revision of this spec claimed the SwiftUI modifier did not
+   exist — that was wrong. It lives in the `_AppIntents_SwiftUI` cross-import
+   overlay, which a search of `SwiftUI`/`AppIntents`/`UIKit` alone will miss.
 
 ## Constraints
 

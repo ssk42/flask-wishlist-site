@@ -1252,8 +1252,9 @@ and at the bottom of the same file:
 /// user is actually looking at.
 ///
 /// iOS 18.2+ — a plain no-op below that, which keeps the deployment target at
-/// 17.0. There is no SwiftUI `appEntityIdentifier` view modifier; the property
-/// lives on `NSUserActivity` via `AppEntityAnnotatable`.
+/// 17.0. The property lives on `NSUserActivity` via `AppEntityAnnotatable`.
+/// (A later pass added the list half: `.appEntityIdentifier` on each row,
+/// iOS 18.4, from the `_AppIntents_SwiftUI` overlay.)
 private struct ItemEntityActivity: ViewModifier {
     let itemID: Int
     let title: String
