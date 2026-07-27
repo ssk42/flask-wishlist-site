@@ -21,7 +21,10 @@ struct ClaimItemIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         try await requestConfirmation(
-            result: .result(dialog: "Claim \(target.name)?")
+            // Names the owner too: mis-resolution happens between similarly
+            // named items, and on HomePod or CarPlay this spoken line is the
+            // only thing standing between a misheard name and a wrong claim.
+            result: .result(dialog: "Claim \(target.name) for \(target.ownerName ?? "them")?")
         )
         let item = try await IntentService.shared.claim(itemID: target.id)
         return .result(dialog: "Claimed \(item.description).")
