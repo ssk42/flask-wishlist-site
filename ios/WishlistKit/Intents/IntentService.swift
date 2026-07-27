@@ -127,4 +127,23 @@ extension IntentService {
             throw Self.translate(error)
         }
     }
+
+    public func claim(itemID: Int) async throws -> Item {
+        try requireToken()
+        do {
+            return try await client.claim(itemID: itemID)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    public func myClaims() async throws -> [ItemEntity] {
+        try requireToken()
+        do {
+            let names = try await ownerNames()
+            return try await client.myClaims().map { ItemEntity(item: $0, ownerName: names[$0.userID]) }
+        } catch {
+            throw Self.translate(error)
+        }
+    }
 }

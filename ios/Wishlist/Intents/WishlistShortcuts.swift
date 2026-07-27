@@ -32,5 +32,22 @@ struct WishlistShortcuts: AppShortcutsProvider {
             shortTitle: "Add Clipboard Link",
             systemImageName: "link"
         )
+        AppShortcut(
+            intent: MyClaimsIntent(),
+            phrases: [
+                "What have I claimed in \(.applicationName)",
+                "My \(.applicationName) claims",
+            ],
+            shortTitle: "My Claims",
+            systemImageName: "checkmark.circle"
+        )
+        AppShortcut(
+            intent: ClaimItemIntent(),
+            phrases: [
+                "Claim \(\.$target) in \(.applicationName)",
+            ],
+            shortTitle: "Claim Item",
+            systemImageName: "hand.raised"
+        )
     }
 }
