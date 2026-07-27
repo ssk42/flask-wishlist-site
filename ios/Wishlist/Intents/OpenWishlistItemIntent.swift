@@ -18,9 +18,13 @@ struct OpenWishlistItemIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        NotificationCenter.default.post(
-            name: .wishlistOpenItem, object: nil, userInfo: ["itemID": target.id]
-        )
+        // Set the coordinator FIRST: on a cold launch this runs before any
+        // view exists, and `OpenTarget` (unlike `NotificationCenter`) holds
+        // the value until a view is ready to read it. The notification below
+        // only wakes an already-mounted `RootTabView` sooner; it carries no
+        // payload of its own.
+        OpenTarget.shared.setPending(itemID: target.id, ownerID: target.ownerID)
+        NotificationCenter.default.post(name: .wishlistOpenItem, object: nil)
         return .result()
     }
 }

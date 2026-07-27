@@ -4,6 +4,8 @@ import WishlistKit
 struct FamilyView: View {
     let client: APIClient
     @State private var vm: FamilyViewModel
+    @State private var path = NavigationPath()
+    private let openTarget = OpenTarget.shared
 
     init(client: APIClient) {
         self.client = client
@@ -11,7 +13,7 @@ struct FamilyView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ZStack {
                 Color.wlBg.ignoresSafeArea()
                 Group {
@@ -42,7 +44,27 @@ struct FamilyView: View {
             }
         }
         .tint(.wlAccent)
-        .task { if vm.users.isEmpty { await vm.load() } }
+        .task {
+            if vm.users.isEmpty { await vm.load() }
+            navigateToPendingOwnerIfPossible()
+        }
+        // Handles both: a target that arrives while this view is already on
+        // screen (warm case, users already loaded), and a target that was
+        // pending before `vm.users` finished loading (cold case) — either can
+        // flip after the `.task` above has already run once.
+        .onChange(of: vm.users) { _, _ in navigateToPendingOwnerIfPossible() }
+        .onChange(of: openTarget.pendingOwnerID) { _, _ in navigateToPendingOwnerIfPossible() }
+    }
+
+    /// Pushes to the pending owner's item list once both the target and the
+    /// member list are available. Leaves the target untouched if the member
+    /// list hasn't loaded yet — a later call (via the `onChange` above) will
+    /// pick it up rather than losing it.
+    private func navigateToPendingOwnerIfPossible() {
+        guard let ownerID = openTarget.pendingOwnerID,
+              let user = vm.users.first(where: { $0.id == ownerID }) else { return }
+        openTarget.consumePending()
+        path.append(user)
     }
 
     private func memberCard(_ user: User) -> some View {

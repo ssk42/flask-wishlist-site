@@ -12,6 +12,10 @@ public struct ItemEntity: AppEntity, Sendable {
     public let ownerName: String?
     public let price: Double?
     public let status: String?
+    /// The owner's user id. Deliberately not `@Property` — same reasoning as
+    /// `status`: it exists so the app can navigate to the right member's item
+    /// list when an "open" intent fires, not for the system to expose or speak.
+    public let ownerID: Int
 
     public init(item: Item, ownerName: String?) {
         self.id = item.id
@@ -19,6 +23,7 @@ public struct ItemEntity: AppEntity, Sendable {
         self.ownerName = ownerName
         self.price = item.price
         self.status = item.status      // nil for own items — never defaulted
+        self.ownerID = item.userID
     }
 
     public static let typeDisplayRepresentation: TypeDisplayRepresentation = "Wishlist Item"
