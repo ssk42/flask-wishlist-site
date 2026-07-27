@@ -85,16 +85,8 @@ public struct IntentService: Sendable {
         }
     }
 
-    /// Same copy the app already shows for these conflicts, so voice and screen agree.
-    static func friendly(_ code: String) -> String {
-        switch code {
-        case "own_item": "You can't claim your own item."
-        case "not_available": "Someone already claimed this."
-        case "already_purchased": "This item is already purchased."
-        case "claimed_by_other": "This item is claimed by someone else."
-        default: "That action isn't allowed."
-        }
-    }
+    /// Delegates to the shared copy so voice and screen can never drift.
+    static func friendly(_ code: String) -> String { ConflictCopy.friendly(code) }
 }
 
 extension IntentService {

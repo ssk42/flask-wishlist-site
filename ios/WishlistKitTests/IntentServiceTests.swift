@@ -94,10 +94,15 @@ final class IntentServiceTests: XCTestCase {
     }
 
     func testAddFromLinkFallsBackToURLWhenMetadataFails() async throws {
+        // The create body is captured, not just the canned response: asserting
+        // on the stubbed 201 would pass even if the URL never became the
+        // description — which is the fallback this test is named for.
+        var createBody: [String: Any]?
         let svc = service { req in
             if req.url?.path.contains("metadata") == true {
                 return (502, #"{"error":"fetch_failed"}"#)
             }
+            createBody = Self.jsonBody(req)
             return (201, #"{"item":{"id":5,"description":"https://shop.test/b","user_id":1}}"#)
         }
 
@@ -105,6 +110,8 @@ final class IntentServiceTests: XCTestCase {
         let item = try await svc.addFromLink("https://shop.test/b")
 
         XCTAssertEqual(item.description, "https://shop.test/b")
+        XCTAssertEqual(createBody?["description"] as? String, "https://shop.test/b",
+                       "the URL must be sent as the description when metadata fails")
     }
 
     func testAddFromLinkRejectsNonURLText() async {

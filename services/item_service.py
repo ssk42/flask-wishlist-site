@@ -18,6 +18,12 @@ class ItemActionError(Exception):
 
 
 def claim_item(item, user_id):
+    # ORDER IS LOAD-BEARING: own_item must be checked BEFORE availability.
+    # Siri speaks these messages aloud (ClaimItemIntent). If the availability
+    # check ran first, an owner asking to claim their own gift would hear
+    # "no longer available to claim" — telling them someone claimed it, which
+    # is exactly what surprise protection exists to hide. Pinned by
+    # test_claim_own_item_reports_own_item_even_when_claimed.
     if item.user_id == user_id:
         raise ItemActionError('own_item', 'You cannot claim your own item.')
     if item.status != 'Available':
@@ -36,6 +42,7 @@ def unclaim_item(item, user_id):
 
 
 def purchase_item(item, user_id):
+    # Same ordering requirement as claim_item above, for the same reason.
     if item.user_id == user_id:
         raise ItemActionError('own_item', 'You cannot purchase your own item.')
     if item.status == 'Purchased':

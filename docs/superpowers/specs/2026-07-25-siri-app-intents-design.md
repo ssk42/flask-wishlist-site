@@ -7,8 +7,16 @@
 ## Goal
 
 Let someone add to and query the family wishlist without opening the app — by
-voice ("Add AirPods to my wishlist"), from the Action button or Shortcuts, and —
-on iOS 27 — by referring to what is on screen ("claim this").
+voice, from the Action button or Shortcuts, and by referring to what is on
+screen ("claim this").
+
+> **Corrected after implementation.** This spec originally promised the single
+> utterance "Add AirPods to my wishlist". That is **not achievable**: an
+> `AppShortcut` phrase can only interpolate `AppEntity`/`AppEnum` parameters, and
+> the item name is deliberately free text. Adding by voice is a two-turn
+> exchange — "Add to my Wishlist" → *"What should I add?"* Claiming stays
+> one-shot ("Claim the blanket in Wishlist") because its parameter IS an
+> `AppEntity`. See `ios/README.md` for the shipped behaviour.
 
 ## Why App Intents specifically
 
@@ -98,10 +106,10 @@ exist anyway.
 
 | Goal | Reachable? | Mechanism |
 |---|---|---|
-| "Add AirPods to my wishlist" | ✅ | Custom intent with a spoken `String` parameter |
+| "Add AirPods to my wishlist" | ⚠️ two-turn | A `String` parameter cannot be interpolated into a phrase; Siri prompts for the name |
 | "Add my clipboard to my wishlist" | ✅ | Intent reads the pasteboard, prefills via `/api/v1/metadata` |
 | One-tap add from a product page | ✅ | Intent exposed to Shortcuts, wired to Action button / Back Tap / Share sheet |
-| "Claim this" while viewing an item **in our app** | ✅ (iOS 27) | On-screen awareness annotations |
+| "Claim this" while viewing an item **in our app** | ✅ (iOS 18.2) | On-screen awareness annotations |
 | "Add this" while browsing **Safari** | ❌ | No API hands a third-party intent another app's page. The Share Extension (already shipped) covers this case. |
 
 The last row is the one users will expect to work. On-screen awareness surfaces
@@ -216,9 +224,10 @@ Each phase is independently shippable and useful.
    conformances are iOS 27-gated; `ItemEntity` and `MyClaimsIntent` are not. Schema conformance is
    verifiable at build time: the macros fail to compile if the intent's shape
    does not match the schema, so a mistake here is caught by CI, not by Siri.
-4. **iOS 27 on-screen awareness** — `.appEntityIdentifier` on `ItemRow` and
-   `ItemDetailView`, `.userActivity` on the member list as primary content,
-   `ClaimItemIntent` resolving "this". All behind `@available(iOS 27, *)`.
+4. **On-screen awareness** — as built: `NSUserActivity.appEntityIdentifier` on
+   `ItemDetailView` only, behind `@available(iOS 18.2, *)`. There is no SwiftUI
+   `.appEntityIdentifier` view modifier, and `NSUserActivity` is screen-level, so
+   the per-row annotation this section originally described is not a thing.
 
 ## Constraints
 
@@ -231,10 +240,12 @@ Each phase is independently shippable and useful.
 ## Risk: unverified iOS 27 API surface
 
 Phase 4 rests on APIs that postdate this author's knowledge, and Apple's
-documentation pages did not render for automated reading. The names gathered
-from WWDC26 session material are `.appEntityIdentifier`, `.userActivity`,
-`AppEntityAnnotatable`, `appEntityUIElementProvider`, and
-`UICollectionViewAppIntentsDataSource` — **treat these as unconfirmed.** Before
+documentation pages did not render for automated reading. **Resolved by reading the SDK.** Of the names gathered from WWDC26 session
+material: `AppEntityAnnotatable` and `appEntityIdentifier` are real, but live on
+`NSUserActivity` at **iOS 18.2**, not 27, and are reached via SwiftUI's existing
+`.userActivity(_:isActive:_:)`. `appEntityUIElementProvider` and
+`UICollectionViewAppIntentsDataSource` **do not exist** under those names — they
+are UIKit-side concepts this SwiftUI app never needed. Before
 implementing phase 4, verify signatures against the current SDK and WWDC26
 sessions 343 ("Explore advanced App Intents features") and 240 ("Build
 intelligent Siri experiences with App Schemas").

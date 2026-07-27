@@ -20,3 +20,25 @@ public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
         }
     }
 }
+
+/// Human-readable copy for the API's conflict codes, shared by every surface.
+///
+/// Lives in one place deliberately: this used to be duplicated in
+/// `IntentService` and `MemberItemsViewModel` with drifting defaults, and
+/// because neither copy listed `not_claimer` — which `services/item_service.py`
+/// really does raise — unclaiming someone else's claim fell through to the
+/// generic fallback instead of saying why.
+///
+/// Keep in sync with `ItemActionError` codes in `services/item_service.py`.
+public enum ConflictCopy {
+    public static func friendly(_ code: String) -> String {
+        switch code {
+        case "own_item": "You can't claim your own item."
+        case "not_available": "Someone already claimed this."
+        case "not_claimer": "You can't unclaim this — someone else claimed it."
+        case "already_purchased": "This item is already purchased."
+        case "claimed_by_other": "This item is claimed by someone else."
+        default: "That action isn't allowed."
+        }
+    }
+}
