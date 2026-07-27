@@ -43,4 +43,24 @@ public final class OpenTarget {
         pendingOwnerID = nil
         return (itemID, ownerID)
     }
+
+    /// The routing decision behind "open this item": given whatever member
+    /// list is currently loaded, which user (if any) should the app navigate
+    /// to right now?
+    ///
+    /// This is deliberately just the decision, not the navigation itself —
+    /// pulling it out of `FamilyView` is what makes it unit-testable at all,
+    /// since the view layer that used to hold this logic has no test
+    /// coverage and SwiftUI gives us no way to add any.
+    ///
+    /// Returns `nil` when there is no pending target, or when the owner
+    /// hasn't shown up in `users` yet (list still loading, or a stale/unknown
+    /// id). Deliberately does NOT call `consumePending()` on a `nil` result —
+    /// the pending target is left exactly as it was so a later call, once
+    /// `users` has loaded, can still resolve it. A caller consumes only on a
+    /// non-`nil` result, once it has actually acted on the destination.
+    public func resolveDestination(in users: [User]) -> User? {
+        guard let pendingOwnerID else { return nil }
+        return users.first(where: { $0.id == pendingOwnerID })
+    }
 }

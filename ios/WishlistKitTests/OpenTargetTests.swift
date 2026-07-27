@@ -51,4 +51,57 @@ final class OpenTargetTests: XCTestCase {
         XCTAssertNil(target.pendingItemID)
         XCTAssertNil(target.pendingOwnerID)
     }
+
+    // MARK: - resolveDestination
+    //
+    // `resolveDestination` is the routing decision that used to live,
+    // untestable, in `FamilyView.navigateToPendingOwnerIfPossible`. Pulling it
+    // into `OpenTarget` doesn't make SwiftUI testable — it shrinks the
+    // untested surface down to a thin binding (`if let user = ... { path =
+    // ...; consumePending() }`) that a reviewer can eyeball, while the actual
+    // decision logic gets real coverage here.
+
+    private func user(_ id: Int, _ name: String = "User") -> User {
+        User(id: id, name: name, email: "\(name)@example.com", itemCount: nil)
+    }
+
+    /// T3: nothing pending → nil, regardless of who's loaded.
+    func testResolveDestinationReturnsNilWhenNoPendingTarget() {
+        let target = OpenTarget()
+
+        let result = target.resolveDestination(in: [user(1), user(2)])
+
+        XCTAssertNil(result)
+    }
+
+    /// T4: the pending owner is in the loaded list → that user, and nothing
+    /// changes about the pending state on its own (only a caller's explicit
+    /// `consumePending()` should ever clear it).
+    func testResolveDestinationReturnsOwnerWhenPresent() {
+        let target = OpenTarget()
+        let bob = user(2, "Bob")
+        target.setPending(itemID: 42, ownerID: 2)
+
+        let result = target.resolveDestination(in: [user(1, "Alice"), bob])
+
+        XCTAssertEqual(result, bob)
+    }
+
+    /// T5: the pending owner is NOT in the loaded list yet (still loading, or
+    /// an unknown/stale id) → nil, AND the target must survive untouched.
+    /// This is the cold-launch case: the member list often finishes loading
+    /// in a later pass, and only then does the owner show up. If this
+    /// function consumed eagerly on a miss, that later pass would find
+    /// nothing left to resolve and the intent would silently do nothing —
+    /// exactly the bug `OpenTarget` exists to prevent.
+    func testResolveDestinationReturnsNilAndLeavesTargetUnconsumedWhenOwnerMissing() {
+        let target = OpenTarget()
+        target.setPending(itemID: 42, ownerID: 9)
+
+        let result = target.resolveDestination(in: [user(1, "Alice")])
+
+        XCTAssertNil(result)
+        XCTAssertEqual(target.pendingItemID, 42)
+        XCTAssertEqual(target.pendingOwnerID, 9)
+    }
 }
