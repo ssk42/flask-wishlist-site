@@ -11,6 +11,26 @@ import AppIntents
 /// not an entity. Siri still gets the spoken item name — the parameter has
 /// `requestValueDialog`, so after the trigger phrase Siri asks "What should I
 /// add?" and captures the reply.
+///
+/// `ClaimItemIntent` has NO phrase here, and that is load-bearing rather than an
+/// oversight. Interpolating its `ItemEntity` parameter — "Claim \(\.$target) in
+/// \(.applicationName)" — compiles and looks correct, but breaks the build's
+/// Siri Speech Understanding step:
+///
+///     Training 'Claim ${ItemEntity} in ${+applicationName}' for en
+///     warning: unresolved variable(s) found: ItemEntity
+///     Error: ... (utsKit.ResolutionError error 0.)
+///     error: Could not archive SSU artifacts.
+///
+/// `appintentsnltrainingprocessor` needs a concrete value set at BUILD time to
+/// train a phrase variable, and `WishlistItemQuery` is an `EntityStringQuery`
+/// over per-user, networked, unbounded data — there is no such set. Because all
+/// phrases share one corpus, that one phrase stops the whole app's nlu artifacts
+/// from archiving, silently taking add/clipboard/my-claims down with it. The
+/// build still reports BUILD SUCCEEDED.
+///
+/// Claiming by voice still works — via entity resolution, the Shortcuts app, and
+/// on-screen "claim this". Only the standalone spoken phrase is gone.
 struct WishlistShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -40,14 +60,6 @@ struct WishlistShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "My Claims",
             systemImageName: "checkmark.circle"
-        )
-        AppShortcut(
-            intent: ClaimItemIntent(),
-            phrases: [
-                "Claim \(\.$target) in \(.applicationName)",
-            ],
-            shortTitle: "Claim Item",
-            systemImageName: "hand.raised"
         )
     }
 }
