@@ -150,6 +150,39 @@ cross-import overlay, not in `SwiftUI` or `AppIntents` proper — importing both
 in the same file is what brings them in. Grepping only those two frameworks
 suggests the modifier doesn't exist; it does.
 
+### AppIntentsTesting doesn't work outside Apple
+
+`AppIntentsTesting` (new in iOS 27, WWDC26 session 295) looks like the answer to
+"how do I test Siri integration without a device". It isn't, for us. It ships in
+`Xcode-beta.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/Library/Frameworks/`
+and links fine from a `bundle.ui-testing` target, but **every functional API
+requires an internal Apple build of the OS**:
+
+```
+AnyAppIntent.run()                → AppIntentsServicesSecurityErrorDomain 803
+                                    "Unable to run internal tests on a Customer build"
+AppEntityDefinition.entities(matching:) → same 803
+AppEntityDefinition.spotlightQuery(_:)  → "Remote threw needsInternalBuild"
+```
+
+Every public simulator runtime and every shipping device is a "Customer build",
+so this is a wall, not a configuration problem. A test target was built, run
+against the iOS 27 simulator, and removed again.
+
+Two traps worth knowing if you retry this:
+
+- `IntentDefinitions.intents["…"]` and `.entities["…"]` return **non-optional**
+  values and do no validation — `intents["NoSuchIntentXYZ"]` yields a perfectly
+  good-looking `AppIntentDefinition`. An `XCTAssertNotNil` on one can never
+  fail, so "the intent is registered" tests written that way are vacuous.
+- Because `.run()` throws the 803 security error, a test shaped like
+  "invoking while signed out throws" **passes for entirely the wrong reason**.
+  It never reaches the auth gate.
+
+So the honest position stands: intent registration, Siri phrase matching, entity
+resolution and the on-screen annotations are verifiable only by hand on a signed
+device build.
+
 `AppEnvironment.configureIntents()` (called from `AppDelegate` at launch)
 replaces `IntentService.shared`'s default no-token instance with one wired to
 the app's real `APIClient`/token store. Before that call — or in any process
