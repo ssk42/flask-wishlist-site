@@ -39,6 +39,10 @@
   <array>
     <string>remote-notification</string>
   </array>
+  <key>NSUserActivityTypes</key>
+  <array>
+    <string>com.reitz.wishlist.viewItem</string>
+  </array>
   <key>NSAppTransportSecurity</key>
   <dict>
     <key>NSExceptionDomains</key>

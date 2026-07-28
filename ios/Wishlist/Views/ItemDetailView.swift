@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WishlistKit
 
@@ -78,6 +79,7 @@ struct ItemDetailView: View {
                 .padding(.horizontal, 18).padding(.top, 8)
             }
         }
+        .modifier(ItemEntityActivity(itemID: current.id, title: current.description))
         .navigationTitle("Item")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -134,5 +136,38 @@ struct ItemDetailView: View {
     private func act(_ work: @escaping () async -> Void) {
         working = true
         Task { await work(); working = false }
+    }
+}
+
+/// Publishes the item on screen as the current `NSUserActivity`, tagged with its
+/// `ItemEntity` identifier, so Siri can resolve "claim this" to the item the
+/// user is actually looking at.
+///
+/// iOS 18.2+ — a plain no-op below that, which keeps the deployment target at
+/// 17.0.
+///
+/// This is the DETAIL half of on-screen awareness. The list half is
+/// `.appEntityIdentifier` on each `ItemRow` (iOS 18.4) — Apple's guidance is
+/// both: `.userActivity` when one entity fills the screen, row annotations so
+/// the system knows what's in a list.
+private struct ItemEntityActivity: ViewModifier {
+    let itemID: Int
+    let title: String
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.2, *) {
+            content.userActivity("com.reitz.wishlist.viewItem") { activity in
+                activity.appEntityIdentifier = EntityIdentifier(
+                    for: ItemEntity.self, identifier: itemID
+                )
+                activity.title = title
+                // Deliberately NOT eligibleForSearch/eligibleForPublicIndexing:
+                // an item's name is other people's gift information and must not
+                // be indexed outside the app. See the surprise-protection note.
+                activity.isEligibleForHandoff = false
+            }
+        } else {
+            content
+        }
     }
 }

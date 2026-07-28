@@ -38,13 +38,5 @@ public final class MemberItemsViewModel {
         }
     }
 
-    private func friendly(_ code: String) -> String {
-        switch code {
-        case "own_item": "You can't claim your own item."
-        case "not_available": "Someone already claimed this."
-        case "already_purchased": "This item is already purchased."
-        case "claimed_by_other": "This item is claimed by someone else."
-        default: "Action not allowed."
-        }
-    }
+    private func friendly(_ code: String) -> String { ConflictCopy.friendly(code) }
 }
