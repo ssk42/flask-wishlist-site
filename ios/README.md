@@ -247,9 +247,40 @@ ride the phrase:
 - `AddLinkFromClipboardIntent` — the link comes off the clipboard, not speech.
 - A user-built Shortcut that feeds another action's output into
   `AddWishlistItemIntent`'s `link` parameter.
-- `ClaimItemIntent` — its `target` is an `ItemEntity` (an `AppEntity`), so
-  `"Claim \(\.$target) in Wishlist"` interpolates fine and resolves in one
-  phrase.
+- On-screen "claim this", where the entity comes from the screen rather than
+  from speech.
+
+`ClaimItemIntent` deliberately has **no spoken phrase**. Interpolating its
+`ItemEntity` parameter compiles and looks right, but breaks the build's Siri
+Speech Understanding step — see the warning below. Claiming by voice still
+works through entity resolution, the Shortcuts app, and on-screen awareness.
+
+### An entity phrase variable needs a build-time value set
+
+Worth knowing before adding any `AppShortcut` phrase that interpolates an entity.
+`appintentsnltrainingprocessor` trains phrase variables at **build** time, so it
+needs a concrete set of values. `WishlistItemQuery` is an `EntityStringQuery`
+over per-user, networked, unbounded data — there is no such set, so the variable
+cannot resolve:
+
+```
+Training 'Claim ${ItemEntity} in ${+applicationName}' for en
+warning: unresolved variable(s) found: ItemEntity
+Error: The operation couldn't be completed. (utsKit.ResolutionError error 0.)
+error: Could not archive SSU artifacts. Check build log.
+```
+
+All phrases share one corpus, so this single phrase stopped the whole app's
+`nlu` artifacts from archiving — taking add, clipboard and my-claims down with
+it, not just claiming. **The build still reports `BUILD SUCCEEDED`**, and the
+error appears only in the full log, which is how it survived several reviews.
+
+To confirm the artifacts are actually being produced, look for `100% archived`
+and a path ending in `Metadata.appintents/nlu` in a device build. `0% archiving`
+followed by the SSU error means Siri phrase recognition is not shipping.
+
+An entity phrase would need an `EnumerableEntityQuery` with a genuinely finite
+`allEntities()` — which a family's wishlist is not.
 
 ### Device-only feature
 

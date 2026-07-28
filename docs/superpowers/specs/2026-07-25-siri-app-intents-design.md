@@ -14,9 +14,11 @@ screen ("claim this").
 > utterance "Add AirPods to my wishlist". That is **not achievable**: an
 > `AppShortcut` phrase can only interpolate `AppEntity`/`AppEnum` parameters, and
 > the item name is deliberately free text. Adding by voice is a two-turn
-> exchange — "Add to my Wishlist" → *"What should I add?"* Claiming stays
-> one-shot ("Claim the blanket in Wishlist") because its parameter IS an
-> `AppEntity`. See `ios/README.md` for the shipped behaviour.
+> exchange — "Add to my Wishlist" → *"What should I add?"* Claiming has no
+> spoken phrase at all: interpolating its `ItemEntity` parameter breaks the
+> build's Siri Speech Understanding training, because a phrase variable needs a
+> finite value set at build time and a wishlist has none. Claiming still works
+> via entity resolution, Shortcuts, and on-screen "claim this". See `ios/README.md` for the shipped behaviour.
 
 ## Why App Intents specifically
 
