@@ -19,10 +19,15 @@ struct AddWishlistItemIntent: AppIntent {
     @Parameter(title: "Item", requestValueDialog: "What should I add?")
     var itemName: String
 
-    /// Optional so the same intent serves Shortcuts and the Action button,
-    /// where a URL is passed instead of spoken.
+    /// Typed `URL`, not `String`: a URL-producing Shortcuts action (or the
+    /// Action button) then wires straight into this parameter instead of the
+    /// user having to coerce text, and Shortcuts offers a URL-appropriate
+    /// picker. `URL` is a first-class App Intents parameter type.
+    ///
+    /// Optional so the same intent serves speech (where no link is given),
+    /// Shortcuts, and the Action button.
     @Parameter(title: "Link")
-    var link: String?
+    var link: URL?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$itemName) to my wishlist")
@@ -31,12 +36,16 @@ struct AddWishlistItemIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The service takes a string because that is what the API sends; the
+        // URL type earns its keep at the parameter boundary, where Shortcuts
+        // and the system need to know what kind of value this is.
+        let linkString = link?.absoluteString
         let item: Item
-        if trimmedName.isEmpty, let link, !link.isEmpty {
-            item = try await IntentService.shared.addFromLink(link)
+        if trimmedName.isEmpty, let linkString, !linkString.isEmpty {
+            item = try await IntentService.shared.addFromLink(linkString)
         } else {
             item = try await IntentService.shared.addItem(
-                named: trimmedName, url: link, price: nil
+                named: trimmedName, url: linkString, price: nil
             )
         }
         return .result(dialog: "Added \(item.description) to your wishlist.")
