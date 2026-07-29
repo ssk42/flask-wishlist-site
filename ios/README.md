@@ -245,8 +245,9 @@ one-shot.
 One-shot still works in the three places where no free-text name needs to
 ride the phrase:
 - `AddLinkFromClipboardIntent` — the link comes off the clipboard, not speech.
-- A user-built Shortcut that feeds another action's output into
-  `AddWishlistItemIntent`'s `link` parameter.
+- A user-built Shortcut or the Action button feeding a URL into
+  `AddWishlistItemIntent`'s `link` parameter, which is typed `URL` so a
+  URL-producing action wires straight in.
 - On-screen "claim this", where the entity comes from the screen rather than
   from speech.
 
