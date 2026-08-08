@@ -65,7 +65,12 @@ def test_critical_wishlist_flow(page, live_server):
     # 5. Edit Item with Invalid Data -> Recover
     item_card = page.locator(f'.glass-card:has-text("{item_desc_1}")')
     item_card.locator('a:has-text("Edit")').click()
-    
+
+    # The Edit link triggers a full-page navigation; wait for the edit form
+    # before poking the DOM, or the query below races the old page (flaky
+    # under CI load).
+    expect(page.locator('select[name="priority"]')).to_be_visible()
+
     # Trigger server validation error on priority
     # Modify DOM to submit invalid priority
     page.evaluate('''
