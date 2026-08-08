@@ -120,7 +120,7 @@
 {% if summary_rows %}
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 mb-0">📊 At a Glance</h2>
+        <h2 class="h6 mb-0"><i class="bi bi-bar-chart me-1"></i> At a Glance</h2>
         <small class="text-muted">Based on current filters</small>
     </div>
     <div class="row g-3">
@@ -144,7 +144,7 @@
 
         <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-available">
-                <div class="stat-icon">🎯</div>
+                <div class="stat-icon"><i class="bi bi-bullseye"></i></div>
                 <div class="stat-content">
                     <div class="stat-value">{{ ns.available_count }}</div>
                     <div class="stat-label">Available</div>
@@ -156,7 +156,7 @@
         <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-splitting"
                 style="border-left: 4px solid #0d6efd; background-color: rgba(13, 110, 253, 0.05);">
-                <div class="stat-icon">🤝</div>
+                <div class="stat-icon"><i class="bi bi-people"></i></div>
                 <div class="stat-content">
                     <div class="stat-value">{{ ns.splitting_count }}</div>
                     <div class="stat-label">Splitting</div>
@@ -167,7 +167,7 @@
 
         <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-claimed">
-                <div class="stat-icon">🙋</div>
+                <div class="stat-icon"><i class="bi bi-bag-check"></i></div>
                 <div class="stat-content">
                     <div class="stat-value">{{ ns.claimed_count }}</div>
                     <div class="stat-label">Claimed</div>
@@ -178,7 +178,7 @@
 
         <div class="col-6 col-md-3 stat-cascade">
             <div class="stat-card stat-card-purchased">
-                <div class="stat-icon">✅</div>
+                <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
                 <div class="stat-content">
                     <div class="stat-value">{{ ns.purchased_count }}</div>
                     <div class="stat-label">Purchased</div>

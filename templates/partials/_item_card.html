@@ -1,4 +1,5 @@
 {# Partial template for a single item card - used by htmx swaps #}
+{% from 'partials/_macros.html' import priority_badge %}
 <div class="col-md-6 col-lg-4 mb-4">
     <div class="glass-card p-3 h-100 d-flex flex-column stagger-item" id="item-card-{{ item.id }}" style="--stagger-index: {{ stagger_index|default(0) }};">
         <!-- Image Section -->
@@ -14,11 +15,7 @@
                 <span class="badge bg-light text-dark bg-opacity-75 backdrop-blur shadow-sm">{{ item.user.name }}</span>
                 {% endif %}
 
-                <span class="badge 
-                    {{ 'bg-danger' if item.priority == 'High' else 'bg-warning' if item.priority == 'Medium' else 'bg-info' }} 
-                    bg-opacity-75 backdrop-blur shadow-sm text-white">
-                    {{ item.priority or 'No priority' }}
-                </span>
+                {{ priority_badge(item.priority, on_image=true) }}
             </div>
         </div>
 
