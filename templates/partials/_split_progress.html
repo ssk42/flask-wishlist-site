@@ -6,7 +6,7 @@
             {% if item.user_id == current_user.id %}
             AVAILABLE
             {% else %}
-            🤝 SPLITTING
+            <i class="bi bi-people me-1"></i> SPLITTING
             {% endif %}
         </small>
         {% if not item.user_id == current_user.id %}

@@ -1,25 +1,25 @@
 {# Sidebar Navigation Partial #}
 <aside class="sidebar">
     <a href="{{ url_for('dashboard.index') }}" class="sidebar-brand">
-        <span class="sidebar-brand-icon">🎁</span>
+        <i class="sidebar-brand-icon bi bi-gift"></i>
         <span class="sidebar-brand-text">Wishlist</span>
     </a>
 
     <nav class="sidebar-nav">
         <a href="{{ url_for('dashboard.index') }}" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}">
-            <span class="sidebar-link-icon">🏠</span>
+            <i class="sidebar-link-icon bi bi-house"></i>
             <span class="sidebar-link-text">Home</span>
         </a>
 
         {% if current_user.is_authenticated %}
         <a href="{{ url_for('items.items_list') }}" class="sidebar-link {% if request.endpoint == 'items' %}active{% endif %}">
-            <span class="sidebar-link-icon">🎁</span>
+            <i class="sidebar-link-icon bi bi-gift"></i>
             <span class="sidebar-link-text">All Gifts</span>
         </a>
 
         <a href="{{ url_for('items.my_claims') }}"
             class="sidebar-link {% if request.endpoint == 'my_claims' %}active{% endif %}">
-            <span class="sidebar-link-icon">🛒</span>
+            <i class="sidebar-link-icon bi bi-cart"></i>
             <span class="sidebar-link-text">My Claims</span>
             {% if nav_claimed_count > 0 %}
             <span class="sidebar-badge">{{ nav_claimed_count }}</span>
@@ -27,13 +27,13 @@
         </a>
 
         <a href="{{ url_for('events.events_list') }}" class="sidebar-link {% if request.endpoint == 'events' %}active{% endif %}">
-            <span class="sidebar-link-icon">📅</span>
+            <i class="sidebar-link-icon bi bi-calendar-event"></i>
             <span class="sidebar-link-text">Events</span>
         </a>
 
         <a href="{{ url_for('social.notifications') }}"
             class="sidebar-link {% if request.endpoint == 'notifications' %}active{% endif %}">
-            <span class="sidebar-link-icon">🔔</span>
+            <i class="sidebar-link-icon bi bi-bell"></i>
             <span class="sidebar-link-text">Notifications</span>
             {% if unread_notifications_count > 0 %}
             <span class="sidebar-badge">{{ unread_notifications_count }}</span>
@@ -45,19 +45,19 @@
     <div class="sidebar-nav" style="margin-top: auto;">
         {% if current_user.is_authenticated %}
         <a href="{{ url_for('auth.logout') }}" class="sidebar-link">
-            <span class="sidebar-link-icon">👋</span>
+            <i class="sidebar-link-icon bi bi-box-arrow-right"></i>
             <span class="sidebar-link-text">Logout</span>
         </a>
         {% else %}
         <a href="{{ url_for('auth.login') }}" class="sidebar-link">
-            <span class="sidebar-link-icon">🔑</span>
+            <i class="sidebar-link-icon bi bi-box-arrow-in-right"></i>
             <span class="sidebar-link-text">Login</span>
         </a>
         {% endif %}
 
         <button class="sidebar-link theme-toggle" id="theme-toggle"
             style="border: none; cursor: pointer; width: 100%; text-align: left;">
-            <span class="sidebar-link-icon" id="theme-icon">🌙</span>
+            <i class="sidebar-link-icon bi bi-moon-stars" id="theme-icon"></i>
             <span class="sidebar-link-text">Dark Mode</span>
         </button>
     </div>
@@ -66,26 +66,26 @@
 {# Mobile Bottom Tab Bar #}
 <nav class="mobile-tabs">
     <a href="{{ url_for('dashboard.index') }}" class="mobile-tab {% if request.endpoint == 'index' %}active{% endif %}">
-        <span class="mobile-tab-icon">🏠</span>
+        <i class="mobile-tab-icon bi bi-house"></i>
         <span>Home</span>
     </a>
     {% if current_user.is_authenticated %}
     <a href="{{ url_for('items.items_list') }}" class="mobile-tab {% if request.endpoint == 'items' %}active{% endif %}">
-        <span class="mobile-tab-icon">🎁</span>
+        <i class="mobile-tab-icon bi bi-gift"></i>
         <span>Gifts</span>
     </a>
     <a href="{{ url_for('items.my_claims') }}" class="mobile-tab {% if request.endpoint == 'my_claims' %}active{% endif %}">
-        <span class="mobile-tab-icon">🛒</span>
+        <i class="mobile-tab-icon bi bi-cart"></i>
         <span>Claims</span>
     </a>
     <a href="{{ url_for('social.notifications') }}"
         class="mobile-tab {% if request.endpoint == 'notifications' %}active{% endif %}">
-        <span class="mobile-tab-icon">🔔</span>
+        <i class="mobile-tab-icon bi bi-bell"></i>
         <span>Alerts</span>
     </a>
     {% else %}
     <a href="{{ url_for('auth.login') }}" class="mobile-tab">
-        <span class="mobile-tab-icon">🔑</span>
+        <i class="mobile-tab-icon bi bi-box-arrow-in-right"></i>
         <span>Login</span>
     </a>
     {% endif %}
