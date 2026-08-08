@@ -1,0 +1,18 @@
+{#
+    Reusable Jinja macros.
+    Import with:
+        {% from 'partials/_macros.html' import priority_badge %}
+#}
+
+{#
+    Canonical priority badge. One rendering across _item_card, _dashboard_item_card,
+    and _item_quick_view. Soft tint (bg-opacity-10 + text-{color}) matches the
+    on-surface card aesthetic; pass on_image=true for placement over a photo so the
+    backdrop-blur keeps it legible.
+#}
+{% macro priority_badge(priority, on_image=false) %}
+    {%- set _color = 'danger' if priority == 'High' else 'warning' if priority == 'Medium' else 'info' -%}
+    <span class="badge bg-{{ _color }} bg-opacity-10 text-{{ _color }}{% if on_image %} backdrop-blur shadow-sm{% endif %}">
+        {{- priority or 'No priority' -}}
+    </span>
+{% endmacro %}

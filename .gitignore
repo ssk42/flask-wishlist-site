@@ -116,3 +116,10 @@ test_output.txt
 test_run.log
 coverage.xml
 .coverage
+
+# Git worktrees
+.worktrees/
+
+# LID codebase-mapping working artifacts (not durable intent)
+scratch/
+.lid/map-codebase/

@@ -3,7 +3,7 @@
 import datetime
 import pandas as pd
 from flask import Blueprint, render_template, send_file
-from flask_login import current_user
+from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 from extensions import cache
 
@@ -63,6 +63,7 @@ def index():
 
 
 @bp.route('/export_items')
+@login_required
 def export_items():
     """Export all items to Excel file."""
     items = Item.query.all()

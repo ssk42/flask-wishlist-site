@@ -17,7 +17,7 @@
     <!-- Quick Stats Row -->
     {% if dashboard_data %}
     <div class="row g-3 mb-5">
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-3 stat-cascade">
             <div class="glass-card p-3 d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small text-uppercase fw-bold">Claimed</div>
@@ -28,7 +28,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-3 stat-cascade">
             <div class="glass-card p-3 d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small text-uppercase fw-bold">Purchased</div>
@@ -118,24 +118,24 @@
 </div>
 {% else %}
 <!-- Guest Marketing View -->
-<div class="hero-glass text-center mb-5 fade-in-delay-1">
-    <h1 class="display-3 fw-bold mb-3 gradient-text">Welcome to the Family Wishlist!</h1>
-    <p class="lead text-muted mb-4 mx-auto" style="max-width: 600px;">A place where family members can share their
+<div class="hero-glass text-center mb-5">
+    <h1 class="display-3 fw-bold mb-3 gradient-text hero-entrance">Welcome to the Family Wishlist!</h1>
+    <p class="lead text-muted mb-4 mx-auto hero-entrance-delayed" style="max-width: 600px;">A place where family members can share their
         wishlists, making gift-giving easier and more meaningful.</p>
 
-    <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
-        <a class="btn btn-primary btn-lg px-5 py-3 shadow-lg" href="{{ url_for('auth.login') }}" role="button">
+    <div class="d-flex flex-column flex-md-row gap-3 justify-content-center hero-entrance-delayed" style="animation-delay: 0.4s;">
+        <a class="btn btn-primary btn-lg px-5 py-3 shadow-lg animate-pop" style="animation-delay: 0.5s;" href="{{ url_for('auth.login') }}" role="button">
             Login to View Wishlists
         </a>
-        <a class="btn btn-outline-primary btn-lg px-5 py-3" href="{{ url_for('auth.register') }}" role="button">
+        <a class="btn btn-outline-primary btn-lg px-5 py-3 animate-pop" style="animation-delay: 0.6s;" href="{{ url_for('auth.register') }}" role="button">
             Create Account
         </a>
     </div>
 </div>
 
 <div class="row g-4 mb-5">
-    <div class="col-md-4 fade-in-delay-3">
-        <div class="glass-card h-100 p-4 text-center">
+    <div class="col-md-4">
+        <div class="glass-card h-100 p-4 text-center stagger-item" style="--stagger-index: 0;">
             <div class="feature-icon mb-3">
                 <i class="bi bi-gift fs-1"></i>
             </div>
@@ -144,8 +144,8 @@
                 want.</p>
         </div>
     </div>
-    <div class="col-md-4 fade-in-delay-3" style="animation-delay: 0.1s;">
-        <div class="glass-card h-100 p-4 text-center">
+    <div class="col-md-4">
+        <div class="glass-card h-100 p-4 text-center stagger-item" style="--stagger-index: 1;">
             <div class="feature-icon mb-3">
                 <i class="bi bi-stars fs-1"></i>
             </div>
@@ -153,8 +153,8 @@
             <p class="text-muted mb-0">Claim items privately—gift receivers won't see who claimed their wishes.</p>
         </div>
     </div>
-    <div class="col-md-4 fade-in-delay-3" style="animation-delay: 0.2s;">
-        <div class="glass-card h-100 p-4 text-center">
+    <div class="col-md-4">
+        <div class="glass-card h-100 p-4 text-center stagger-item" style="--stagger-index: 2;">
             <div class="feature-icon mb-3">
                 <i class="bi bi-bullseye fs-1"></i>
             </div>

@@ -29,12 +29,18 @@ def send_event_reminders_async(self):
         raise self.retry(exc=exc, countdown=60)
 
 
-@celery_app.task(bind=True, max_retries=3)
+# @spec AUTO-TSK-011
+@celery_app.task(bind=True, max_retries=3, time_limit=5400, soft_time_limit=5100)
 def update_stale_prices_async(self, force_all=False):
     """Celery task: Update prices for items that haven't been checked recently.
-    
+
     Args:
         force_all: If True, update all items regardless of last update time
+
+    Note: time limits are raised above the worker default (300s) because a
+    full sweep of a few hundred items — Amazon URLs fetched sequentially in
+    stealth mode — takes tens of minutes. The underlying batch now commits per
+    25-URL chunk, so even a hard kill keeps the completed chunks' work.
     """
     from app import create_app
     from models import db, Item, Notification
@@ -47,4 +53,26 @@ def update_stale_prices_async(self, force_all=False):
         return result
     except Exception as exc:
         logger.error(f'update_stale_prices failed: {exc}')
+        raise self.retry(exc=exc, countdown=60)
+
+
+@celery_app.task(bind=True, max_retries=3)
+def send_push_task(self, user_id, message, link=None):
+    """Celery task: deliver a push notification to all of a user's devices.
+
+    This task requires the Flask app context to access the database and
+    APNs config, so it creates its own app (same pattern as the other
+    tasks in this module).
+    """
+    from app import create_app
+    from services.push_service import send_push_to_user
+
+    try:
+        app = create_app()
+        with app.app_context():
+            result = send_push_to_user(user_id, message, link)
+        logger.info(f'send_push_task completed: {result}')
+        return result
+    except Exception as exc:
+        logger.error(f'send_push_task failed: {exc}')
         raise self.retry(exc=exc, countdown=60)
