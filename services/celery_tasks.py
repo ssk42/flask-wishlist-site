@@ -30,17 +30,17 @@ def send_event_reminders_async(self):
 
 
 # @spec AUTO-TSK-011
-@celery_app.task(bind=True, max_retries=3, time_limit=2400, soft_time_limit=2100)
+@celery_app.task(bind=True, max_retries=3, time_limit=5400, soft_time_limit=5100)
 def update_stale_prices_async(self, force_all=False):
     """Celery task: Update prices for items that haven't been checked recently.
 
     Args:
         force_all: If True, update all items regardless of last update time
 
-    Note: time limits are raised above the worker default (300s) because the
-    whole stale batch fetches inside one task — a post-gap catch-up of 150+
-    items (Amazon URLs fetched sequentially in stealth mode) takes far longer
-    than 5 minutes.
+    Note: time limits are raised above the worker default (300s) because a
+    full sweep of a few hundred items — Amazon URLs fetched sequentially in
+    stealth mode — takes tens of minutes. The underlying batch now commits per
+    25-URL chunk, so even a hard kill keeps the completed chunks' work.
     """
     from app import create_app
     from models import db, Item, Notification

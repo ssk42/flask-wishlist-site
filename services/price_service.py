@@ -524,8 +524,18 @@ def _fetch_generic_metadata(url):
         return None
 
 
+def _failed_fetch_retry_timestamp():
+    """Retry-pace a failed fetch: stamp it 6 days old so it crosses the 7-day
+    staleness window again in ~1 day. Failed URLs retry about daily instead of
+    being treated as freshly updated (full 7-day wait) or hammered immediately.
+    """
+    return datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=6)
+
+
 def update_stale_prices(app, db, Item, Notification=None, force_all=False):
     """Update prices for items that haven't been updated in 7 days.
+
+    # @spec AUTO-PRC-006, AUTO-PRC-007, AUTO-PRC-009
 
     Args:
         app: Flask application instance
@@ -588,52 +598,65 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
             from services import price_async
             from services.price_history import record_price_history
             import asyncio
-            
-            # Run async fetch
-            results = asyncio.run(price_async.fetch_prices_batch(urls))
-            
-            # Process results
-            for url, new_price in results.items():
-                items_for_url = url_to_items.get(url, [])
-                
-                for item in items_for_url:
-                    stats['items_processed'] += 1
-                    
-                    if new_price is not None:
-                        old_price = item.price
-                        item.price = new_price
-                        item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
-                        
-                        # Record history
-                        record_price_history(item.id, new_price, source='auto')
-                        
-                        if old_price != new_price:
-                             stats['prices_updated'] += 1
-                             # Check for significant price drop (≥10%)
-                             if Notification and old_price and new_price < old_price:
-                                drop_percent = ((old_price - new_price) / old_price) * 100
-                                if drop_percent >= 10:
-                                    stats['price_drops'] += 1
-                                    _create_price_drop_notifications(
-                                        item, old_price, new_price, drop_percent, db, Notification
-                                    )
-                    else:
-                        # Update timestamp to avoid repeatedly trying failed URLs immediately (set to now)
-                        item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
-            
-            # Commit all changes
-            db.session.commit()
-            
-            # Handle items that failed (not in results)
-            # Use timestamp update so we don't retry them immediately next run
-            failed_urls = set(urls) - set(results.keys())
-            if failed_urls:
-                for url in failed_urls:
-                    for item in url_to_items[url]:
-                        item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
+
+            # Process URLs in chunks and commit each chunk as it completes.
+            # A full sweep of a few hundred URLs (Amazon fetched sequentially
+            # in stealth mode) can outlast the Celery task time limit; per-chunk
+            # commits mean completed chunks survive a kill instead of the whole
+            # run being lost to the single final commit.
+            CHUNK_SIZE = 25
+            results = {}
+            failed_urls = set(urls)
+
+            for i in range(0, len(urls), CHUNK_SIZE):
+                chunk = urls[i:i + CHUNK_SIZE]
+                try:
+                    chunk_results = asyncio.run(price_async.fetch_prices_batch(chunk))
+                except Exception as e:
+                    logger.error(f"Chunk fetch failed for {len(chunk)} URLs: {e}")
+                    chunk_results = {}
+                results.update(chunk_results)
+                failed_urls.difference_update(chunk_results.keys())
+
+                for url, new_price in chunk_results.items():
+                    for item in url_to_items.get(url, []):
+                        stats['items_processed'] += 1
+
+                        if new_price is not None:
+                            old_price = item.price
+                            item.price = new_price
+                            item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
+
+                            # Record history
+                            record_price_history(item.id, new_price, source='auto')
+
+                            if old_price != new_price:
+                                stats['prices_updated'] += 1
+                                # Check for significant price drop (≥10%)
+                                if Notification and old_price and new_price < old_price:
+                                    drop_percent = ((old_price - new_price) / old_price) * 100
+                                    if drop_percent >= 10:
+                                        stats['price_drops'] += 1
+                                        _create_price_drop_notifications(
+                                            item, old_price, new_price, drop_percent, db, Notification
+                                        )
+                        else:
+                            # URL returned no price (blocked/missing) — retry-pace it
+                            item.price_updated_at = _failed_fetch_retry_timestamp()
+
+                # URLs in this chunk that produced no result at all
+                for url in chunk:
+                    if url not in results:
+                        for item in url_to_items[url]:
+                            item.price_updated_at = _failed_fetch_retry_timestamp()
+
                 db.session.commit()
-                stats['errors'] += len(failed_urls)
-                
+                chunks_total = (len(urls) + CHUNK_SIZE - 1) // CHUNK_SIZE
+                logger.info(f"Chunk {(i // CHUNK_SIZE) + 1}/{chunks_total} committed "
+                            f"({len(results)} URLs processed so far)")
+
+            stats['errors'] += len(failed_urls)
+
         except Exception as e:
             logger.error(f"Batch update failed: {e}")
             db.session.rollback()

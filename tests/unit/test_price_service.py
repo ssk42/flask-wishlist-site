@@ -303,6 +303,38 @@ class TestUpdateStalePrices:
                 # When batch fetch fails entirely, all items are marked as errors
                 assert stats['errors'] >= 1
 
+    def test_failed_fetch_is_retry_paced_not_stamped_fresh(self, app, item_owner):
+        """A fetch that returns no price must be stamped ~6 days old so it retries
+        in about a day (7-day staleness window), not treated as freshly updated
+        (which would shelve it for a full week)."""
+        from services.price_service import update_stale_prices
+
+        with app.app_context():
+            item = Item(
+                description="Fail Item",
+                user_id=item_owner,
+                price=25.00,
+                link="https://example.com/product",
+                price_updated_at=None
+            )
+            db.session.add(item)
+            db.session.commit()
+            now = datetime.datetime.now(datetime.timezone.utc)
+
+            with patch('asyncio.run') as mock_asyncio_run:
+                # Fetch completes but returns no price for the URL
+                mock_asyncio_run.return_value = {"https://example.com/product": None}
+                update_stale_prices(app, db, Item)
+
+                item = db.session.get(Item, item.id)
+                assert item.price_updated_at is not None
+                # SQLite round-trips naive datetimes; compare on naive clocks
+                age = now.replace(tzinfo=None) - item.price_updated_at
+                # ~6 days old: within 7-day stale window so it retries ~daily
+                assert datetime.timedelta(days=5.5) < age < datetime.timedelta(days=6.5)
+                # Price must be untouched
+                assert item.price == 25.00
+
 
 class TestRefreshPriceRoute:
     """Tests for the /item/<id>/refresh-price route."""

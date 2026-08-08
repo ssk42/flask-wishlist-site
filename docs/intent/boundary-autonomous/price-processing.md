@@ -19,11 +19,12 @@ This segment handles external price extraction and metadata fetching for product
 
 ### 4.1. Batch Price Updating
 1. `update_stale_prices` identifies stale items.
-2. URLs are aggregated and passed to `fetch_prices_batch`.
+2. URLs are aggregated and passed to `fetch_prices_batch` **in chunks of 25**, committing each chunk to the database as it completes (long sweeps can outlast a Celery task's time limit; per-chunk commits mean completed chunks survive a hard kill).
 3. Standard URLs are processed concurrently via a semaphore (limit: 5).
 4. Amazon URLs are processed *sequentially* (one-by-one) via stealth mode to avoid memory exhaustion from multiple concurrent Playwright instances.
-5. Successfully fetched prices trigger history updates.
+5. Successfully fetched prices trigger history updates and stamp the item as freshly updated.
 6. Significant price drops (>= 10%) generate notifications for the owner and (if applicable) the claimer.
+7. **Failed fetches are retry-paced**: `price_updated_at` is stamped ~6 days old so the item crosses the 7-day staleness window again in about a day, letting the next cycle retry it without hammering it immediately.
 
 ### 4.2. Stealth Extraction (Amazon)
 1. Requests an identity from `IdentityManager`.
