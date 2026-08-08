@@ -43,7 +43,12 @@ ENV PYTHONUNBUFFERED=1
 COPY . .
 
 # Install Playwright browsers and dependencies
-# Ensure we have the necessary system dependencies for chromium
+# Ensure we have the necessary system dependencies for chromium.
+# PLAYWRIGHT_BROWSERS_PATH pins a fixed, HOME-independent location: the build
+# installs as root (HOME=/root) but the runtime runs as appuser, so the default
+# ~/.cache/ms-playwright would resolve to a different directory at runtime and
+# every browser launch would fail with 'Executable doesn't exist'.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install --with-deps chromium
 
 # Create non-root user for security
