@@ -24,9 +24,12 @@ it's a separate compose project in `~/home-server`:
 |---|---|---|
 | `flask_app` | `home-server-flask_app` (locally built) | `0.0.0.0:5000→5000` |
 | `postgres_db` | `postgres:15-alpine` | `5432` (internal) |
+| `redis` | `redis:7-alpine` | — (internal broker/cache) |
+| `celery_worker` | `home-server-celery_worker` (locally built) | — (background tasks) |
+| `celery_beat` | `home-server-beat` (locally built) | — (scheduler) |
 | `cloudflared` | `cloudflare/cloudflared` | — (public ingress) |
 | `vaultwarden` | `vaultwarden/server` | `0.0.0.0:8080→80` |
-| `watchtower` | `containrrr/watchtower` | — (auto-updates containers) |
+| `watchtower` | `containrrr/watchtower` | — (auto-updates vaultwarden only) |
 
 Four consequences that change this deploy:
 
@@ -34,11 +37,11 @@ Four consequences that change this deploy:
    the container. Note it's Postgres **15**, while this repo's own compose file
    pins 16 — don't "helpfully" align them; upgrading a live cluster is a
    separate, riskier job.
-2. **No Redis and no Celery worker.** APNs push fan-out enqueues to Celery, so
-   **push cannot deliver** as configured. This is safe rather than broken:
-   `create_notification` commits the notification row *before* enqueuing and
-   swallows enqueue failures, so in-app notifications work and only push is
-   inert. Adding push means adding a redis service + a celery worker.
+2. **Redis + a Celery worker + Celery beat now run** (added after the original
+   runbook). APNs push fan-out enqueues to Celery and **does deliver**. Beat
+   dispatches `update_stale_prices_async` every 6 hours so prices refresh
+   automatically (a fix for the pre-2026-08-08 gap where nothing scheduled
+   price refreshes).
 3. **`cloudflared` means the app is publicly reachable**, so `/api/v1` will be
    too. The only gate is the family code, and `POST /api/v1/auth/login` is rate
    limited to 5/min — but Flask-Limiter without Redis falls back to per-process
@@ -47,6 +50,22 @@ Four consequences that change this deploy:
 4. **watchtower may restart containers on its own.** If it auto-pulls
    `home-server-flask_app`, an unexpected restart mid-deploy is possible;
    consider pausing it during the migration.
+
+### Per-service image naming + PYTHONPATH (gotchas that cost a deploy cycle)
+
+- Each compose service with a `build:` gets its **own image** named
+  `<project>-<service>` — `home-server-flask_app`, `home-server-celery_worker`,
+  `home-server-beat`. `docker compose build flask_app` rebuilds **only** the web
+  image; to redeploy the worker or beat you must
+  `docker compose build celery_worker beat` / `home-server-beat` too. The
+  containers do not share one image.
+- The compose `celery_worker` and `beat` services set **`PYTHONPATH=/app`** in
+  their environment. Without it the forked task processes cannot
+  `import app` and every task dies with `ModuleNotFoundError: No module named
+  'app'` even though the module is importable interactively from `/app`.
+- The worker's healthcheck is `celery -A celery_app inspect ping` (the
+  Dockerfile's default pings `:5000`, which the worker never serves, so it
+  showed `unhealthy` permanently).
 
 ### Still unknown (Phase 0.5 answers these)
 
