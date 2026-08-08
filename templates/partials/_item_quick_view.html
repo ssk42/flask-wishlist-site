@@ -1,3 +1,4 @@
+{% from 'partials/_macros.html' import priority_badge %}
 <div class="modal-header border-0 pb-0">
     <h5 class="modal-title fw-bold text-truncate pe-3" style="max-width: 90%;">{{ item.description }}</h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -16,10 +17,7 @@
         <div class="{{ 'col-md-7' if item.image_url else 'col-12' }}">
             <div class="d-flex align-items-center gap-2 mb-3">
                 <span class="badge bg-light text-dark border">{{ item.user.name }}</span>
-                <span
-                    class="badge bg-{{ 'danger' if item.priority == 'High' else 'warning' if item.priority == 'Medium' else 'info' }} bg-opacity-10 text-{{ 'danger' if item.priority == 'High' else 'warning' if item.priority == 'Medium' else 'info' }}">
-                    {{ item.priority }} Priority
-                </span>
+                {{ priority_badge(item.priority) }}
                 <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ item.category or 'General' }}</span>
             </div>
 

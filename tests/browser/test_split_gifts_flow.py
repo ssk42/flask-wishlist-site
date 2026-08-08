@@ -64,7 +64,7 @@ def test_split_gift_flow(page: Page, live_server, browser_app):
     
     # Verify split started
     expect(page.get_by_text("You started a split")).to_be_visible()
-    expect(page.get_by_text("🤝 SPLITTING")).to_be_visible()
+    expect(page.get_by_text("SPLITTING", exact=True)).to_be_visible()
     expect(page.get_by_text("25% funded")).to_be_visible()
     
     page.click('a:has-text("Logout")')
