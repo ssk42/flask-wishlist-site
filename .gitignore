@@ -119,3 +119,7 @@ coverage.xml
 
 # Git worktrees
 .worktrees/
+
+# LID codebase-mapping working artifacts (not durable intent)
+scratch/
+.lid/map-codebase/
