@@ -25,7 +25,7 @@
 
     function updateThemeIcon(theme) {
         if (themeIcon) {
-            themeIcon.textContent = theme === 'light' ? '🌙' : '☀️';
+            themeIcon.className = 'sidebar-link-icon bi ' + (theme === 'light' ? 'bi-moon-stars' : 'bi-sun');
             themeToggle.setAttribute('aria-label',
                 theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
             );

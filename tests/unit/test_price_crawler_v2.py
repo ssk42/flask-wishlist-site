@@ -54,7 +54,7 @@ class TestPriceCrawlerV2:
         with app.app_context():
             # Run fetch (mocking internal request to avoid network and ensure success)
             # Use a domain that triggers generic price fetching
-            with patch('services.price_service._fetch_generic_price', return_value=99.99):
+            with patch('services.price_service._fetch_standard_price', return_value=99.99):
                 price = price_service.fetch_price(url)
                 assert price == 99.99
                 
@@ -71,7 +71,7 @@ class TestPriceCrawlerV2:
         url = "https://example.com/fail-test"
         
         with app.app_context():
-             with patch('services.price_service._fetch_generic_price', side_effect=ValueError("Parse Error")):
+             with patch('services.price_service._fetch_standard_price', side_effect=ValueError("Parse Error")):
                 price = price_service.fetch_price(url)
                 assert price is None
                 

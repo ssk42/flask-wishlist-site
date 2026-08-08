@@ -1,6 +1,7 @@
 """Items blueprint for item management, claims, and exports."""
 
 import datetime
+import secrets
 from collections import OrderedDict, defaultdict
 from types import SimpleNamespace
 from urllib.parse import urlparse
@@ -8,7 +9,7 @@ from urllib.parse import urlparse
 import pandas as pd
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, abort, session, send_file, current_app
+    flash, abort, send_file, current_app, session
 )
 from flask_login import login_required, current_user
 from sqlalchemy import case
@@ -17,56 +18,114 @@ from sqlalchemy.orm import joinedload
 from models import db, User, Item, Event, Comment, Contribution
 from config import PRIORITY_CHOICES, STATUS_CHOICES
 from services.utils import get_items_url_with_filters
+from services.form_validators import FormValidator, validate_item_fields
+from services.session_filter_manager import SessionFilterManager
+from services import item_service
+from services.item_service import ItemActionError
 
 bp = Blueprint('items', __name__)
+
+DEFAULT_IMAGE_URL = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
+
+
+def _new_submission_token():
+    """Return a token used to make browser form submissions idempotent."""
+    return secrets.token_urlsafe(24)
+
+
+def _completed_submission(token):
+    """Return whether this browser has already completed this mutation."""
+    return bool(token and token in session.get('item_mutations', {}))
+
+
+def _remember_submission(token, item_id):
+    """Remember successful browser submissions without growing the session forever."""
+    if not token:
+        return
+    mutations = session.get('item_mutations', {})
+    mutations[token] = item_id
+    # Keep only the most recent completed actions; token ordering is insertion order.
+    while len(mutations) > 20:
+        mutations.pop(next(iter(mutations)))
+    session['item_mutations'] = mutations
+
+
+def _item_form_data(item, submission_token=None):
+    """Return item values in the same shape as a submitted form."""
+    data = {
+        'description': item.description,
+        'link': item.link or '',
+        'price': item.price if item.price is not None else '',
+        'category': item.category or '',
+        'image_url': item.image_url or '',
+        'priority': item.priority or '',
+        'event_id': item.event_id or '',
+        'size': item.size or '',
+        'color': item.color or '',
+        'quantity': item.quantity if item.quantity is not None else '',
+    }
+    if submission_token:
+        data['submission_token'] = submission_token
+    return data
+
+
+def _get_item_or_404(item_id):
+    """Fetch an item by id or abort with 404."""
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
+    return item
+
+
+def _item_card_response(item, message, category):
+    """Render the htmx partial response for claim/unclaim actions.
+
+    Dashboard context gets the compact card plus rendered flash messages;
+    the items page gets the full card (flash intentionally omitted there).
+    """
+    if request.args.get('context') == 'dashboard':
+        flash(message, category)
+        card_html = render_template('partials/_dashboard_item_card.html', item=item)
+        flash_html = render_template('partials/_flash_messages.html')
+        return card_html + flash_html
+    return render_template('partials/_item_card.html', item=item, default_image_url=DEFAULT_IMAGE_URL)
+
+
+def _parse_contribution_amount():
+    """Parse and validate the split contribution amount from the form.
+
+    Returns (amount, error_response); exactly one is None.
+    """
+    try:
+        amount = float(request.form.get('amount', 0))
+    except ValueError:
+        flash('Invalid contribution amount.', 'danger')
+        return None, redirect(get_items_url_with_filters())
+    if amount <= 0:
+        flash('Contribution amount must be positive.', 'danger')
+        return None, redirect(get_items_url_with_filters())
+    return amount, None
 
 
 @bp.route('/items')
 @login_required
 def items_list():
     """List all items with filtering, sorting, and grouping."""
-    # Check if we should clear filters (when explicitly requested)
-    clear_filters = request.args.get('clear_filters') == 'true'
+    # Use SessionFilterManager for filter persistence
+    filter_manager = SessionFilterManager(request)
 
-    if clear_filters:
-        # Clear all filters from session
-        session.pop('user_filter', None)
-        session.pop('status_filter', None)
-        session.pop('priority_filter', None)
-        session.pop('event_filter', None)
-        session.pop('q', None)
-        session.pop('sort_by', None)
-        session.pop('sort_order', None)
+    if filter_manager.should_clear():
+        filter_manager.clear_all()
         return redirect(url_for('items.items_list'))
 
-    # Get filters from request args (for new filter applications)
-    user_filter = request.args.get('user_filter', type=int)
-    status_filter = request.args.get('status_filter')
-    priority_filter = request.args.get('priority_filter')
-    event_filter = request.args.get('event_filter', type=int)
-    search_query = request.args.get('q', '').strip()
-    sort_by = request.args.get('sort_by', 'priority')
-    sort_order = request.args.get('sort_order', 'asc')
-
-    # If filters are provided in the request, save them to session
-    if any([user_filter, status_filter, priority_filter, event_filter, search_query]) or \
-       request.args.get('sort_by') or request.args.get('sort_order'):
-        session['user_filter'] = user_filter
-        session['status_filter'] = status_filter
-        session['priority_filter'] = priority_filter
-        session['event_filter'] = event_filter
-        session['q'] = search_query
-        session['sort_by'] = sort_by
-        session['sort_order'] = sort_order
-    else:
-        # Use filters from session if no new filters provided
-        user_filter = session.get('user_filter')
-        status_filter = session.get('status_filter')
-        priority_filter = session.get('priority_filter')
-        event_filter = session.get('event_filter')
-        search_query = session.get('q', '')
-        sort_by = session.get('sort_by', 'priority')
-        sort_order = session.get('sort_order', 'asc')
+    filters = filter_manager.get_filters()
+    user_filter = filters['user_filter']
+    status_filter = filters['status_filter']
+    priority_filter = filters['priority_filter']
+    event_filter = filters['event_filter']
+    search_query = filters['q']
+    sort_by = filters['sort_by']
+    sort_order = filters['sort_order']
 
     query = (
         Item.query.options(
@@ -174,8 +233,6 @@ def items_list():
         ('created', 'Recently Added')
     ]
 
-    default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
-
     return render_template(
         'items_list.html',
         grouped_items=list(grouped_items.values()),
@@ -186,7 +243,7 @@ def items_list():
         event_options=event_options,
         active_filters=active_filters,
         sort_options=sort_options,
-        default_image_url=default_image_url
+        default_image_url=DEFAULT_IMAGE_URL
     )
 
 
@@ -200,46 +257,32 @@ def submit_item():
 
     if request.method == 'POST':
         form_data = request.form.to_dict()
-        description = form_data.get('description', '').strip()
-        if not description:
-            flash('A description is required to create an item.', 'danger')
+        submission_token = form_data.get('submission_token')
+        if _completed_submission(submission_token):
+            flash('This item was already added.', 'info')
+            return redirect(get_items_url_with_filters())
+        validator = FormValidator(form_data)
+
+        description = validator.required('description', 'A description is required to create an item.')
+        link = validator.optional('link')
+        image_url = validator.optional('image_url')
+        category = validator.optional('category')
+        priority = validator.choice('priority', PRIORITY_CHOICES, default=PRIORITY_CHOICES[0])
+        status = validator.choice('status', STATUS_CHOICES, default=STATUS_CHOICES[0])
+        event_id = validator.parse_int('event_id')
+        price = validator.parse_float('price', 'Price must be a valid number.')
+        size = validator.optional('size', max_length=50)
+        color = validator.optional('color', max_length=50)
+        quantity = validator.parse_int('quantity', 'Quantity must be a valid number.',
+                                       min_value=1, max_value=99, range_error='Quantity must be between 1 and 99.')
+        validate_item_fields(validator, description, link, image_url, price, event_id)
+
+        if not validator.is_valid():
+            for error in validator.errors:
+                flash(error, 'danger')
+            form_data['submission_token'] = submission_token or _new_submission_token()
             return render_template('submit_item.html', status_choices=STATUS_CHOICES,
                                    priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
-
-        link = form_data.get('link', '').strip() or None
-        image_url = form_data.get('image_url', '').strip() or None
-        category = form_data.get('category', '').strip() or None
-        priority = form_data.get('priority') if form_data.get('priority') in PRIORITY_CHOICES else PRIORITY_CHOICES[0]
-        status = form_data.get('status') if form_data.get('status') in STATUS_CHOICES else STATUS_CHOICES[0]
-
-        # Handle event_id
-        event_id_str = form_data.get('event_id', '').strip()
-        event_id = int(event_id_str) if event_id_str else None
-
-        price_input = form_data.get('price', '').strip()
-        try:
-            price = float(price_input) if price_input else None
-        except ValueError:
-            flash('Price must be a valid number.', 'danger')
-            return render_template('submit_item.html', status_choices=STATUS_CHOICES,
-                                   priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
-
-        # Handle variant fields (size, color, quantity)
-        size = form_data.get('size', '').strip()[:50] or None
-        color = form_data.get('color', '').strip()[:50] or None
-        quantity_input = form_data.get('quantity', '').strip()
-        quantity = None
-        if quantity_input:
-            try:
-                quantity = int(quantity_input)
-                if quantity < 1 or quantity > 99:
-                    flash('Quantity must be between 1 and 99.', 'danger')
-                    return render_template('submit_item.html', status_choices=STATUS_CHOICES,
-                                           priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
-            except ValueError:
-                flash('Quantity must be a valid number.', 'danger')
-                return render_template('submit_item.html', status_choices=STATUS_CHOICES,
-                                       priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
         new_item = Item(
             description=description,
@@ -259,6 +302,7 @@ def submit_item():
         try:
             db.session.add(new_item)
             db.session.commit()
+            _remember_submission(submission_token, new_item.id)
             current_app.logger.info(f'Item created by user_id={current_user.id}: {description[:50]}')
             flash('Item added to your wishlist!', 'success')
             return redirect(get_items_url_with_filters())
@@ -266,20 +310,20 @@ def submit_item():
             current_app.logger.error(f'Failed to create item for user_id={current_user.id}: {str(exc)}', exc_info=True)
             db.session.rollback()
             flash('Failed to create item. Please try again.', 'danger')
+            form_data['submission_token'] = submission_token or _new_submission_token()
             return render_template('submit_item.html', status_choices=STATUS_CHOICES,
                                    priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data=form_data)
 
     return render_template('submit_item.html', status_choices=STATUS_CHOICES,
-                           priority_choices=PRIORITY_CHOICES, events=upcoming_events, form_data={})
+                           priority_choices=PRIORITY_CHOICES, events=upcoming_events,
+                           form_data={'submission_token': _new_submission_token()})
 
 
 @bp.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
 @login_required
 def edit_item(item_id):
     """Edit an existing item."""
-    item = db.session.get(Item, item_id)
-    if item is None:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
     # Get upcoming events for the dropdown (only for item owner)
     today = datetime.date.today()
@@ -287,6 +331,11 @@ def edit_item(item_id):
 
     if request.method == 'POST':
         form_data = request.form.to_dict()
+        submission_token = form_data.get('submission_token')
+
+        if _completed_submission(submission_token):
+            flash('Those changes were already saved.', 'info')
+            return redirect(get_items_url_with_filters())
 
         if item.user_id != current_user.id:
             # Non-owner can only update status
@@ -296,101 +345,84 @@ def edit_item(item_id):
             else:
                 item.status = status
                 item.last_updated_by_id = current_user.id
-                db.session.commit()
-                flash('Status updated successfully.', 'success')
-                return redirect(get_items_url_with_filters())
-        else:
-            # Owner can edit all fields
-            description = form_data.get('description', '').strip()
-            if not description:
-                flash('Description cannot be empty.', 'danger')
-                return render_template('edit_item.html', item=item, current_user=current_user,
-                                       status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                                       events=upcoming_events)
-
-            price_input = form_data.get('price', '').strip()
-            try:
-                price = float(price_input) if price_input else None
-            except ValueError:
-                flash('Price must be a valid number.', 'danger')
-                return render_template('edit_item.html', item=item, current_user=current_user,
-                                       status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                                       events=upcoming_events)
-
-            item.description = description
-            item.link = form_data.get('link', '').strip() or None
-            item.price = price
-            item.category = form_data.get('category', '').strip() or None
-            item.image_url = form_data.get('image_url', '').strip() or None
-            priority = form_data.get('priority')
-            if priority in PRIORITY_CHOICES:
-                item.priority = priority
-
-            # Handle event_id
-            event_id_str = form_data.get('event_id', '').strip()
-            item.event_id = int(event_id_str) if event_id_str else None
-
-            # Handle variant fields (size, color, quantity)
-            item.size = form_data.get('size', '').strip()[:50] or None
-            item.color = form_data.get('color', '').strip()[:50] or None
-            quantity_input = form_data.get('quantity', '').strip()
-            if quantity_input:
                 try:
-                    quantity = int(quantity_input)
-                    if quantity < 1 or quantity > 99:
-                        flash('Quantity must be between 1 and 99.', 'danger')
-                        return render_template('edit_item.html', item=item, current_user=current_user,
-                                               status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                                               events=upcoming_events)
-                    item.quantity = quantity
-                except ValueError:
-                    flash('Quantity must be a valid number.', 'danger')
+                    db.session.commit()
+                    _remember_submission(submission_token, item.id)
+                    flash('Status updated successfully.', 'success')
+                    return redirect(get_items_url_with_filters())
+                except Exception as exc:
+                    current_app.logger.error(f'Failed to update status for item_id={item.id}: {exc}', exc_info=True)
+                    db.session.rollback()
+                    flash('Failed to update status. Please try again.', 'danger')
                     return render_template('edit_item.html', item=item, current_user=current_user,
                                            status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                                           events=upcoming_events)
-            else:
-                item.quantity = None
+                                           events=upcoming_events, form_data=form_data)
+        else:
+            # Owner can edit all fields
+            validator = FormValidator(form_data)
+            description = validator.required('description', 'Description cannot be empty.')
+            link = validator.optional('link')
+            price = validator.parse_float('price', 'Price must be a valid number.')
+            image_url = validator.optional('image_url')
+            quantity = validator.parse_int('quantity', 'Quantity must be a valid number.',
+                                           min_value=1, max_value=99, range_error='Quantity must be between 1 and 99.')
+            event_id = validator.parse_int('event_id')
+            priority = validator.choice('priority', PRIORITY_CHOICES, error_message='Please choose a valid priority.')
+            validate_item_fields(validator, description, link, image_url, price, event_id)
 
-            db.session.commit()
-            flash('Item updated successfully.', 'success')
-            return redirect(get_items_url_with_filters())
+            if not validator.is_valid():
+                for error in validator.errors:
+                    flash(error, 'danger')
+                return render_template('edit_item.html', item=item, current_user=current_user,
+                                       status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
+                                       events=upcoming_events, form_data=form_data)
+
+            item.description = description
+            item.link = link
+            item.price = price
+            item.category = validator.optional('category')
+            item.image_url = image_url
+            if priority:
+                item.priority = priority
+            item.event_id = event_id
+            item.size = validator.optional('size', max_length=50)
+            item.color = validator.optional('color', max_length=50)
+            item.quantity = quantity
+
+            try:
+                db.session.commit()
+                _remember_submission(submission_token, item.id)
+                flash('Item updated successfully.', 'success')
+                return redirect(get_items_url_with_filters())
+            except Exception as exc:
+                current_app.logger.error(f'Failed to update item_id={item.id}: {exc}', exc_info=True)
+                db.session.rollback()
+                flash('Failed to update item. Please try again.', 'danger')
+                return render_template('edit_item.html', item=item, current_user=current_user,
+                                       status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
+                                       events=upcoming_events, form_data=form_data)
 
     return render_template('edit_item.html', item=item, current_user=current_user,
                            status_choices=STATUS_CHOICES, priority_choices=PRIORITY_CHOICES,
-                           events=upcoming_events)
+                           events=upcoming_events,
+                           form_data=_item_form_data(item, _new_submission_token()))
 
 
 @bp.route('/claim_item/<int:item_id>', methods=['POST'])
 @login_required
 def claim_item(item_id):
     """Claim an item for purchase."""
-    item = db.session.get(Item, item_id)
-    if item is None:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
-    if item.user_id == current_user.id:
-        flash('You cannot claim your own item.', 'warning')
+    try:
+        item_service.claim_item(item, current_user.id)
+    except ItemActionError as err:
+        flash(err.message, 'warning')
         return redirect(get_items_url_with_filters())
-
-    if item.status != 'Available':
-        flash('This item is no longer available to claim.', 'warning')
-        return redirect(get_items_url_with_filters())
-
-    item.status = 'Claimed'
-    item.last_updated_by_id = current_user.id
-    db.session.commit()
 
     # For htmx requests, return the updated item card
     if request.headers.get('HX-Request'):
-        context = request.args.get('context')
-        if context == 'dashboard':
-            flash(f'You have claimed "{item.description}".', 'success')
-            card_html = render_template('partials/_dashboard_item_card.html', item=item)
-            flash_html = render_template('partials/_flash_messages.html')
-            return card_html + flash_html
-
-        default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
-        return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
+        return _item_card_response(item, f'You have claimed "{item.description}".', 'success')
 
     flash(f'You have claimed "{item.description}".', 'success')
     return redirect(get_items_url_with_filters())
@@ -400,31 +432,18 @@ def claim_item(item_id):
 @login_required
 def unclaim_item(item_id):
     """Unclaim an item back to Available status."""
-    item = db.session.get(Item, item_id)
-    if item is None:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
-    # Allow unclaim if it's Claimed and the current user was the last to update it (the claimer)
-    if item.status == 'Claimed' and item.last_updated_by_id == current_user.id:
-        item.status = 'Available'
-        item.last_updated_by_id = current_user.id
-        db.session.commit()
-
-        if request.headers.get('HX-Request'):
-            context = request.args.get('context')
-            if context == 'dashboard':
-                flash(f'You have unclaimed "{item.description}".', 'info')
-                card_html = render_template('partials/_dashboard_item_card.html', item=item)
-                flash_html = render_template('partials/_flash_messages.html')
-                return card_html + flash_html
-
-            default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
-            return render_template('partials/_item_card.html', item=item, default_image_url=default_image_url)
-
-        flash(f'You have unclaimed "{item.description}".', 'info')
-    else:
+    try:
+        item_service.unclaim_item(item, current_user.id)
+    except ItemActionError:
         flash('You cannot unclaim this item.', 'danger')
+        return redirect(get_items_url_with_filters())
 
+    if request.headers.get('HX-Request'):
+        return _item_card_response(item, f'You have unclaimed "{item.description}".', 'info')
+
+    flash(f'You have unclaimed "{item.description}".', 'info')
     return redirect(get_items_url_with_filters())
 
 
@@ -442,12 +461,9 @@ def get_item_modal(item_id):
 @login_required
 def get_split_modal(item_id):
     """Get split gift modal content for dynamic loading."""
-    item = db.session.get(Item, item_id)
-    if not item:
-        abort(404)
-    
-    default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
-    return render_template('partials/_split_modal.html', item=item, default_image_url=default_image_url)
+    item = _get_item_or_404(item_id)
+
+    return render_template('partials/_split_modal.html', item=item, default_image_url=DEFAULT_IMAGE_URL)
 
 
 @bp.route('/item/<int:item_id>/refresh-price', methods=['POST'])
@@ -456,9 +472,7 @@ def refresh_price(item_id):
     """Refresh the price for an item by fetching from its URL."""
     from services.price_service import refresh_item_price
 
-    item = db.session.get(Item, item_id)
-    if item is None:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
     if not item.link:
         flash('This item has no link to fetch price from.', 'warning')
@@ -479,18 +493,26 @@ def refresh_price(item_id):
     return redirect(get_items_url_with_filters())
 
 
-@bp.route('/delete_item/<int:item_id>')
+@bp.route('/delete_item/<int:item_id>', methods=['POST'])
 @login_required
 def delete_item(item_id):
     """Delete an item (owner only)."""
     item = db.session.get(Item, item_id)
-    if item is None or item.user_id != current_user.id:
+    if item is None:
+        flash('Item not found or already deleted.', 'warning')
+        return redirect(get_items_url_with_filters())
+    if item.user_id != current_user.id:
         flash('You do not have permission to delete this item.', 'danger')
         return redirect(get_items_url_with_filters())
 
-    db.session.delete(item)
-    db.session.commit()
-    flash('Item deleted.', 'info')
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        flash('Item deleted.', 'info')
+    except Exception as exc:
+        current_app.logger.error(f'Failed to delete item_id={item_id}: {exc}', exc_info=True)
+        db.session.rollback()
+        flash('Failed to delete item. Please try again.', 'danger')
     return redirect(get_items_url_with_filters())
 
 
@@ -509,7 +531,6 @@ def my_claims():
             Item.status.in_(['Claimed', 'Purchased']),
             Item.user_id != current_user.id  # Exclude own items
         )
-        .order_by(Item.user_id, Item.description)
         .order_by(Item.user_id, Item.description)
         .all()
     )
@@ -536,15 +557,13 @@ def my_claims():
     claimed_count = sum(1 for item in items if item.status == 'Claimed')
     purchased_count = sum(1 for item in items if item.status == 'Purchased')
 
-    default_image_url = 'https://via.placeholder.com/600x400?text=Wishlist+Item'
-
     return render_template(
         'my_claims.html',
         grouped_items=list(grouped_items.values()),
         claimed_count=claimed_count,
         purchased_count=purchased_count,
         status_choices=STATUS_CHOICES,
-        default_image_url=default_image_url,
+        default_image_url=DEFAULT_IMAGE_URL,
         contributions=contributions
     )
 
@@ -573,9 +592,7 @@ def export_my_status_updates():
 @login_required
 def start_split(item_id):
     """Start a split on an available item."""
-    item = db.session.get(Item, item_id)
-    if not item:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
     if item.user_id == current_user.id:
         flash('You cannot split your own item.', 'warning')
@@ -586,15 +603,9 @@ def start_split(item_id):
         return redirect(get_items_url_with_filters())
 
     # Get amount from form
-    try:
-        amount = float(request.form.get('amount', 0))
-    except ValueError:
-        flash('Invalid contribution amount.', 'danger')
-        return redirect(get_items_url_with_filters())
-
-    if amount <= 0:
-        flash('Contribution amount must be positive.', 'danger')
-        return redirect(get_items_url_with_filters())
+    amount, error = _parse_contribution_amount()
+    if error:
+        return error
 
     # Create contribution
     contribution = Contribution(
@@ -616,9 +627,7 @@ def start_split(item_id):
 @login_required
 def join_split(item_id):
     """Join an existing split."""
-    item = db.session.get(Item, item_id)
-    if not item:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
     if item.status != 'Splitting':
         flash('Item is not currently being split.', 'warning')
@@ -630,15 +639,9 @@ def join_split(item_id):
         flash('You are already contributing to this split.', 'warning')
         return redirect(get_items_url_with_filters())
 
-    try:
-        amount = float(request.form.get('amount', 0))
-    except ValueError:
-        flash('Invalid contribution amount.', 'danger')
-        return redirect(get_items_url_with_filters())
-
-    if amount <= 0:
-        flash('Contribution amount must be positive.', 'danger')
-        return redirect(get_items_url_with_filters())
+    amount, error = _parse_contribution_amount()
+    if error:
+        return error
 
     contribution = Contribution(
         item_id=item.id,
@@ -658,9 +661,7 @@ def join_split(item_id):
 @login_required
 def withdraw_contribution(item_id):
     """Withdraw contribution from a split."""
-    item = db.session.get(Item, item_id)
-    if not item:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
     contribution = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
     if not contribution:
@@ -691,12 +692,10 @@ def withdraw_contribution(item_id):
 @login_required
 def complete_split(item_id):
     """Mark split gift as purchased (Organizer only)."""
-    item = db.session.get(Item, item_id)
-    if not item:
-        abort(404)
+    item = _get_item_or_404(item_id)
 
     contribution = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
-    
+
     if not contribution or not contribution.is_organizer:
         flash('Only the split organizer can mark this as purchased.', 'danger')
         return redirect(get_items_url_with_filters())

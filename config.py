@@ -59,8 +59,9 @@ class Config:
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     
     # Caching (Item 12)
-    CACHE_TYPE = 'RedisCache' if os.getenv('REDIS_URL') else 'SimpleCache'
-    CACHE_REDIS_URL = os.getenv('REDIS_URL')
+    # Temporarily disabled RedisCache due to Heroku Redis SSL issues
+    # TODO: Fix Redis SSL cert validation for cachelib
+    CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 300
 
     # Rate Limiting
@@ -99,6 +100,16 @@ class Config:
     # Amazon stealth extraction settings
     AMAZON_STEALTH_ENABLED = os.environ.get('AMAZON_STEALTH_ENABLED', 'true').lower() == 'true'
 
+    # APNs push notifications (feature-flagged: push is skipped unless all are set)
+    APNS_KEY_ID = os.getenv('APNS_KEY_ID')
+    APNS_TEAM_ID = os.getenv('APNS_TEAM_ID')
+    APNS_KEY_P8 = os.getenv('APNS_KEY_P8')  # contents of the .p8 key file
+    # Preferred over APNS_KEY_P8: path to a mounted .p8 file, so a multi-line
+    # private key never has to be embedded in .env or compose environment.
+    APNS_KEY_P8_PATH = os.getenv('APNS_KEY_P8_PATH')
+    APNS_BUNDLE_ID = os.getenv('APNS_BUNDLE_ID')
+    APNS_USE_SANDBOX = os.getenv('APNS_USE_SANDBOX', 'false').lower() == 'true'
+
     # Security Headers (configured in app.py)
     SECURITY_HEADERS = {
         'X-Content-Type-Options': 'nosniff',
@@ -106,6 +117,7 @@ class Config:
         'X-XSS-Protection': '1; mode=block',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
         'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Cache-Control': 'no-store, max-age=0',
     }
 
 
@@ -144,6 +156,15 @@ class TestingConfig(Config):
     CACHE_TYPE = 'SimpleCache'
     CACHE_REDIS_URL = None
 
+    # Remove Cache-Control from tests to prevent Playwright hangs with Service Worker
+    SECURITY_HEADERS = {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+    }
+
 
 class ProductionConfig(Config):
     """Production environment configuration."""
@@ -157,7 +178,7 @@ class ProductionConfig(Config):
     # Stricter security headers for production
     SECURITY_HEADERS = {
         **Config.SECURITY_HEADERS,
-        'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https:;",
+        'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https:;",
     }
 
 

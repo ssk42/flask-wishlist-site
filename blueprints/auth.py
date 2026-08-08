@@ -1,12 +1,25 @@
 """Authentication blueprint for user registration, login, and logout."""
 
+import hmac
+from urllib.parse import urlparse
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required
 
 from models import db, User
 from extensions import limiter
+from services.view_helpers import flash_and_redirect
 
 bp = Blueprint('auth', __name__)
+
+
+def is_safe_url(target):
+    """Validate that redirect URL is safe (relative and same-origin)."""
+    if not target:
+        return False
+    parsed = urlparse(target)
+    # Only allow relative URLs (no scheme or netloc)
+    return not parsed.scheme and not parsed.netloc
 
 
 @bp.route('/register', methods=['GET', 'POST'])
@@ -17,9 +30,10 @@ def register():
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip().lower()
 
-        # Verify Family Code
-        password = request.form.get('password')
-        if password != current_app.config.get('FAMILY_PASSWORD'):
+        # Verify Family Code (use constant-time comparison to prevent timing attacks)
+        password = request.form.get('password') or ''
+        family_code = current_app.config.get('FAMILY_PASSWORD') or ''
+        if not hmac.compare_digest(password.encode(), family_code.encode()):
             flash('Incorrect Family Code. Please ask the family admin.', 'danger')
             return render_template('registration.html', name=name, email=email)
 
@@ -34,8 +48,7 @@ def register():
             db.session.add(new_user)
             db.session.commit()
             current_app.logger.info(f'New user registered: {email}')
-            flash('Registration successful! Please log in to continue.', 'success')
-            return redirect(url_for('auth.login'))
+            return flash_and_redirect('Registration successful! Please log in to continue.', 'success', 'auth.login')
         except Exception as e:
             current_app.logger.error(f'Registration failed for {email}: {str(e)}', exc_info=True)
             db.session.rollback()
@@ -52,9 +65,10 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         
-        # Verify Family Code
-        password = request.form.get('password')
-        if password != current_app.config.get('FAMILY_PASSWORD'):
+        # Verify Family Code (use constant-time comparison to prevent timing attacks)
+        password = request.form.get('password') or ''
+        family_code = current_app.config.get('FAMILY_PASSWORD') or ''
+        if not hmac.compare_digest(password.encode(), family_code.encode()):
             flash('Incorrect Family Code.', 'danger')
             return render_template('login.html', email=email)
 
@@ -64,7 +78,7 @@ def login():
             current_app.logger.info(f'User logged in: {email} (user_id={user.id})')
             flash(f'Welcome back, {user.name}!', 'success')
             next_page = request.args.get('next')
-            if next_page:
+            if next_page and is_safe_url(next_page):
                 return redirect(next_page)
             return redirect(url_for('dashboard.index'))
         else:
@@ -110,5 +124,4 @@ def forgot_email():
 def logout():
     """Handle user logout."""
     logout_user()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('dashboard.index'))
+    return flash_and_redirect('You have been logged out.', 'info', 'dashboard.index')
