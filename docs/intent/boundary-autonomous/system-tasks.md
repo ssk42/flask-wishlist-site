@@ -14,7 +14,9 @@ The tasks operate over existing domain models without owning specific tables:
 - **`services/tasks.py`**: Contains the synchronous core business logic for tasks. For example, `send_event_reminders` computes the date offset, groups claimed items by user, triggers email sending, and updates event state.
 - **`services/celery_tasks.py`**: Defines the Celery `@celery_app.task` wrappers (`send_event_reminders_async`, `update_stale_prices_async`). These wrappers create a fresh Flask application context and handle exceptions and retries.
 - **`celery_app.py`**: Configures the Celery application, managing the Redis broker connection (including Heroku SSL quirks) and defining worker constraints like timeouts and serializers.
+- **Scheduler (`celery_app.py` `beat_schedule`)**: Celery Beat dispatches `update_stale_prices_async` every 6 hours (minute 0 of hours 0/6/12/18 UTC) so items crossing the 7-day staleness window are refreshed within 6 hours. Runs with nothing stale are near-free (the task's `get_items_needing_update` query returns zero items). Deployment runs dedicated `celery beat` and `celery worker` container processes; the production compose additionally gives the stale-price task a 40-minute time limit (vs the 300s worker default) because a post-gap catch-up batch of 150+ items — Amazon URLs fetched sequentially in stealth mode — exceeds 5 minutes.
 - **`tests/unit/test_tasks.py`**: Validates the synchronous task logic with mocked external dependencies (like `email_service`), ensuring robust testability without needing a live Celery worker.
+- **`tests/unit/test_celery_config.py`**: Guards the beat schedule (task name + every-6h crontab) and the stale-price task's raised time limits, so the "prices never refresh" failure mode is caught by tests.
 
 ## Decisions & Alternatives
 | Decision | Alternative Considered | Rationale |
@@ -26,5 +28,6 @@ The tasks operate over existing domain models without owning specific tables:
 
 ## Open Questions
 - **[inferred]** If an event has zero claimed items exactly 7 days prior, the task marks `reminder_sent = True`. If a user subsequently claims an item *after* this run (e.g., 5 days before), they will never receive a reminder. Is this intended behavior or an edge case bug?
-- **[inferred]** How are these periodic tasks scheduled? (e.g., Celery Beat schedule configuration is not present in this immediate segment).
 - **[inferred]** Is there a requirement to notify the event creator if *no* items have been claimed as the event approaches?
+
+> **Resolved 2026-08-08:** "How are these periodic tasks scheduled?" — this was a real production gap: no beat schedule existed, so stale prices were never refreshed automatically (the box's last sweep was a manual forced run on 2026-07-20). Fixed by adding a Celery Beat schedule (every 6 hours) plus a dedicated `beat` service in the production compose, and raising the stale-price task's time limit.

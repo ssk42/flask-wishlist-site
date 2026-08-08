@@ -9,3 +9,5 @@
 - [x] **AUTO-TSK-007**: **If** a Celery asynchronous task (`send_event_reminders_async` or `update_stale_prices_async`) raises an unhandled exception, the system shall log the failure and retry the task up to 3 times with a 60-second countdown.
 - [x] **AUTO-TSK-008**: **When** the Celery application initializes, if the Redis broker URL uses the `rediss://` protocol, the system shall append `?ssl_cert_reqs=none` to the URL.
 - [x] **AUTO-TSK-009**: **When** an asynchronous task runs, it shall initialize a new Flask application context before executing the underlying synchronous core logic.
+- [x] **AUTO-TSK-010**: **When** the Celery Beat scheduler runs, the system shall dispatch the `update_stale_prices_async` task every 6 hours so items past the 7-day staleness window are refreshed within 6 hours.
+- [x] **AUTO-TSK-011**: **While** the `update_stale_prices_async` task executes a catch-up batch (all items stale), the task shall run under a 40-minute time limit rather than the worker's 300-second default, so large post-gap batches complete instead of being killed.

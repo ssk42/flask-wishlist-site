@@ -2,6 +2,7 @@
 
 import os
 from celery import Celery
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -30,8 +31,19 @@ def make_celery():
         timezone='UTC',
         enable_utc=True,
         task_track_started=True,
-        task_time_limit=300,  # 5 minute timeout
+        task_time_limit=300,  # 5 minute timeout for small tasks
         worker_prefetch_multiplier=1,  # One task at a time
+        broker_connection_retry_on_startup=True,
+        # @spec AUTO-TSK-010
+        beat_schedule={
+            # Refresh prices for items older than the 7-day staleness window.
+            # Every 6 hours: a stale item is refreshed within 6h of crossing
+            # the window; runs with nothing stale are near-free (query-only).
+            'update-stale-prices': {
+                'task': 'services.celery_tasks.update_stale_prices_async',
+                'schedule': crontab(minute=0, hour='*/6'),
+            },
+        },
     )
     
     return celery
