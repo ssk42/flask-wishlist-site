@@ -1,10 +1,8 @@
+{% from 'partials/_macros.html' import priority_badge %}
 <div class="glass-card p-3 h-100 d-flex flex-column" id="dashboard-item-{{ item.id }}">
     <div class="d-flex justify-content-between align-items-start mb-2">
         <span class="badge bg-light text-dark border">{{ item.user.name }}</span>
-        <span
-            class="badge bg-{{ 'danger' if item.priority == 'High' else 'warning' if item.priority == 'Medium' else 'info' }} bg-opacity-10 text-{{ 'danger' if item.priority == 'High' else 'warning' if item.priority == 'Medium' else 'info' }}">
-            {{ item.priority }}
-        </span>
+        {{ priority_badge(item.priority) }}
     </div>
     <div class="position-relative">
         <h3 class="h6 fw-bold mb-1 text-truncate" title="{{ item.description }}">{{ item.description }}</h3>

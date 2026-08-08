@@ -1,6 +1,6 @@
 """Social blueprint for comments and notifications."""
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
 
 from models import db, User, Item, Comment, Notification
@@ -13,7 +13,9 @@ bp = Blueprint('social', __name__)
 @login_required
 def add_comment(item_id):
     """Add a comment to an item."""
-    item = Item.query.get_or_404(item_id)
+    item = db.session.get(Item, item_id)
+    if item is None:
+        abort(404)
     text = request.form.get('text', '').strip()
 
     if not text:
@@ -39,8 +41,8 @@ def add_comment(item_id):
     for recipient in previous_commenters:
         msg = f"{current_user.name} commented on an item for {item.user.name}: {item.description[:30]}..."
         link = url_for('items.items_list', _anchor=f'item-{item.id}')
-        notif = Notification(user_id=recipient.id, message=msg, link=link)
-        db.session.add(notif)
+        from services.notification_service import create_notification
+        create_notification(recipient.id, msg, link)
 
     db.session.commit()
     flash('Comment added!', 'success')

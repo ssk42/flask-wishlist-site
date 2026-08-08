@@ -1,6 +1,7 @@
 {# Partial template for a single item card - used by htmx swaps #}
+{% from 'partials/_macros.html' import priority_badge %}
 <div class="col-md-6 col-lg-4 mb-4">
-    <div class="glass-card p-3 h-100 d-flex flex-column" id="item-card-{{ item.id }}">
+    <div class="glass-card p-3 h-100 d-flex flex-column stagger-item" id="item-card-{{ item.id }}" style="--stagger-index: {{ stagger_index|default(0) }};">
         <!-- Image Section -->
         <div class="position-relative mb-3 rounded overflow-hidden" style="height: 200px;">
             <img src="{{ item.image_url or default_image_url }}" class="w-100 h-100 object-fit-cover"
@@ -14,11 +15,7 @@
                 <span class="badge bg-light text-dark bg-opacity-75 backdrop-blur shadow-sm">{{ item.user.name }}</span>
                 {% endif %}
 
-                <span class="badge 
-                    {{ 'bg-danger' if item.priority == 'High' else 'bg-warning' if item.priority == 'Medium' else 'bg-info' }} 
-                    bg-opacity-75 backdrop-blur shadow-sm text-white">
-                    {{ item.priority or 'No priority' }}
-                </span>
+                {{ priority_badge(item.priority, on_image=true) }}
             </div>
         </div>
 
@@ -87,9 +84,13 @@
                 <div class="d-flex gap-2 w-100">
                     <a href="{{ url_for('items.edit_item', item_id=item.id) }}"
                         class="btn btn-sm btn-outline-primary flex-grow-1">Edit</a>
-                    <a href="{{ url_for('items.delete_item', item_id=item.id) }}"
-                        class="btn btn-sm btn-outline-danger flex-grow-1"
-                        onclick="return confirm('Are you sure you want to delete this item?');">Delete</a>
+                    <form action="{{ url_for('items.delete_item', item_id=item.id) }}" method="post" class="flex-grow-1"
+                        onsubmit="if (!confirm('Are you sure you want to delete this item?')) return false; const button = this.querySelector('button[type=submit]'); button.disabled = true; button.setAttribute('aria-busy', 'true'); button.innerHTML = '<span class=\'spinner-border spinner-border-sm\' role=\'status\' aria-hidden=\'true\'></span> ' + button.dataset.savingLabel; return true;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger w-100" data-saving-label="Deleting…">
+                            Delete
+                        </button>
+                    </form>
                 </div>
                 {% else %}
                 <!-- Claim/Unclaim Buttons -->
@@ -196,7 +197,4 @@
             {% endif %}
         </div>
     </div>
-</div>
-
-
 </div>

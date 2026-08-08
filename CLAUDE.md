@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |----------|--------|
 | [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) | **Project Roadmap** - Comprehensive tracking of all planned/completed improvements (50 items, ~56% complete). Use this to understand priorities and find your next task. |
 | [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md) | **Technical Gotchas** - Common pitfalls, environment quirks, and solutions discovered during development. Read this before diving into infrastructure or testing work. |
+| [docs/API_V1.md](docs/API_V1.md) | **API v1 Reference** - Auth model, endpoint table, surprise-protection contract, error envelope, and APNs setup for the JSON API powering the iOS app. |
 
 ### 📋 Product Requirements Documents (PRDs)
 
@@ -99,7 +100,8 @@ This is a **Flask application** using the Application Factory pattern with Bluep
   - `dashboard.py` - Home page, dashboard stats
   - `social.py` - Comments, notifications
   - `api.py` - JSON API endpoints (metadata fetching, price history)
-- **Models** in [models.py](models.py) - User, Item, Event, Comment, Notification, PriceHistory, Contribution
+  - `api_v1.py` - Token-authenticated JSON API v1 for native clients (iOS app); see [docs/API_V1.md](docs/API_V1.md)
+- **Models** in [models.py](models.py) - User, Item, Event, Comment, Notification, PriceHistory, Contribution, ApiToken, Device
 - **Services** in `services/`:
   - `price_service.py` - Product price fetching and metadata extraction
   - `email_service.py` - Email sending via Flask-Mail
@@ -151,6 +153,14 @@ The application prevents gift receivers from seeing who claimed/purchased their 
 - Local development: SQLite database stored in `instance/wishlist.sqlite`
 - Production (Heroku): PostgreSQL via `DATABASE_URL` environment variable
 - Automatic postgres:// to postgresql:// URI conversion for Heroku compatibility
+
+#### Amazon Stealth Extraction
+The application uses stealth Playwright techniques for Amazon price extraction:
+- **Browser Identity Rotation**: 12 realistic browser profiles rotated every 10-20 requests
+- **Human-like Behavior**: Mouse movements, scrolling, natural delays
+- **Identity Burn Tracking**: Identities that trigger CAPTCHA are disabled for 24 hours
+- **Feature Flag**: Controlled via `AMAZON_STEALTH_ENABLED` environment variable
+- **Implementation**: `services/amazon_stealth/` module
 
 ### Testing Architecture
 - **Unit tests** (`tests/unit/`): Use Flask test client with temporary SQLite database

@@ -39,12 +39,19 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Install Playwright browsers and dependencies BEFORE copying application
+# code, so a source-only change doesn't invalidate the browser layer (a
+# ~170MB re-download on every deploy).
+# Ensure we have the necessary system dependencies for chromium.
+# PLAYWRIGHT_BROWSERS_PATH pins a fixed, HOME-independent location: the build
+# installs as root (HOME=/root) but the runtime runs as appuser, so the default
+# ~/.cache/ms-playwright would resolve to a different directory at runtime and
+# every browser launch would fail with 'Executable doesn't exist'.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN playwright install --with-deps chromium
+
 # Copy application code
 COPY . .
-
-# Install Playwright browsers and dependencies
-# Ensure we have the necessary system dependencies for chromium
-RUN playwright install --with-deps chromium
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
