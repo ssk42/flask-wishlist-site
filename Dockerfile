@@ -19,7 +19,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# High retry/timeout values: the deploy box's PyPI link is slow and flaky and
+# pip's 15s default times out mid-download, aborting builds.
+RUN pip install --no-cache-dir --retries 20 --timeout 120 -r requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim-bookworm
