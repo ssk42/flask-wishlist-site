@@ -36,13 +36,14 @@ class TestTaskTimeLimits:
     def test_dev_celery_uses_memory_backend(self, monkeypatch):
         """Dev/test must not depend on a local Redis: an in-memory transport
         never retries an unreachable backend to its limit (the pre-fix fatal
-        'Retry limit exceeded ... result store backend' paged via Sentry)."""
+        'Retry limit exceeded ... result store backend' paged via Sentry).
+        Uses the cache+memory result backend so AsyncResult.state works."""
         monkeypatch.delenv('FLASK_ENV', raising=False)
         monkeypatch.delenv('REDIS_URL', raising=False)
         from celery_app import make_celery
         app = make_celery()
         assert app.conf.broker_url == 'memory://'
-        assert app.conf.result_backend is None
+        assert app.conf.result_backend == 'cache+memory://'
         assert app.conf.task_ignore_result is True
 
     def test_prod_celery_uses_redis_backend(self, monkeypatch):

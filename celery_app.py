@@ -28,7 +28,10 @@ def make_celery():
         # (Sentry-paged) 'Retry limit exceeded ... result store backend' while
         # running the dev/test suite without redis running.
         broker_url = 'memory://'
-        backend = None
+        # cache+memory: in-process result backend with real state support but
+        # zero external dependencies (a plain None backend yields Celery's
+        # DisabledBackend, and touching result.state raises AttributeError).
+        backend = 'cache+memory://'
         extra_conf = {'task_ignore_result': True}
 
     celery = Celery(
