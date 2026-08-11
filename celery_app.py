@@ -10,20 +10,34 @@ load_dotenv()
 
 def make_celery():
     """Create and configure Celery application."""
-    # Get broker URL from environment (Redis)
-    broker_url = os.getenv('CELERY_BROKER_URL') or os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-    
-    # Handle Heroku Redis SSL
-    if broker_url.startswith('rediss://'):
-        broker_url += '?ssl_cert_reqs=none'
-    
+    env = os.getenv('FLASK_ENV', 'development')
+    is_prod = env == 'production'
+
+    if is_prod:
+        # Production: Redis broker + result backend.
+        broker_url = os.getenv('CELERY_BROKER_URL') or os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        # Handle Heroku Redis SSL
+        if broker_url.startswith('rediss://'):
+            broker_url += '?ssl_cert_reqs=none'
+        backend = broker_url
+        extra_conf = {}
+    else:
+        # Dev/test: no local Redis on developer machines. An in-memory
+        # transport never fails, so Celery no longer retries an unreachable
+        # external backend until its retry limit — which surfaced as a fatal
+        # (Sentry-paged) 'Retry limit exceeded ... result store backend' while
+        # running the dev/test suite without redis running.
+        broker_url = 'memory://'
+        backend = None
+        extra_conf = {'task_ignore_result': True}
+
     celery = Celery(
         'wishlist',
         broker=broker_url,
-        backend=broker_url,
+        backend=backend,
         include=['services.celery_tasks']
     )
-    
+
     celery.conf.update(
         task_serializer='json',
         accept_content=['json'],
@@ -34,6 +48,7 @@ def make_celery():
         task_time_limit=300,  # 5 minute timeout for small tasks
         worker_prefetch_multiplier=1,  # One task at a time
         broker_connection_retry_on_startup=True,
+        **extra_conf,
         # @spec AUTO-TSK-010
         beat_schedule={
             # Refresh prices for items older than the 7-day staleness window.
