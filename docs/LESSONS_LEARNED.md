@@ -209,3 +209,7 @@ This document is for and by Agents such as Claude and Gemini. It's goal is that 
 - **Issue:** Tests fail with "element not found" when page is still loading after navigation.
 - **Solution:** Always add `page.wait_for_load_state('networkidle')` after navigation and form submissions.
 
+### 6. Local Python Must Match Production (3.11)
+- **Issue (2026-08-11):** The local venv ran Python 3.12 while production and CI run 3.11. A `numpy==2.5.2` bump passed the local suite (py3.12 has wheels) but failed the prod image build and CI with `No matching distribution found` — numpy 2.5.x requires Python ≥3.12 and ships no cp311 wheels. Pinned `numpy==2.4.3` (newest with linux cp311 x86_64 wheels).
+- **Solution:** Keep the dev venv on the same Python as prod/CI (3.11). `.python-version` pins `3.11`; recreate the venv with `uv venv --python python3.11` and always cross-check any dependency bump against the 3.11 environment, not just the first interpreter that resolves.
+
