@@ -2,7 +2,7 @@
 import asyncio
 import random
 import time
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import aiohttp
@@ -18,6 +18,8 @@ REQUEST_TIMEOUT = 15
 
 # Amazon stealth feature flag
 AMAZON_STEALTH_ENABLED = Config.AMAZON_STEALTH_ENABLED
+# Retry bot-blocked non-Amazon URLs through the headless browser
+BROWSER_RESCUE_ENABLED = Config.BROWSER_RESCUE_ENABLED
 
 # Singleton identity manager (lazy initialized)
 _identity_manager = None
@@ -59,26 +61,34 @@ async def _get_async_session():
 
 async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
     """Fetch multiple prices concurrently using asyncio.
-    
+
+    # @spec AUTO-PRC-010
+
     Amazon URLs are routed through the stealth extractor when enabled.
     Amazon stealth requests run SEQUENTIALLY (one at a time) to reduce memory usage.
     Other URLs use standard aiohttp fetching concurrently.
+    Bot-blocked (HTTP 403/429) non-Amazon URLs are retried once via the browser.
     """
     results = {}
-    
+    blocked_urls: Set[str] = set()
+
     # Separate Amazon URLs from others for different handling
     amazon_urls = [url for url in urls if url and _is_amazon_url(url)]
     other_urls = [url for url in urls if url and not _is_amazon_url(url)]
-    
+
     # We'll use a semaphore to limit concurrency for standard requests
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-    
+
     async def fetch_one_standard(url: str):
         """Fetch non-Amazon URL using standard aiohttp."""
         async with semaphore:
             # Jitter to avoid thundering herd and strict rate limit checks
             await asyncio.sleep(random.uniform(0.1, 1.0))
-            price = await _fetch_price_async_standard(url)
+            price, status = await _fetch_price_async_standard(url)
+            # Bot-blocked (403/429) URLs are candidates for browser rescue.
+            # A 200-with-no-price (parse miss) or network error is not a block.
+            if price is None and status in (403, 429):
+                blocked_urls.add(url)
             return url, price
 
     try:
@@ -94,6 +104,30 @@ async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
                 if isinstance(result, tuple) and len(result) == 2:
                     url, price = result
                     results[url] = price
+
+        # Browser rescue: bot-blocked (403/429) URLs get one retry through
+        # the headless browser — many retailers serve their page to a real
+        # browser but 403 plain aiohttp. Runs SEQUENTIALLY (browsers are
+        # memory-heavy) and only when stealth infra is available.
+        if blocked_urls and BROWSER_RESCUE_ENABLED:
+            manager = _get_identity_manager()
+            if manager:
+                rescued = 0
+                logger.info(f"Attempting browser rescue for {len(blocked_urls)} bot-blocked URLs")
+                for url in sorted(blocked_urls):
+                    identity = manager.get_healthy_identity()
+                    if not identity:
+                        logger.warning(f"No healthy identity for rescue of {url}")
+                        continue
+                    # Jitter between browser launches
+                    await asyncio.sleep(random.uniform(1.0, 3.0))
+                    price = await _fetch_browser_rescue(url, identity, manager)
+                    if price is not None:
+                        results[url] = price
+                        rescued += 1
+                logger.info(f"Browser rescue complete: {rescued}/{len(blocked_urls)} URLs rescued")
+            else:
+                logger.warning("IdentityManager not available, skipping browser rescue")
         
         # Handle Amazon URLs with stealth extraction SEQUENTIALLY (one at a time)
         # This prevents memory exhaustion from multiple Playwright browsers
@@ -194,16 +228,98 @@ async def _fetch_amazon_stealth(url: str, identity, manager) -> Optional[float]:
             logger.error(f"Failed to log stealth metric: {e}")
 
 
-async def _fetch_price_async_standard(url: str) -> Optional[float]:
-    """Async version of fetch_price for non-Amazon URLs using aiohttp."""
-    if not url:
+async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
+    """Retry a bot-blocked (403/429) URL through the headless browser once.
+
+    Mirrors the Amazon stealth recipe (identity fingerprint + stealth patches)
+    but parses with the site-appropriate generic extractor. Browsers are
+    launched sequentially by the caller; each call owns and closes its browser.
+
+    Returns the parsed price, or None on failure.
+    """
+    start_time = time.time()
+    success = False
+    price = None
+    error_type = None
+
+    try:
+        from playwright.async_api import async_playwright
+        from playwright_stealth import Stealth
+
+        stealth = Stealth(
+            webgl_vendor_override=identity.webgl_vendor,
+            webgl_renderer_override=identity.webgl_renderer,
+        )
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            try:
+                context = await browser.new_context(
+                    user_agent=identity.user_agent,
+                    viewport=identity.viewport,
+                    locale=identity.locale,
+                    timezone_id=identity.timezone,
+                    color_scheme=identity.color_scheme,
+                    device_scale_factor=identity.device_scale,
+                )
+                if manager:
+                    cookies = manager.load_cookies(identity.id)
+                    if cookies:
+                        await context.add_cookies(cookies)
+
+                page = await context.new_page()
+                await stealth.apply_stealth_async(page)
+
+                await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                # Give client-side rendered prices a moment to appear
+                await page.wait_for_timeout(2000)
+
+                content = await page.content()
+                price = _parse_content(url, content)
+                if price is not None:
+                    success = True
+                    if manager:
+                        manager.mark_success(identity)
+                elif manager:
+                    manager.save_cookies(identity.id, await context.cookies())
+            finally:
+                await browser.close()
+        return price
+
+    except Exception as e:
+        error_type = str(e)
+        logger.error(f"Browser rescue failed for {url}: {e}")
         return None
+    finally:
+        duration_ms = int((time.time() - start_time) * 1000)
+        try:
+            price_metrics.log_extraction_attempt(
+                url=url,
+                success=success,
+                price=price,
+                method='browser_rescue',
+                error_type=error_type,
+                response_time_ms=duration_ms
+            )
+        except Exception as e:
+            logger.error(f"Failed to log rescue metric: {e}")
+
+
+async def _fetch_price_async_standard(url: str) -> Tuple[Optional[float], Optional[int]]:
+    """Async version of fetch_price for non-Amazon URLs using aiohttp.
+
+    Returns (price, http_status): status is None for cache hits and network
+    errors, and the real HTTP status otherwise — so callers can distinguish
+    a bot block (403/429) from a parse failure or network error.
+    """
+    if not url:
+        return None, None
 
     # Check cache first (sync call is fine for Redis usually, or we could use aioredis in future)
     # Since flask-caching is sync, we just call it. Ideally this shouldn't block loop too much.
     cached_text = price_cache.get_cached_response(url)
     if cached_text:
-        return _parse_content(url, cached_text)
+        return _parse_content(url, cached_text), None
 
     start_time = time.time()
     success = False
@@ -216,24 +332,24 @@ async def _fetch_price_async_standard(url: str) -> Optional[float]:
                 if response.status != 200:
                     error_type = f"HTTP {response.status}"
                     logger.warning(f"Async fetch failed for {url}: {response.status}")
-                    return None
-                    
+                    return None, response.status
+
                 text = await response.text()
-                
+
                 # Cache successful response
                 if text:
                     price_cache.cache_response(url, text)
-                
+
                 price = _parse_content(url, text)
                 if price:
                     success = True
-                
-                return price
-                    
+
+                return price, response.status
+
     except Exception as e:
         error_type = str(e)
         logger.warning(f"Async fetch exception for {url}: {e}")
-        return None
+        return None, None
     finally:
         duration_ms = int((time.time() - start_time) * 1000)
         # We record metrics synchronously (SQLAlchemy is sync)
@@ -272,7 +388,8 @@ async def _fetch_price_async(url: str) -> Optional[float]:
                 return None
     
     # Standard fetch for non-Amazon URLs
-    return await _fetch_price_async_standard(url)
+    price, _status = await _fetch_price_async_standard(url)
+    return price
 
 
 def _parse_content(url: str, html_content: str) -> Optional[float]:

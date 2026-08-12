@@ -25,6 +25,7 @@ This segment handles external price extraction and metadata fetching for product
 5. Successfully fetched prices trigger history updates and stamp the item as freshly updated.
 6. Significant price drops (>= 10%) generate notifications for the owner and (if applicable) the claimer.
 7. **Failed fetches are retry-paced**: `price_updated_at` is stamped ~6 days old so the item crosses the 7-day staleness window again in about a day, letting the next cycle retry it without hammering it immediately.
+8. **Browser rescue**: after the aiohttp phase, any non-Amazon URL that failed with HTTP 403/429 is retried once through the headless browser (stealth + rotated identity, sequential to bound memory), parsed with the site-appropriate extractor. A 200-parse-miss or network error is not a bot block and is not rescued. Gated by `BROWSER_RESCUE_ENABLED`.
 
 ### 4.2. Stealth Extraction (Amazon)
 1. Requests an identity from `IdentityManager`.

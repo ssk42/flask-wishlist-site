@@ -143,3 +143,95 @@ class TestPriceAsync:
             
             assert results["https://example.com/cached"] == 99.0
             mock_session_factory.assert_not_called() # No network session created
+
+
+@pytest.mark.asyncio
+class TestBrowserRescue:
+    """Tests for retrying bot-blocked (403/429) URLs through the browser."""
+
+    async def test_403_url_is_rescued_through_browser(self):
+        """A 403-blocked URL gets one browser retry and its price is returned;
+        a successfully-fetched URL must not be re-fetched."""
+        blocked = "https://www.target.com/products/foo"
+        ok = "https://www.rei.com/product/bar"
+
+        fake_identity = MagicMock()
+        fake_manager = MagicMock()
+        fake_manager.get_healthy_identity.return_value = fake_identity
+
+        async def fake_standard(url):
+            return (None, 403) if url == blocked else (12.50, 200)
+
+        async def fake_rescue(u, i, m):
+            return 9.99
+
+        with patch('services.price_async._fetch_price_async_standard',
+                   side_effect=fake_standard), \
+             patch('services.price_async._fetch_browser_rescue',
+                   side_effect=fake_rescue) as mock_rescue, \
+             patch('services.price_async._get_identity_manager',
+                   return_value=fake_manager), \
+             patch('services.price_metrics.log_extraction_attempt'):
+
+            results = await price_async.fetch_prices_batch([blocked, ok])
+
+        assert results[blocked] == 9.99
+        assert results[ok] == 12.50
+        # Rescue ran once, only for the blocked URL, using a healthy identity
+        assert mock_rescue.await_count == 1
+        assert mock_rescue.await_args.args[0] == blocked
+        assert mock_rescue.await_args.args[1] is fake_identity
+
+    async def test_no_rescue_for_parse_failure_or_network_error(self):
+        """A 200 parse miss and a network error are NOT bot blocks and must
+        not be re-fetched through the browser."""
+        parse_miss = "https://example.com/noprice"
+        net_error = "https://example.com/down"
+
+        async def fake_standard(url):
+            if url == parse_miss:
+                return None, 200    # page fetched but no price parsed
+            return None, None    # network error
+
+        async def fake_rescue(u, i, m):
+            return 5.0
+
+        with patch('services.price_async._fetch_price_async_standard',
+                   side_effect=fake_standard), \
+             patch('services.price_async._fetch_browser_rescue',
+                   side_effect=fake_rescue) as mock_rescue, \
+             patch('services.price_async._get_identity_manager') as mock_mgr, \
+             patch('services.price_metrics.log_extraction_attempt'):
+
+            results = await price_async.fetch_prices_batch([parse_miss, net_error])
+
+        assert results[parse_miss] is None
+        assert results[net_error] is None
+        mock_rescue.assert_not_called()
+        mock_mgr.assert_not_called()  # rescue phase not even entered
+
+    async def test_rescue_disabled_skips_browser(self, monkeypatch):
+        """When BROWSER_RESCUE_ENABLED is false, 403 URLs are left as failures
+        and the browser is never launched."""
+        blocked = "https://www.homedepot.com/p/foo"
+
+        async def fake_standard(url):
+            return None, 403
+
+        monkeypatch.setattr(price_async, 'BROWSER_RESCUE_ENABLED', False)
+
+        async def fake_rescue(u, i, m):
+            return 5.0
+
+        with patch('services.price_async._fetch_price_async_standard',
+                   side_effect=fake_standard), \
+             patch('services.price_async._fetch_browser_rescue',
+                   side_effect=fake_rescue) as mock_rescue, \
+             patch('services.price_async._get_identity_manager') as mock_mgr, \
+             patch('services.price_metrics.log_extraction_attempt'):
+
+            results = await price_async.fetch_prices_batch([blocked])
+
+        assert results[blocked] is None
+        mock_rescue.assert_not_called()
+        mock_mgr.assert_not_called()

@@ -99,6 +99,9 @@ class Config:
 
     # Amazon stealth extraction settings
     AMAZON_STEALTH_ENABLED = os.environ.get('AMAZON_STEALTH_ENABLED', 'true').lower() == 'true'
+    # Retry bot-blocked (HTTP 403/429) non-Amazon URLs through the headless
+    # browser once, using the same stealth/identity infrastructure as Amazon.
+    BROWSER_RESCUE_ENABLED = os.environ.get('BROWSER_RESCUE_ENABLED', 'true').lower() == 'true'
 
     # APNs push notifications (feature-flagged: push is skipped unless all are set)
     APNS_KEY_ID = os.getenv('APNS_KEY_ID')
