@@ -235,3 +235,20 @@ class TestBrowserRescue:
         assert results[blocked] is None
         mock_rescue.assert_not_called()
         mock_mgr.assert_not_called()
+
+
+class TestRobotBlockDetection:
+    """Tests for the anti-bot wall detector used by browser rescue."""
+
+    def test_detects_bot_wall_text(self):
+        from services.price_async import _looks_robot_blocked
+        assert _looks_robot_blocked("Checking your browser before accessing…")
+        assert _looks_robot_blocked("Enter the characters you see to verify you are human")
+        assert _looks_robot_blocked("Access Denied - You don't have permission")
+
+    def test_ignores_normal_product_page(self):
+        from services.price_async import _looks_robot_blocked
+        assert not _looks_robot_blocked(
+            "Kindle Paperwhite — $139.99 · In stock · Free shipping")
+        assert not _looks_robot_blocked("")
+        assert not _looks_robot_blocked(None)

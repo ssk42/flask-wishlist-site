@@ -232,8 +232,9 @@ async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
     """Retry a bot-blocked (403/429) URL through the headless browser once.
 
     Mirrors the Amazon stealth recipe (identity fingerprint + stealth patches)
-    but parses with the site-appropriate generic extractor. Browsers are
-    launched sequentially by the caller; each call owns and closes its browser.
+    plus human-like behaviour (cookie-banner dismissal, mouse moves, scroll)
+    and waits for an actual price element to render before extracting. Browsers
+    are launched sequentially by the caller; each call owns and closes its browser.
 
     Returns the parsed price, or None on failure.
     """
@@ -245,6 +246,7 @@ async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
     try:
         from playwright.async_api import async_playwright
         from playwright_stealth import Stealth
+        from services.amazon_stealth.behaviors import interact_like_human
 
         stealth = Stealth(
             webgl_vendor_override=identity.webgl_vendor,
@@ -271,8 +273,27 @@ async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
                 await stealth.apply_stealth_async(page)
 
                 await page.goto(url, wait_until='domcontentloaded', timeout=30000)
-                # Give client-side rendered prices a moment to appear
-                await page.wait_for_timeout(2000)
+
+                # Human-like interaction: reading pause, cookie-banner dismissal,
+                # mouse movement and scroll — many retailers lazy-load the price
+                # only after these.
+                try:
+                    await interact_like_human(page)
+                except Exception:
+                    pass
+
+                # Robot/bot wall detection (Cloudflare/DataDome-style pages)
+                body_text = await page.evaluate("document.body ? document.body.innerText : ''")
+                if _looks_robot_blocked(body_text):
+                    error_type = 'ROBOT_BLOCK'
+                    logger.warning(f"Browser rescue hit a bot wall for {url}")
+                    return None
+
+                # Wait for an actual price element to render (JS-driven), bounded.
+                try:
+                    await page.wait_for_selector(_PRICE_WAIT_SELECTORS, timeout=8000)
+                except Exception:
+                    pass  # no price element; still attempt parse (meta tags may carry it)
 
                 content = await page.content()
                 price = _parse_content(url, content)
@@ -303,6 +324,29 @@ async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
             )
         except Exception as e:
             logger.error(f"Failed to log rescue metric: {e}")
+
+
+# DOM selectors that the generic/site extractors look for — if any is present
+# (JS-rendered), the price is likely extractable. Comma-joined for Playwright.
+_PRICE_WAIT_SELECTORS = ','.join([
+    'meta[property="og:price:amount"]', 'meta[property="product:price:amount"]',
+    'meta[name="price"]', '[itemprop="price"]',
+    '.price', '.product-price', '.current-price', '.sale-price', '.regular-price',
+    '.product__price', '[data-price]', '[data-product-price]', '.price-value',
+    '.woocommerce-Price-amount', '.shopify-Price',
+])
+
+# Strong signals of an anti-bot interstitial rather than a product page.
+_ROBOT_BLOCK_MARKERS = (
+    'captcha', 'robot check', 'verify you are human', 'unusual traffic',
+    'checking your browser', 'access denied', 'blocked by',
+)
+
+
+def _looks_robot_blocked(text: str) -> bool:
+    """True if page text looks like an anti-bot wall (Cloudflare/DataDome et al)."""
+    low = (text or '').lower()
+    return any(marker in low for marker in _ROBOT_BLOCK_MARKERS)
 
 
 async def _fetch_price_async_standard(url: str) -> Tuple[Optional[float], Optional[int]]:
