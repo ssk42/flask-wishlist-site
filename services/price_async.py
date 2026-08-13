@@ -85,9 +85,12 @@ async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
             # Jitter to avoid thundering herd and strict rate limit checks
             await asyncio.sleep(random.uniform(0.1, 1.0))
             price, status = await _fetch_price_async_standard(url)
-            # Bot-blocked (403/429) URLs are candidates for browser rescue.
-            # A 200-with-no-price (parse miss) or network error is not a block.
-            if price is None and status in (403, 429):
+            # Browser-rescue candidates:
+            #  - explicit bot blocks (403/429), and
+            #  - a 200 that yielded no price — the HTML price is often
+            #    JS-rendered (e.g. Target) and only a real browser sees it.
+            # Network errors (status None) and cache hits are not rescued.
+            if price is None and status in (403, 429, 200):
                 blocked_urls.add(url)
             return url, price
 
@@ -394,13 +397,13 @@ async def _fetch_price_async_standard(url: str) -> Tuple[Optional[float], Option
 
                 text = await response.text()
 
-                # Cache successful response
-                if text:
-                    price_cache.cache_response(url, text)
-
                 price = _parse_content(url, text)
                 if price:
                     success = True
+                    # Cache only price-bearing responses — a 200 with no price
+                    # is often JS-rendered (Target et al.) and must be retried,
+                    # not shelved in the cache at empty for the next 7 days.
+                    price_cache.cache_response(url, text)
 
                 return price, response.status
 

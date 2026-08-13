@@ -182,16 +182,39 @@ class TestBrowserRescue:
         assert mock_rescue.await_args.args[0] == blocked
         assert mock_rescue.await_args.args[1] is fake_identity
 
-    async def test_no_rescue_for_parse_failure_or_network_error(self):
-        """A 200 parse miss and a network error are NOT bot blocks and must
-        not be re-fetched through the browser."""
-        parse_miss = "https://example.com/noprice"
+    async def test_200_parse_miss_is_rescued(self):
+        """A 200 with no price (JS-rendered, e.g. Target) IS a rescue candidate:
+        only a real browser sees the price."""
+        parse_miss = "https://www.target.com/p/foo"
+        fake_identity = MagicMock()
+        fake_manager = MagicMock()
+        fake_manager.get_healthy_identity.return_value = fake_identity
+
+        async def fake_standard(url):
+            return None, 200
+
+        async def fake_rescue(u, i, m):
+            return 31.49
+
+        with patch('services.price_async._fetch_price_async_standard',
+                   side_effect=fake_standard), \
+             patch('services.price_async._fetch_browser_rescue',
+                   side_effect=fake_rescue) as mock_rescue, \
+             patch('services.price_async._get_identity_manager',
+                   return_value=fake_manager), \
+             patch('services.price_metrics.log_extraction_attempt'):
+
+            results = await price_async.fetch_prices_batch([parse_miss])
+
+        assert results[parse_miss] == 31.49
+        assert mock_rescue.await_count == 1
+
+    async def test_network_error_not_rescued(self):
+        """A network error (status None) is not a bot block and is not rescued."""
         net_error = "https://example.com/down"
 
         async def fake_standard(url):
-            if url == parse_miss:
-                return None, 200    # page fetched but no price parsed
-            return None, None    # network error
+            return None, None
 
         async def fake_rescue(u, i, m):
             return 5.0
@@ -203,12 +226,11 @@ class TestBrowserRescue:
              patch('services.price_async._get_identity_manager') as mock_mgr, \
              patch('services.price_metrics.log_extraction_attempt'):
 
-            results = await price_async.fetch_prices_batch([parse_miss, net_error])
+            results = await price_async.fetch_prices_batch([net_error])
 
-        assert results[parse_miss] is None
         assert results[net_error] is None
         mock_rescue.assert_not_called()
-        mock_mgr.assert_not_called()  # rescue phase not even entered
+        mock_mgr.assert_not_called()
 
     async def test_rescue_disabled_skips_browser(self, monkeypatch):
         """When BROWSER_RESCUE_ENABLED is false, 403 URLs are left as failures
