@@ -229,12 +229,14 @@ async def _fetch_amazon_stealth(url: str, identity, manager) -> Optional[float]:
 
 
 async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
-    """Retry a bot-blocked (403/429) URL through the headless browser once.
+    """Retry a bot-blocked (403/429) URL through the headless browser.
 
-    Mirrors the Amazon stealth recipe (identity fingerprint + stealth patches)
-    plus human-like behaviour (cookie-banner dismissal, mouse moves, scroll)
-    and waits for an actual price element to render before extracting. Browsers
-    are launched sequentially by the caller; each call owns and closes its browser.
+    Up to two attempts per URL: the caller-provided identity, then — on
+    failure — a different identity from the manager (some soft blocks are
+    fingerprint-sensitive). Each attempt mirrors the Amazon stealth recipe:
+    identity fingerprint, stealth patches, human-like behaviour (cookie
+    banner, mouse, scroll), a wait for an actual price element, and
+    anti-bot-wall detection. Sequential by the caller; one browser at a time.
 
     Returns the parsed price, or None on failure.
     """
@@ -243,87 +245,99 @@ async def _fetch_browser_rescue(url: str, identity, manager) -> Optional[float]:
     price = None
     error_type = None
 
-    try:
-        from playwright.async_api import async_playwright
-        from playwright_stealth import Stealth
-        from services.amazon_stealth.behaviors import interact_like_human
-
-        stealth = Stealth(
-            webgl_vendor_override=identity.webgl_vendor,
-            webgl_renderer_override=identity.webgl_renderer,
-        )
-
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            try:
-                context = await browser.new_context(
-                    user_agent=identity.user_agent,
-                    viewport=identity.viewport,
-                    locale=identity.locale,
-                    timezone_id=identity.timezone,
-                    color_scheme=identity.color_scheme,
-                    device_scale_factor=identity.device_scale,
-                )
-                if manager:
-                    cookies = manager.load_cookies(identity.id)
-                    if cookies:
-                        await context.add_cookies(cookies)
-
-                page = await context.new_page()
-                await stealth.apply_stealth_async(page)
-
-                await page.goto(url, wait_until='domcontentloaded', timeout=30000)
-
-                # Human-like interaction: reading pause, cookie-banner dismissal,
-                # mouse movement and scroll — many retailers lazy-load the price
-                # only after these.
-                try:
-                    await interact_like_human(page)
-                except Exception:
-                    pass
-
-                # Robot/bot wall detection (Cloudflare/DataDome-style pages)
-                body_text = await page.evaluate("document.body ? document.body.innerText : ''")
-                if _looks_robot_blocked(body_text):
-                    error_type = 'ROBOT_BLOCK'
-                    logger.warning(f"Browser rescue hit a bot wall for {url}")
-                    return None
-
-                # Wait for an actual price element to render (JS-driven), bounded.
-                try:
-                    await page.wait_for_selector(_PRICE_WAIT_SELECTORS, timeout=8000)
-                except Exception:
-                    pass  # no price element; still attempt parse (meta tags may carry it)
-
-                content = await page.content()
-                price = _parse_content(url, content)
-                if price is not None:
-                    success = True
-                    if manager:
-                        manager.mark_success(identity)
-                elif manager:
-                    manager.save_cookies(identity.id, await context.cookies())
-            finally:
-                await browser.close()
-        return price
-
-    except Exception as e:
-        error_type = str(e)
-        logger.error(f"Browser rescue failed for {url}: {e}")
-        return None
-    finally:
-        duration_ms = int((time.time() - start_time) * 1000)
+    async def attempt(ident) -> Tuple[Optional[float], str]:
+        """One full browser fetch+parse of the URL with the given identity."""
         try:
-            price_metrics.log_extraction_attempt(
-                url=url,
-                success=success,
-                price=price,
-                method='browser_rescue',
-                error_type=error_type,
-                response_time_ms=duration_ms
+            from playwright.async_api import async_playwright
+            from playwright_stealth import Stealth
+            from services.amazon_stealth.behaviors import interact_like_human
+
+            stealth = Stealth(
+                webgl_vendor_override=ident.webgl_vendor,
+                webgl_renderer_override=ident.webgl_renderer,
             )
+
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                try:
+                    context = await browser.new_context(
+                        user_agent=ident.user_agent,
+                        viewport=ident.viewport,
+                        locale=ident.locale,
+                        timezone_id=ident.timezone,
+                        color_scheme=ident.color_scheme,
+                        device_scale_factor=ident.device_scale,
+                        ignore_https_errors=True,
+                    )
+                    if manager:
+                        cookies = manager.load_cookies(ident.id)
+                        if cookies:
+                            await context.add_cookies(cookies)
+
+                    page = await context.new_page()
+                    await stealth.apply_stealth_async(page)
+
+                    await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+
+                    try:
+                        await interact_like_human(page)
+                    except Exception:
+                        pass
+
+                    body_text = await page.evaluate("document.body ? document.body.innerText : ''")
+                    if _looks_robot_blocked(body_text):
+                        return None, 'ROBOT_BLOCK'
+
+                    try:
+                        await page.wait_for_selector(_PRICE_WAIT_SELECTORS, timeout=8000)
+                    except Exception:
+                        pass  # no price element; still attempt parse (meta tags may carry it)
+
+                    content = await page.content()
+                    price_here = _parse_content(url, content)
+                    if price_here is not None and manager:
+                        manager.save_cookies(ident.id, await context.cookies())
+                    return price_here, None
+                finally:
+                    await browser.close()
         except Exception as e:
-            logger.error(f"Failed to log rescue metric: {e}")
+            return None, str(e)
+
+    # Attempt 1: the identity the caller chose.
+    price, error_type = await attempt(identity)
+
+    # Attempt 2: a different identity — some soft blocks are fingerprint bound.
+    if price is None and manager is not None:
+        second = None
+        for _ in range(3):
+            candidate = manager.get_healthy_identity()
+            if candidate is not None and (second is None or candidate.id != identity.id):
+                second = candidate
+                break
+        if second is not None:
+            price2, error_type2 = await attempt(second)
+            if price2 is not None:
+                price = price2
+                error_type = None
+            else:
+                error_type = error_type2 or error_type
+
+    if price is not None:
+        success = True
+
+    duration_ms = int((time.time() - start_time) * 1000)
+    try:
+        price_metrics.log_extraction_attempt(
+            url=url,
+            success=success,
+            price=price,
+            method='browser_rescue',
+            error_type=error_type,
+            response_time_ms=duration_ms
+        )
+    except Exception as e:
+        logger.error(f"Failed to log rescue metric: {e}")
+    return price
 
 
 # DOM selectors that the generic/site extractors look for — if any is present
