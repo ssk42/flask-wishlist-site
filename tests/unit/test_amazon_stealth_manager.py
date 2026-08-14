@@ -89,3 +89,31 @@ class TestIdentityManager:
         # mac_chrome_2 has count 50, which is lowest
         # All should be mac_chrome_2 since it's the only one with count <= min + 2
         assert all(i == "mac_chrome_2" for i in ids)
+
+
+def test_identity_manager_survives_redis_down():
+    """A configured-but-unreachable Redis (lazy client, server down) must not
+    break identity selection — the crawler degrades instead of raising."""
+    from services.amazon_stealth.identity_manager import IdentityManager
+
+    class DownRedis:
+        def get(self, key):
+            raise ConnectionError("Error 61 connecting to localhost:6379")
+        def set(self, *a, **k):
+            raise ConnectionError("down")
+        def incr(self, key):
+            raise ConnectionError("down")
+        def expire(self, *a):
+            raise ConnectionError("down")
+        def delete(self, *a):
+            raise ConnectionError("down")
+
+    mgr = IdentityManager(DownRedis())
+    # Selection must return an identity (counts/burns degrade to defaults)...
+    ident = mgr.get_healthy_identity()
+    assert ident is not None
+    # ...and mutations must not raise.
+    mgr.mark_success(ident)
+    mgr.mark_burned(ident)
+    mgr.save_cookies(ident.id, [])
+    assert mgr.load_cookies(ident.id) == []

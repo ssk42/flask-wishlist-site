@@ -30,6 +30,20 @@ class IdentityManager:
             BrowserIdentity(**profile) for profile in IDENTITY_PROFILES
         ]
 
+    @staticmethod
+    def _redis_safe(fn, default=None):
+        """Run a Redis call, degrading gracefully on a down/unreachable Redis.
+
+        redis client construction is lazy, so a configured-but-down Redis
+        (e.g. local dev with no Redis running) still yields a non-None client
+        whose calls raise ConnectionError. The crawler must never die because
+        the identity store is unreachable."""
+        try:
+            return fn()
+        except Exception as e:
+            logger.warning(f"Redis unavailable, degrading identity manager: {e}")
+            return default
+
     def _redis_key(self, identity_id: str, suffix: str) -> str:
         """Generate Redis key for identity state."""
         return f"amazon:identity:{identity_id}:{suffix}"
@@ -39,7 +53,7 @@ class IdentityManager:
         if not self.redis:
             return 0
         key = self._redis_key(identity_id, "requests")
-        value = self.redis.get(key)
+        value = self._redis_safe(lambda: self.redis.get(key))
         return int(value) if value else 0
 
     def _is_burned(self, identity_id: str) -> bool:
@@ -47,7 +61,7 @@ class IdentityManager:
         if not self.redis:
             return False
         key = self._redis_key(identity_id, "burned")
-        value = self.redis.get(key)
+        value = self._redis_safe(lambda: self.redis.get(key))
         if not value:
             return False
         try:
@@ -89,10 +103,10 @@ class IdentityManager:
             return
 
         key = self._redis_key(identity.id, "requests")
-        count = self.redis.incr(key)
+        count = self._redis_safe(lambda: self.redis.incr(key), 1)
 
         # Set 24h expiry on request counter
-        self.redis.expire(key, 86400)
+        self._redis_safe(lambda: self.redis.expire(key, 86400))
 
         # Check if we should rotate
         threshold = random.randint(MIN_REQUESTS_BEFORE_ROTATE, MAX_REQUESTS_BEFORE_ROTATE)
@@ -109,8 +123,8 @@ class IdentityManager:
 
         if self.redis:
             key = self._redis_key(identity.id, "burned")
-            self.redis.set(key, burn_until.isoformat())
-            self.redis.expire(key, BURN_DURATION_HOURS * 3600)
+            self._redis_safe(lambda: self.redis.set(key, burn_until.isoformat()))
+            self._redis_safe(lambda: self.redis.expire(key, BURN_DURATION_HOURS * 3600))
 
         logger.warning(f"Burned identity {identity.id} until {burn_until}")
 
@@ -120,10 +134,10 @@ class IdentityManager:
             return
 
         # Reset request count
-        self.redis.delete(self._redis_key(identity_id, "requests"))
+        self._redis_safe(lambda: self.redis.delete(self._redis_key(identity_id, "requests")))
 
         # Clear cookies (will be regenerated on next use)
-        self.redis.delete(self._redis_key(identity_id, "cookies"))
+        self._redis_safe(lambda: self.redis.delete(self._redis_key(identity_id, "cookies")))
 
         logger.info(f"Reset identity {identity_id}")
 
@@ -133,8 +147,8 @@ class IdentityManager:
             return
         import json
         key = self._redis_key(identity_id, "cookies")
-        self.redis.set(key, json.dumps(cookies))
-        self.redis.expire(key, 86400)  # 24h expiry
+        self._redis_safe(lambda: self.redis.set(key, json.dumps(cookies)))
+        self._redis_safe(lambda: self.redis.expire(key, 86400))  # 24h expiry
 
     def load_cookies(self, identity_id: str) -> list:
         """Load saved cookies for identity."""
@@ -142,7 +156,7 @@ class IdentityManager:
             return []
         import json
         key = self._redis_key(identity_id, "cookies")
-        value = self.redis.get(key)
+        value = self._redis_safe(lambda: self.redis.get(key))
         if value:
             try:
                 return json.loads(value.decode())

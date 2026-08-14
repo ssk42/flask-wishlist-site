@@ -23,8 +23,15 @@ from models import db, User, Event, Item, Notification
 
 def create_app(config_name=None):
     """Application factory for creating Flask app instances."""
-    # Initialize Sentry before app creation
-    if os.getenv('SENTRY_DSN'):
+    # Initialize Sentry before app creation. Captured only in production, or
+    # explicitly opted-in via SENTRY_ENABLED=true — otherwise local dev/test
+    # runs page the "recently active members" list with laptop-only noise
+    # (e.g. Celery/Redis "retry limit" fatals with no local Redis running).
+    _app_env = os.getenv('FLASK_ENV', 'development')
+    _sentry_on = os.getenv('SENTRY_DSN') and (
+        _app_env == 'production' or os.getenv('SENTRY_ENABLED', '').lower() == 'true'
+    )
+    if _sentry_on:
         sentry_sdk.init(
             dsn=os.getenv('SENTRY_DSN'),
             integrations=[
@@ -33,7 +40,7 @@ def create_app(config_name=None):
             ],
             traces_sample_rate=1.0,
             profiles_sample_rate=1.0,
-            environment=os.getenv('FLASK_ENV', 'development')
+            environment=_app_env
         )
 
     app = Flask(__name__)
