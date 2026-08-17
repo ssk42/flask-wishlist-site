@@ -2,7 +2,7 @@
 
 This document tracks all planned and completed improvements to the Family Wishlist application.
 
-**Last Updated:** 2026-01-04 (Session 7)
+**Last Updated:** 2026-08-16 (Session: iOS client + full arrow audit)
 
 ---
 
@@ -227,6 +227,35 @@ Detailed PRDs have been created for upcoming features:
 ---
 
 ## 📅 Changelog
+
+### 2026-08-15 (Session: iOS Native Client + Arrow Mapping)
+- ✅ **Native iOS app (SwiftUI)** — client for the `/api/v1` JSON API, built in
+  `ios/` (XcodeGen project, no third-party deps):
+  - `WishlistKit` shared framework: `APIClient` actor, Codable models, Keychain
+    token store, `Session` state machine, view models (45 unit tests, offline
+    `URLProtocol` stubs).
+  - `Wishlist` app: login + four tabs (Family → member items → claim/purchase,
+    My List CRUD, Claims, Activity). Warm-editorial design system (`Theme.swift`).
+  - Push notifications: APNs authorization, device-token registration
+    (`POST /api/v1/devices`), tapped-notification routing.
+  - `ShareExtension`: add items to a wishlist from Safari using the app's token in
+    the shared Keychain group.
+  - Deployed backend `https://gifts.stevereitz.dev`; device signing + APNs key
+    configured.
+- ✅ **Folded the client into the linked-intent arrow** — new `boundary-ios` in
+`docs/arrows/boundary-ios/` with six segments (`ios-networking`, `ios-auth`,
+  `ios-gifting`, `ios-curation`, `ios-activity`, `ios-share`); LLDs + EARS specs in
+  `docs/intent/boundary-ios/`, per-segment arrow docs under
+  `docs/arrows/boundary-ios/`; HLD updated with the sixth boundary.
+- ✅ **Client gaps cleared (walked the arrow)** — session restore via
+  `GET /api/v1/me` (IOS-AUTH-007), push-payload deep-link routing
+  (`GET /api/v1/items/<id>` → `{item, owner}`, IOS-ACT-008 / IOS-NET-012/013),
+  logout affordance on My List (IOS-AUTH-008), and once-per-install push
+  specs are now `[x]` implemented; server + client TDD green.
+- ✅ **iOS polish nits cleared** — metadata prefill in the add/edit form
+  (IOS-CUR-008), claims rows navigate to the item detail (IOS-GIFT-009), app-icon
+  badge mirrors unread count (IOS-ACT-010), typed metadata envelope + single
+  nil-drop point in `APIClient` (IOS-NET). 53 specs `[x]` across `boundary-ios`.
 
 ### 2026-01-04 (Session 7: Split Gifts Feature)
 - ✅ **Split Gifts Feature (#32)**

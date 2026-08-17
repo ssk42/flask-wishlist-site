@@ -9,6 +9,7 @@ from services import price_async
 class TestPriceAsync:
 
     async def test_fetch_prices_batch_success(self):
+        # @spec AUTO-PRC-001
         """Test concurrent batch fetching of prices."""
         urls = [
             "https://example.com/item1",
@@ -76,6 +77,7 @@ class TestPriceAsync:
             assert mock_cache.call_count == 3
 
     async def test_fetch_prices_batch_partial_failure(self):
+        # @spec AUTO-PRC-001
         """Test batch fetching with some failures."""
         urls = [
             "https://example.com/success",
@@ -132,6 +134,7 @@ class TestPriceAsync:
             assert results["https://example.com/fail_parse"] is None
 
     async def test_batch_cache_hit(self):
+        # @spec AUTO-PRC-001
         """Test that cached items avoid network calls."""
         urls = ["https://example.com/cached"]
         
@@ -143,6 +146,67 @@ class TestPriceAsync:
             
             assert results["https://example.com/cached"] == 99.0
             mock_session_factory.assert_not_called() # No network session created
+
+    async def test_fetch_amazon_urls_sequentially_when_stealth_enabled(self):
+        # @spec AUTO-PRC-001
+        """Amazon URLs process sequentially (one at a time) when stealth is enabled."""
+        urls = [
+            "https://www.amazon.com/dp/B0TEST1",
+            "https://www.amazon.com/dp/B0TEST2",
+            "https://example.com/item1",
+        ]
+
+        calls = []
+        in_flight = 0
+        peak_in_flight = 0
+
+        async def fake_stealth(url, identity, manager):
+            nonlocal in_flight, peak_in_flight
+            in_flight += 1
+            peak_in_flight = max(peak_in_flight, in_flight)
+            await asyncio.sleep(0.001)  # widen the concurrency window
+            in_flight -= 1
+            calls.append(url)
+            return 42.0
+
+        fake_identity = MagicMock()
+        fake_manager = MagicMock()
+        fake_manager.get_healthy_identity.return_value = fake_identity
+
+        with patch("services.price_async.AMAZON_STEALTH_ENABLED", True), \
+             patch("services.price_async._get_identity_manager", return_value=fake_manager), \
+             patch("services.price_async._fetch_amazon_stealth", side_effect=fake_stealth), \
+             patch("services.price_async._fetch_price_async_standard") as mock_standard, \
+             patch("services.price_async._get_async_session") as mock_session_factory, \
+             patch("services.price_async._parse_content"), \
+             patch("services.price_cache.get_cached_response", return_value=None), \
+             patch("services.price_cache.cache_response"), \
+             patch("services.price_metrics.log_extraction_attempt"), \
+             patch("services.price_async.random.uniform", return_value=0.1):
+            # Standard fetch for the non-Amazon URL
+            async def ctx_stub(url, **kw):
+                resp = AsyncMock(); resp.status = 200; resp.text = AsyncMock(return_value="<html></html>")
+                ctx = AsyncMock(); ctx.__aenter__.return_value = resp; return ctx
+            mock_session = AsyncMock()
+            mock_session.__aenter__.return_value = mock_session
+            mock_session.__aexit__.return_value = None
+            async def get_session_stub(): return mock_session
+            mock_session_factory.side_effect = get_session_stub
+            mock_session.get = MagicMock(side_effect=ctx_stub)
+            mock_standard.return_value = 7.0
+            price_async._parse_content.return_value = 7.0
+
+            results = await price_async.fetch_prices_batch(urls)
+
+        # Both Amazon URLs went through the sequential stealth lane in order,
+        # ONE AT A TIME (peak concurrent in-flight never exceeds 1).
+        assert calls == [
+            "https://www.amazon.com/dp/B0TEST1",
+            "https://www.amazon.com/dp/B0TEST2",
+        ]
+        assert peak_in_flight == 1, f"Amazon lane must be sequential, peak={peak_in_flight}"
+        assert results["https://www.amazon.com/dp/B0TEST1"] == 42.0
+        assert results["https://www.amazon.com/dp/B0TEST2"] == 42.0
 
 
 @pytest.mark.asyncio

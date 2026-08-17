@@ -4,6 +4,7 @@ from flask import flash, redirect, url_for
 
 
 def flash_and_redirect(message, category, endpoint, **kwargs):
+    # @spec VW-UI-005
     """Flash a message and redirect to an endpoint.
 
     This helper combines the common pattern of flashing a message and

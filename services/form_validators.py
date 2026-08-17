@@ -184,6 +184,7 @@ def is_http_url(value):
 
 
 def validate_item_fields(validator, description, link, image_url, price, event_id):
+    # @spec OWN-ITEM-005, OWN-ITEM-006, OWN-ITEM-008
     """Server-side validations shared by item create and owner edit (web + API)."""
     from models import db, Event
     if description and len(description) > 750:

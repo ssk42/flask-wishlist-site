@@ -31,6 +31,7 @@ class ExtractionResult:
 
 
 def classify_failure(content: str, status_code: int) -> AmazonFailureType:
+    # @spec AUTO-STL-007, AUTO-STL-008
     """Classify the type of extraction failure.
 
     Args:
@@ -59,6 +60,7 @@ async def stealth_fetch_amazon(
     identity: BrowserIdentity,
     identity_manager=None
 ) -> ExtractionResult:
+    # @spec AUTO-STL-006
     """Fetch Amazon price using full stealth mode.
 
     Args:

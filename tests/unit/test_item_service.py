@@ -16,6 +16,7 @@ def _item(owner_id, status="Available", last_updated_by_id=None):
 
 
 def test_claim_success(app, user, other_user):
+    # @spec GIV-CLM-003
     with app.app_context():
         item = _item(owner_id=user)
         item_service.claim_item(item, other_user)
@@ -24,6 +25,7 @@ def test_claim_success(app, user, other_user):
 
 
 def test_cannot_claim_own_item(app, user):
+    # @spec GIV-CLM-002
     with app.app_context():
         item = _item(owner_id=user)
         with pytest.raises(ItemActionError) as exc:
@@ -33,6 +35,7 @@ def test_cannot_claim_own_item(app, user):
 
 
 def test_cannot_claim_unavailable_item(app, user, other_user):
+    # @spec GIV-CLM-004
     with app.app_context():
         item = _item(owner_id=user, status="Claimed", last_updated_by_id=other_user)
         with pytest.raises(ItemActionError) as exc:
@@ -41,6 +44,7 @@ def test_cannot_claim_unavailable_item(app, user, other_user):
 
 
 def test_unclaim_by_claimer(app, user, other_user):
+    # @spec GIV-CLM-005
     with app.app_context():
         item = _item(owner_id=user, status="Claimed", last_updated_by_id=other_user)
         item_service.unclaim_item(item, other_user)
@@ -48,6 +52,7 @@ def test_unclaim_by_claimer(app, user, other_user):
 
 
 def test_unclaim_rejected_for_non_claimer(app, user, other_user):
+    # @spec GIV-CLM-006
     with app.app_context():
         item = _item(owner_id=other_user, status="Claimed", last_updated_by_id=user)
         with pytest.raises(ItemActionError) as exc:

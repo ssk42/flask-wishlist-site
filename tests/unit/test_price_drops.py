@@ -39,6 +39,7 @@ def price_drop_setup(app):
 
 
 def test_price_drop_creates_owner_notification(app, price_drop_setup):
+    # @spec AUTO-PRC-003
     """When price drops ≥10%, owner gets a notification."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
@@ -63,6 +64,7 @@ def test_price_drop_creates_owner_notification(app, price_drop_setup):
 
 
 def test_price_drop_creates_claimer_notification(app, price_drop_setup):
+    # @spec AUTO-PRC-004
     """When price drops ≥10%, claimer also gets a notification."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
@@ -82,6 +84,7 @@ def test_price_drop_creates_claimer_notification(app, price_drop_setup):
 
 
 def test_small_price_drop_no_notification(app, price_drop_setup):
+    # @spec AUTO-PRC-003
     """When price drops <10%, no notification is created."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification
@@ -100,6 +103,7 @@ def test_small_price_drop_no_notification(app, price_drop_setup):
 
 
 def test_price_increase_no_notification(app, price_drop_setup):
+    # @spec AUTO-PRC-003
     """When price increases, no notification is created."""
     from services.price_service import update_stale_prices
     from models import db, Item, Notification

@@ -78,6 +78,7 @@ def _get_item_or_404(item_id):
 
 
 def _item_card_response(item, message, category):
+    # @spec GIV-CLM-010
     """Render the htmx partial response for claim/unclaim actions.
 
     Dashboard context gets the compact card plus rendered flash messages;
@@ -110,6 +111,9 @@ def _parse_contribution_amount():
 @bp.route('/items')
 @login_required
 def items_list():
+    # @spec GIV-SEC-001, GIV-CLM-011, OWN-VIS-002, OWN-VIS-003, OWN-VIS-004, OWN-VIS-005,
+    # @spec VW-FEED-001, VW-FEED-002, VW-FEED-003, VW-FEED-004,
+    # @spec VW-FEED-005, VW-FEED-006, VW-FEED-007, VW-FEED-008
     """List all items with filtering, sorting, and grouping."""
     # Use SessionFilterManager for filter persistence
     filter_manager = SessionFilterManager(request)
@@ -250,6 +254,7 @@ def items_list():
 @bp.route('/submit_item', methods=['GET', 'POST'])
 @login_required
 def submit_item():
+    # @spec OWN-ITEM-001, OWN-ITEM-007
     """Create a new wishlist item."""
     # Get upcoming events for the dropdown
     today = datetime.date.today()
@@ -322,6 +327,7 @@ def submit_item():
 @bp.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
 @login_required
 def edit_item(item_id):
+    # @spec OWN-ITEM-002, OWN-ITEM-003, OWN-ITEM-007, OWN-VIS-006
     """Edit an existing item."""
     item = _get_item_or_404(item_id)
 
@@ -460,6 +466,7 @@ def get_item_modal(item_id):
 @bp.route('/items/<int:item_id>/split-modal')
 @login_required
 def get_split_modal(item_id):
+    # @spec GIV-SPL-008
     """Get split gift modal content for dynamic loading."""
     item = _get_item_or_404(item_id)
 
@@ -496,6 +503,7 @@ def refresh_price(item_id):
 @bp.route('/delete_item/<int:item_id>', methods=['POST'])
 @login_required
 def delete_item(item_id):
+    # @spec OWN-ITEM-004
     """Delete an item (owner only)."""
     item = db.session.get(Item, item_id)
     if item is None:
@@ -519,6 +527,7 @@ def delete_item(item_id):
 @bp.route('/my-claims')
 @login_required
 def my_claims():
+    # @spec GIV-CLM-007, GIV-CLM-008
     """Show items the current user has claimed or purchased for others."""
     items = (
         Item.query.options(
@@ -591,6 +600,7 @@ def export_my_status_updates():
 @bp.route('/items/<int:item_id>/split', methods=['POST'])
 @login_required
 def start_split(item_id):
+    # @spec GIV-SPL-001
     """Start a split on an available item."""
     item = _get_item_or_404(item_id)
 
@@ -626,8 +636,13 @@ def start_split(item_id):
 @bp.route('/items/<int:item_id>/contribute', methods=['POST'])
 @login_required
 def join_split(item_id):
+    # @spec GIV-SPL-002
     """Join an existing split."""
     item = _get_item_or_404(item_id)
+
+    if item.user_id == current_user.id:
+        flash('You cannot contribute to your own item.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     if item.status != 'Splitting':
         flash('Item is not currently being split.', 'warning')
@@ -660,6 +675,7 @@ def join_split(item_id):
 @bp.route('/items/<int:item_id>/withdraw', methods=['POST'])
 @login_required
 def withdraw_contribution(item_id):
+    # @spec GIV-SPL-003, GIV-SPL-004, GIV-SPL-005
     """Withdraw contribution from a split."""
     item = _get_item_or_404(item_id)
 
@@ -691,6 +707,7 @@ def withdraw_contribution(item_id):
 @bp.route('/items/<int:item_id>/complete-split', methods=['POST'])
 @login_required
 def complete_split(item_id):
+    # @spec GIV-SEC-007, GIV-SPL-006, GIV-SPL-007
     """Mark split gift as purchased (Organizer only)."""
     item = _get_item_or_404(item_id)
 
@@ -700,11 +717,25 @@ def complete_split(item_id):
         flash('Only the split organizer can mark this as purchased.', 'danger')
         return redirect(get_items_url_with_filters())
 
+    # Notify every other contributor; never the organizer (the actor) or the item
+    # owner (surprise protection — the recipient must not learn gift state).
+    from services.notification_service import create_notification
+    other_contributor_ids = [
+        c.user_id for c in Contribution.query.filter(
+            Contribution.item_id == item.id,
+            Contribution.user_id != current_user.id,
+            Contribution.user_id != item.user_id,  # owner can't learn gift state
+        ).all()
+    ]
+    msg = f"{current_user.name} marked an item as purchased: {item.description[:30]}..."
+    link = url_for('items.items_list', _anchor=f'item-{item.id}')
+    for recipient_id in other_contributor_ids:
+        create_notification(recipient_id, msg, link)
+
     item.status = 'Purchased'
     item.last_updated_by_id = current_user.id  # Organizer gets the credit in last_updated_by
     db.session.commit()
 
     flash(f'"{item.description}" marked as purchased! All contributors will be notified.', 'success')
-    # TODO: Send notifications to other contributors
-    
+
     return redirect(get_items_url_with_filters())

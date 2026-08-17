@@ -25,6 +25,7 @@ def _create(client, description, **extra):
 
 
 def test_create_is_idempotent_and_survives_reload(client, app, login):
+    # @spec OWN-ITEM-001
     page = client.get('/submit_item')
     token = _form_token(page)
     data = {'description': 'One-time tent', 'priority': 'High', 'status': 'Available',
@@ -61,6 +62,7 @@ def test_invalid_edit_preserves_unsaved_values_and_database_state(client, app, l
 
 
 def test_create_rejects_an_invalid_link_without_losing_input(client, login):
+    # @spec OWN-ITEM-008
     page = client.get('/submit_item')
     response = client.post('/submit_item', data={
         'description': 'Keep my draft', 'link': 'javascript:alert(1)',
@@ -91,6 +93,7 @@ def test_edit_failure_is_recoverable(client, app, login, user, monkeypatch):
 
 
 def test_consecutive_create_edit_delete_keeps_sorted_list_consistent(client, app, login, user):
+    # @spec OWN-ITEM-002
     assert _create(client, 'Bravo').status_code == 302
     assert _create(client, 'Alpha').status_code == 302
     with app.app_context():
@@ -113,6 +116,7 @@ def test_consecutive_create_edit_delete_keeps_sorted_list_consistent(client, app
 
 
 def test_delete_requires_post_and_recovers_from_a_failed_commit(client, app, login, user, monkeypatch):
+    # @spec OWN-ITEM-004
     with app.app_context():
         item = Item(description='Do not lose me', priority='Low', status='Available', user_id=user)
         db.session.add(item)

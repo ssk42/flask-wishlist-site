@@ -15,6 +15,7 @@ public final class MemberItemsViewModel {
     }
 
     public func load() async {
+        // @spec IOS-GIFT-002
         isLoading = true
         error = nil
         do { items = try await client.items(userID: member.id) }
@@ -22,6 +23,7 @@ public final class MemberItemsViewModel {
         isLoading = false
     }
 
+    // @spec IOS-GIFT-003
     public func claim(_ item: Item) async { await mutate(item) { try await self.client.claim(itemID: item.id) } }
     public func unclaim(_ item: Item) async { await mutate(item) { try await self.client.unclaim(itemID: item.id) } }
     public func purchase(_ item: Item) async { await mutate(item) { try await self.client.purchase(itemID: item.id) } }
@@ -38,5 +40,6 @@ public final class MemberItemsViewModel {
         }
     }
 
+    // @spec IOS-GIFT-004
     private func friendly(_ code: String) -> String { ConflictCopy.friendly(code) }
 }

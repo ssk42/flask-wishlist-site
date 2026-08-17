@@ -33,6 +33,7 @@ final class APIClientWriteTests: XCTestCase {
     }
 
     func testClaimConflictThrows() async {
+        // @spec IOS-NET-005
         StubURLProtocol.handler = { req in
             (HTTPURLResponse(url: req.url!, statusCode: 409, httpVersion: nil, headerFields: nil)!,
              Data(#"{"error":"own_item"}"#.utf8))
@@ -54,6 +55,7 @@ final class APIClientWriteTests: XCTestCase {
     }
 
     func testMarkAllNotificationsReadPostsToReadAllPath() async throws {
+        // @spec IOS-NET-011
         var captured: URLRequest?
         StubURLProtocol.handler = { req in
             captured = req
@@ -65,6 +67,7 @@ final class APIClientWriteTests: XCTestCase {
     }
 
     func testUpdateItemPartialPatchOmitsNilFields() async throws {
+        // @spec IOS-NET-006, IOS-NET-007
         var captured: URLRequest?
         StubURLProtocol.handler = { req in
             captured = req
@@ -83,6 +86,7 @@ final class APIClientWriteTests: XCTestCase {
     }
 
     func testFetchMetadataMapsServerKeys() async throws {
+        // @spec IOS-NET-009
         StubURLProtocol.handler = { req in
             XCTAssertEqual(req.url?.path, "/api/v1/metadata")
             let body = #"{"title":"Cool Bike","price":249.99,"image_url":"https://ex.com/b.jpg"}"#
@@ -96,6 +100,7 @@ final class APIClientWriteTests: XCTestCase {
     }
 
     func testRegisterDevicePostsToken() async throws {
+        // @spec IOS-NET-010
         var captured: URLRequest?
         StubURLProtocol.handler = { req in
             captured = req

@@ -79,6 +79,13 @@ def logout():
     return jsonify({'ok': True})
 
 
+@bp.route('/me', methods=['GET'])
+def me():
+    # @spec IOS-NET-012
+    """Profile for session restore: the token's own user (no roster counts)."""
+    return jsonify({'user': serialize_user(current_user)})
+
+
 @bp.route('/users', methods=['GET'])
 def list_users():
     counts = dict(
@@ -176,6 +183,24 @@ def create_item():
     db.session.commit()
     current_app.logger.info(f'API item created by user_id={current_user.id}: {item.description[:50]}')
     return jsonify({'item': serialize_item(item, current_user)}), 201
+
+
+@bp.route('/items/<int:item_id>', methods=['GET'])
+def get_item(item_id):
+    # @spec IOS-NET-013
+    """Single-item fetch with its owner, for deep-link routing.
+    Surprise protection is enforced by serialize_item (omits status/last_updated_by
+    for the viewer's own item)."""
+    item = (
+        Item.query.options(joinedload(Item.last_updated_by), joinedload(Item.user))
+        .filter(Item.id == item_id).first()
+    )
+    if item is None:
+        return _json_error(404, 'not_found')
+    return jsonify({
+        'item': serialize_item(item, current_user),
+        'owner': serialize_user(item.user),
+    })
 
 
 @bp.route('/items/<int:item_id>', methods=['PATCH'])

@@ -1,5 +1,5 @@
 ---
-status: MAPPED
+status: AUDITED
 ---
 
 # split-contributions Arrow

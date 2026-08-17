@@ -17,6 +17,7 @@ final class MyListViewModelTests: XCTestCase {
     }
 
     func testCreatePrependsReturnedItem() async {
+        // @spec IOS-CUR-002
         var sentBody: [String: Any]?
         let vm = MyListViewModel(client: client { req in
             if req.httpMethod == "POST" {
@@ -32,6 +33,7 @@ final class MyListViewModelTests: XCTestCase {
     }
 
     func testDeleteRemovesItem() async {
+        // @spec IOS-CUR-001, IOS-CUR-004
         let vm = MyListViewModel(client: client { req in
             if req.httpMethod == "DELETE" { return (200, #"{"ok":true}"#) }
             return (200, #"{"items":[{"id":5,"description":"Old","user_id":1}]}"#)
@@ -47,6 +49,24 @@ final class MyListViewModelTests: XCTestCase {
         let ok = await vm.create(ItemDraft(description: ""))
         XCTAssertFalse(ok)
         XCTAssertEqual(vm.error, "Description is required.")
+    }
+
+    func testPrefillMapsMetadataAndKeepsGivenLink() async {
+        let vm = MyListViewModel(client: client { _ in
+            (200, #"{"title":"A lovely bike","price":42.5,"image_url":"https://img/x.png"}"#)
+        }, userID: 1)
+        let draft = await vm.prefill(url: "https://shop.example/bike")
+        XCTAssertEqual(draft.description, "A lovely bike")
+        XCTAssertEqual(draft.price, 42.5)
+        XCTAssertEqual(draft.imageURL, "https://img/x.png")
+        XCTAssertEqual(draft.link, "https://shop.example/bike")
+    }
+
+    func testPrefillFailureLeavesUsableLinkOnlyDraft() async {
+        let vm = MyListViewModel(client: client { _ in (500, #"{"error":"upstream"}"#) }, userID: 1)
+        let draft = await vm.prefill(url: "https://shop.example/bike")
+        XCTAssertEqual(draft.link, "https://shop.example/bike")
+        XCTAssertNil(draft.description)
     }
 }
 

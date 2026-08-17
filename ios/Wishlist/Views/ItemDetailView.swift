@@ -59,6 +59,7 @@ struct ItemDetailView: View {
                         }
                     }
 
+                    // @spec IOS-GIFT-005
                     // Gift actions — only for others' items (status non-nil)
                     if let status = current.status {
                         VStack(alignment: .leading, spacing: 12) {
@@ -103,6 +104,7 @@ struct ItemDetailView: View {
 
     @ViewBuilder
     private func actionButtons(status: String) -> some View {
+        // @spec IOS-GIFT-006
         VStack(spacing: 10) {
             if status == "Available" {
                 primary("Claim it", "hand.raised.fill") { await vm.claim(current) }

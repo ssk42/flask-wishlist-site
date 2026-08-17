@@ -5,6 +5,20 @@ public struct LoginResponse: Decodable, Sendable {
     public let user: User
 }
 
+/// A single item plus its owner — returned by `APIClient.item(id:)` so a push
+/// deep link can build the owner-scoped detail view without preloading a roster.
+public struct ItemDetail: Decodable, Sendable, Identifiable {
+    public let item: Item
+    public let owner: User
+
+    public var id: Int { item.id }
+
+    public init(item: Item, owner: User) {
+        self.item = item
+        self.owner = owner
+    }
+}
+
 public actor APIClient {
     public let baseURL: URL
     private let session: URLSession
@@ -21,18 +35,27 @@ public actor APIClient {
 
     // MARK: Auth
     public func login(email: String, familyCode: String) async throws -> LoginResponse {
+        // @spec IOS-NET-001, IOS-NET-002
         try await send(.post, "/api/v1/auth/login",
                        body: ["email": email, "family_code": familyCode],
                        authenticated: false)
     }
 
     public func logout() async throws {
+        // @spec IOS-NET-001
         _ = try await sendRaw(.post, "/api/v1/auth/logout", body: nil, authenticated: true)
     }
 
     // MARK: Reads
     private struct UsersEnvelope: Decodable { let users: [User] }
     private struct ItemsEnvelope: Decodable { let items: [Item] }
+    private struct MeEnvelope: Decodable { let user: User }
+    private struct MetadataEnvelope: Decodable {
+        let title: String?
+        let price: Double?
+        let imageURL: String?
+        enum CodingKeys: String, CodingKey { case title, price; case imageURL = "image_url" }
+    }
     private struct NotificationsEnvelope: Decodable {
         let notifications: [WishlistNotification]
         let unread_count: Int
@@ -44,6 +67,7 @@ public actor APIClient {
 
     public func items(userID: Int? = nil, status: String? = nil,
                       category: String? = nil, query: String? = nil) async throws -> [Item] {
+        // @spec IOS-NET-003
         var comps = URLComponents()
         var q: [URLQueryItem] = []
         if let userID { q.append(.init(name: "user_id", value: String(userID))) }
@@ -62,6 +86,19 @@ public actor APIClient {
     public func notifications() async throws -> (items: [WishlistNotification], unreadCount: Int) {
         let env: NotificationsEnvelope = try await send(.get, "/api/v1/notifications")
         return (env.notifications, env.unread_count)
+    }
+
+    /// The current user's profile, for restoring a session from a stored token.
+    /// @spec IOS-NET-012
+    public func me() async throws -> User {
+        let env: MeEnvelope = try await send(.get, "/api/v1/me")
+        return env.user
+    }
+
+    /// A single item plus its owner, for routing a tapped push deep link.
+    /// @spec IOS-NET-013
+    public func item(id: Int) async throws -> ItemDetail {
+        try await send(.get, "/api/v1/items/\(id)")
     }
 
     // MARK: Writes
@@ -86,25 +123,30 @@ public actor APIClient {
         try await (send(.post, "/api/v1/items/\(itemID)/purchase") as ItemEnvelope).item
     }
     public func markNotificationRead(id: Int) async throws {
+        // @spec IOS-NET-011
         _ = try await sendRaw(.post, "/api/v1/notifications/\(id)/read", body: nil, authenticated: true)
     }
     public func markAllNotificationsRead() async throws {
+        // @spec IOS-NET-011
         _ = try await sendRaw(.post, "/api/v1/notifications/read-all", body: nil, authenticated: true)
     }
     public func registerDevice(apnsToken: String) async throws {
+        // @spec IOS-NET-010
         _ = try await sendRaw(.post, "/api/v1/devices",
                               body: ["apns_token": apnsToken, "platform": "ios"], authenticated: true)
     }
     public func unregisterDevice(apnsToken: String) async throws {
+        // @spec IOS-NET-010
         _ = try await sendRaw(.delete, "/api/v1/devices/\(apnsToken)", body: nil, authenticated: true)
     }
     public func fetchMetadata(url: String) async throws -> ItemDraft {
-        let data = try await sendRaw(.post, "/api/v1/metadata", body: ["url": url], authenticated: true)
-        let obj = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        return ItemDraft(description: obj["title"] as? String,
+        // @spec IOS-NET-009
+        let env: MetadataEnvelope = try await send(.post, "/api/v1/metadata",
+                                                   body: ["url": url], authenticated: true)
+        return ItemDraft(description: env.title,
                          link: url,
-                         price: obj["price"] as? Double,
-                         imageURL: obj["image_url"] as? String)
+                         price: env.price,
+                         imageURL: env.imageURL)
     }
 
     // MARK: Request machinery
@@ -121,6 +163,7 @@ public actor APIClient {
     @discardableResult
     func sendRaw(_ method: Method, _ path: String,
                  body: [String: Any?]?, authenticated: Bool) async throws -> Data {
+        // @spec IOS-NET-005, IOS-NET-007
         // NOTE: `baseURL.appendingPathComponent(path)` can percent-encode the
         // leading slash of an absolute path like "/api/v1/auth/login", which
         // breaks callers that assert on `request.url?.path`. Building the URL

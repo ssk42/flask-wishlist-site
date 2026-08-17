@@ -15,6 +15,7 @@ public enum WishlistAPI {
     /// to override — that way pointing a build at a local server (or a staging
     /// host) is a plist change, not a code change, and both the app and the
     /// extension pick it up.
+    /// @spec IOS-NET-008
     public static var defaultBaseURL: URL {
         if let raw = Bundle.main.object(forInfoDictionaryKey: "WLAPIBaseURL") as? String,
            !raw.isEmpty,

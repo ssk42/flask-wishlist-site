@@ -92,6 +92,7 @@ class TestFetchPrice:
 
     @patch('services.price_service._make_request')
     def test_fetch_generic_meta_price(self, mock_request):
+        # @spec AUTO-PRC-008
         """Should extract price from meta tags."""
         from services.price_service import fetch_price
 
@@ -205,6 +206,7 @@ class TestUpdateStalePrices:
     """Tests for the batch price update function."""
 
     def test_update_stale_prices_finds_old_items(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should find items with price_updated_at older than 7 days."""
         from services.price_service import update_stale_prices
 
@@ -231,6 +233,7 @@ class TestUpdateStalePrices:
                 assert stats['prices_updated'] == 1
 
     def test_update_stale_prices_skips_recent(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should skip items updated recently."""
         from services.price_service import update_stale_prices
 
@@ -255,6 +258,7 @@ class TestUpdateStalePrices:
                 mock_asyncio_run.assert_not_called()
 
     def test_update_stale_prices_handles_null_date(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should process items with NULL price_updated_at."""
         from services.price_service import update_stale_prices
 
@@ -276,7 +280,48 @@ class TestUpdateStalePrices:
 
                 assert stats['items_processed'] == 1
 
+    def test_update_stale_prices_timestamps_failed_url(self, app, item_owner):
+        # @spec AUTO-PRC-007
+        """A URL that fails during a batch update gets retry-paced: stamped ~6
+        days old so it crosses the 7-day staleness window again in ~1 day."""
+        from services.price_service import update_stale_prices
+
+        with app.app_context():
+            item = Item(
+                description="Failing Item",
+                user_id=item_owner,
+                price=10.00,
+                link="https://example.com/doomed",
+                price_updated_at=None
+            )
+            db.session.add(item)
+            db.session.commit()
+
+            with patch('asyncio.run') as mock_asyncio_run:
+                # The URL is in the item set but ABSENT from results → it failed.
+                # Close the discarded coroutine so pytest doesn't warn about it.
+                def run_and_close(coro):
+                    coro.close()
+                    return {}
+                mock_asyncio_run.side_effect = run_and_close
+
+                stats = update_stale_prices(app, db, Item)
+
+            assert stats['errors'] == 1
+            # Fresh query (not the identity-map object created above) must show
+            # the failure was retry-paced: stamped ~6 days old (roughly 1 day
+            # from the 7-day staleness window), NOT freshly updated.
+            updated = db.session.execute(
+                db.select(Item).where(Item.id == item.id)
+            ).scalar_one()
+            assert updated.price_updated_at is not None
+            age = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - updated.price_updated_at
+            assert datetime.timedelta(days=5) < age < datetime.timedelta(days=7), \
+                f"failed URL should be retry-paced ~6d old, got age {age}"
+
+
     def test_update_stale_prices_handles_errors(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should handle errors gracefully and continue processing."""
         from services.price_service import update_stale_prices
 

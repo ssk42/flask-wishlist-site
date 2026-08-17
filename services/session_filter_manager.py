@@ -4,6 +4,7 @@ from flask import session, request
 
 
 class SessionFilterManager:
+    # @spec VW-UI-001, VW-UI-002, VW-UI-003
     """Manages filter persistence in Flask session for list views.
 
     This class extracts the filter logic from items_list() to provide

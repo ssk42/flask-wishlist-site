@@ -4,7 +4,7 @@
 The UI State segment manages the persistence of view state and presentation layer logic for the application's viewers (end users). Specifically, it ensures that transient view states (such as active search filters, sorts, and selected scopes) remain intact as a user navigates between list views and item detail/edit pages, ensuring a seamless browsing experience. It also encapsulates boilerplate UI orchestration routines such as flashing feedback messages prior to redirects.
 
 ## Data Models
-There are no dedicated database models for this segment. All state is maintained server-side within the secure `Flask session` (which uses a signed cookie). 
+There are no dedicated database models for this segment. All state is maintained within the `Flask session` (a client-side signed cookie — not server-held, though the signature makes it tamper-evident). 
 The `SessionFilterManager` manages the following keys in the session:
 - `user_filter`: ID of the user whose items are being viewed
 - `status_filter`: The claim/purchase status filter

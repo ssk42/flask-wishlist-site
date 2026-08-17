@@ -105,12 +105,12 @@
                 Clear all filters
             </a>
             {% if active_filters.user_filter or active_filters.status_filter or active_filters.priority_filter or
-            active_filters.category_filter or active_filters.q %}
+            active_filters.event_filter or active_filters.q %}
             <span class="badge bg-info ms-2 small">Filters active</span>
             {% endif %}
         </div>
         {% if active_filters.user_filter or active_filters.status_filter or active_filters.priority_filter or
-        active_filters.category_filter or active_filters.q %}
+        active_filters.event_filter or active_filters.q %}
         <span class="badge bg-light text-dark">{{ grouped_items|length }} group{{ 's' if grouped_items|length != 1 else
             '' }} match your filters</span>
         {% endif %}

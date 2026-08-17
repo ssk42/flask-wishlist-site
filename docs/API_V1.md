@@ -42,6 +42,7 @@ All endpoints below require a valid Bearer token unless noted.
 |---|---|---|---|
 | `POST /api/v1/auth/login` | `{email, family_code}` | `200 {token, user}` | Public (no token needed). Rate limited 5/min. |
 | `POST /api/v1/auth/logout` | — | `200 {ok: true}` | Revokes the presented token only. |
+| `GET /api/v1/me` | — | `200 {user}` | Current user's profile (for session restore). No `item_count`. |
 
 ### Users & items
 
@@ -49,6 +50,7 @@ All endpoints below require a valid Bearer token unless noted.
 |---|---|---|---|
 | `GET /api/v1/users` | — | `200 {users: [...]}` | All family members, each with `item_count`. |
 | `GET /api/v1/items` | `?user_id=&status=&category=&q=` | `200 {items: [...]}` | See surprise protection below for `status`. `q` matches `description` (substring, case-insensitive). |
+| `GET /api/v1/items/<id>` | — | `200 {item, owner}` | Single item + its owner (for deep links). Surprise protection applies. |
 | `POST /api/v1/items` | item fields (see below) | `201 {item}` | Owner is `current_user`; `status` starts `Available`. |
 | `PATCH /api/v1/items/<id>` | partial item fields | `200 {item}` | Owner-only. Only keys present in the patch are persisted. |
 | `DELETE /api/v1/items/<id>` | — | `200 {ok: true}` | Owner-only. |

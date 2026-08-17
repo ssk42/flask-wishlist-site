@@ -71,6 +71,7 @@ class IdentityManager:
             return False
 
     def get_healthy_identity(self) -> Optional[BrowserIdentity]:
+        # @spec AUTO-STL-001, AUTO-STL-004
         """Get a healthy identity with lowest usage.
 
         Returns identity with lowest request count that isn't burned.
@@ -95,6 +96,7 @@ class IdentityManager:
         return random.choice(low_usage)
 
     def mark_success(self, identity: BrowserIdentity):
+        # @spec AUTO-STL-002
         """Mark successful request for identity.
 
         Increments request count. Resets cookies after rotation threshold.
@@ -115,6 +117,7 @@ class IdentityManager:
             self._reset_identity(identity.id)
 
     def mark_burned(self, identity: BrowserIdentity):
+        # @spec AUTO-STL-003
         """Mark identity as burned (triggered CAPTCHA).
 
         Identity will be unavailable for BURN_DURATION_HOURS.
@@ -142,6 +145,7 @@ class IdentityManager:
         logger.info(f"Reset identity {identity_id}")
 
     def save_cookies(self, identity_id: str, cookies: list):
+        # @spec AUTO-STL-005
         """Save cookies for identity."""
         if not self.redis:
             return
@@ -151,6 +155,7 @@ class IdentityManager:
         self._redis_safe(lambda: self.redis.expire(key, 86400))  # 24h expiry
 
     def load_cookies(self, identity_id: str) -> list:
+        # @spec AUTO-STL-005
         """Load saved cookies for identity."""
         if not self.redis:
             return []

@@ -19,6 +19,7 @@ final class ModelDecodingTests: XCTestCase {
     }
 
     func testOwnItemHasNilStatus() throws {
+        // @spec IOS-NET-004
         // Server omits status/last_updated_by for the viewer's own items.
         let item = try decode(Item.self, #"{"id":10,"description":"Bike","price":99.5,"user_id":1}"#)
         XCTAssertNil(item.status)

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(bind=True, max_retries=3)
 def send_event_reminders_async(self):
+    # @spec AUTO-TSK-007, AUTO-TSK-009
     """Celery task: Send reminder emails for events happening in 7 days.
     
     This task requires the Flask app context to access the database.
@@ -32,6 +33,7 @@ def send_event_reminders_async(self):
 # @spec AUTO-TSK-011
 @celery_app.task(bind=True, max_retries=3, time_limit=5400, soft_time_limit=5100)
 def update_stale_prices_async(self, force_all=False):
+    # @spec AUTO-TSK-007, AUTO-TSK-009
     """Celery task: Update prices for items that haven't been checked recently.
 
     Args:

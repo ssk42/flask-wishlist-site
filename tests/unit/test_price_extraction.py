@@ -469,6 +469,7 @@ class TestGenericPriceExtractor:
         assert GenericPriceExtractor.matches_url('https://unknown-shop.io/item') is True
 
     def test_extract_from_og_price_meta(self):
+        # @spec AUTO-PRC-008
         """Should extract price from og:price:amount meta tag."""
         extractor = GenericPriceExtractor()
         html = '''
@@ -483,6 +484,7 @@ class TestGenericPriceExtractor:
         assert price == 24.99
 
     def test_extract_from_product_price_meta(self):
+        # @spec AUTO-PRC-008
         """Should extract price from product:price:amount meta tag."""
         extractor = GenericPriceExtractor()
         html = '''

@@ -1,5 +1,5 @@
 ---
-status: MAPPED
+status: AUDITED
 ---
 
 # item-claiming Arrow

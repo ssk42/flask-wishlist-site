@@ -35,23 +35,27 @@ class TestClassifyFailure:
     """Tests for failure classification."""
 
     def test_detects_captcha(self):
+        # @spec AUTO-STL-008
         """Should detect CAPTCHA pages."""
         content = "<html><body>Please complete the CAPTCHA below</body></html>"
         result = classify_failure(content, 200)
         assert result == AmazonFailureType.CAPTCHA
 
     def test_detects_robot_check(self):
+        # @spec AUTO-STL-008
         """Should detect robot check pages."""
         content = "<html><body>Robot Check - verify you are human</body></html>"
         result = classify_failure(content, 200)
         assert result == AmazonFailureType.CAPTCHA
 
     def test_detects_rate_limit(self):
+        # @spec AUTO-STL-007
         """Should detect rate limiting."""
         result = classify_failure("<html></html>", 429)
         assert result == AmazonFailureType.RATE_LIMITED
 
     def test_detects_blocked(self):
+        # @spec AUTO-STL-007
         """Should detect 503 as rate limited."""
         result = classify_failure("<html></html>", 503)
         assert result == AmazonFailureType.RATE_LIMITED

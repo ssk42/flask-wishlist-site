@@ -12,6 +12,7 @@ bp = Blueprint('social', __name__)
 @bp.route('/item/<int:item_id>/comment', methods=['POST'])
 @login_required
 def add_comment(item_id):
+    # @spec GIV-SEC-002, GIV-SEC-003, GIV-SEC-004
     """Add a comment to an item."""
     item = db.session.get(Item, item_id)
     if item is None:
@@ -52,6 +53,7 @@ def add_comment(item_id):
 @bp.route('/notifications')
 @login_required
 def notifications():
+    # @spec GIV-SEC-005
     """List all notifications for the current user."""
     notifs = Notification.query.filter_by(user_id=current_user.id)\
         .order_by(Notification.created_at.desc()).all()
@@ -61,6 +63,7 @@ def notifications():
 @bp.route('/notifications/read/<int:notif_id>', methods=['POST'])
 @login_required
 def mark_notification_read(notif_id):
+    # @spec GIV-SEC-006
     """Mark a notification as read."""
     notif = Notification.query.filter_by(id=notif_id, user_id=current_user.id).first_or_404()
     notif.is_read = True

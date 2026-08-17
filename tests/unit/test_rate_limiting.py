@@ -21,6 +21,7 @@ def rate_limit_app():
     limiter.reset()
 
 def test_login_rate_limit(rate_limit_app):
+    # @spec AUTH-FLOW-004
     """Test that login endpoint is rate limited."""
     client = rate_limit_app.test_client()
     
@@ -35,6 +36,7 @@ def test_login_rate_limit(rate_limit_app):
     assert b"Too Many Requests" in response.data
 
 def test_register_rate_limit(rate_limit_app):
+    # @spec AUTH-FLOW-004
     """Test that register endpoint is rate limited."""
     client = rate_limit_app.test_client()
     
@@ -45,5 +47,18 @@ def test_register_rate_limit(rate_limit_app):
 
     # The 6th time should be blocked
     response = client.get('/register')
+    assert response.status_code == 429
+    assert b"Too Many Requests" in response.data
+
+def test_forgot_email_rate_limit(rate_limit_app):
+    # @spec AUTH-REC-011
+    """AUTH-REC-011: forgot_email is rate limited like login/register."""
+    client = rate_limit_app.test_client()
+
+    for _ in range(5):
+        response = client.get('/forgot_email')
+        assert response.status_code == 200
+
+    response = client.get('/forgot_email')
     assert response.status_code == 429
     assert b"Too Many Requests" in response.data

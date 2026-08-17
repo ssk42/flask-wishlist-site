@@ -2,11 +2,15 @@ import SwiftUI
 import WishlistKit
 
 /// Add/edit form for the current user's own items. Calls `onSave` with a draft;
-/// returns true to dismiss.
+/// returns true to dismiss. When `onPrefill` is provided, a "Fetch details"
+/// button appears under the link field that best-effort fills empty fields
+/// (description/price) from the URL's metadata — user-typed values are never
+/// clobbered.
 struct ItemEditView: View {
     let title: String
     var item: Item?
     let onSave: (ItemDraft) async -> Bool
+    var onPrefill: ((String) async -> ItemDraft?)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var description: String
@@ -18,13 +22,17 @@ struct ItemEditView: View {
     @State private var color: String
     @State private var quantityText: String
     @State private var saving = false
+    @State private var prefilling = false
 
     private let priorities = ["High", "Medium", "Low"]
 
-    init(title: String, item: Item? = nil, onSave: @escaping (ItemDraft) async -> Bool) {
+    init(title: String, item: Item? = nil,
+         onSave: @escaping (ItemDraft) async -> Bool,
+         onPrefill: ((String) async -> ItemDraft?)? = nil) {
         self.title = title
         self.item = item
         self.onSave = onSave
+        self.onPrefill = onPrefill
         _description = State(initialValue: item?.description ?? "")
         _link = State(initialValue: item?.link ?? "")
         _priceText = State(initialValue: item?.price.map { String($0) } ?? "")
@@ -42,6 +50,29 @@ struct ItemEditView: View {
                     TextField("Description", text: $description, axis: .vertical)
                     TextField("Link (https://…)", text: $link)
                         .keyboardType(.URL).autocorrectionDisabled().textInputAutocapitalization(.never)
+                    // @spec IOS-CUR-008
+                    if let onPrefill, !link.isEmpty {
+                        Button {
+                            prefilling = true
+                            Task {
+                                let draft = await onPrefill(link)
+                                prefilling = false
+                                if let draft, description.isEmpty, let fetched = draft.description {
+                                    description = fetched
+                                }
+                                if let draft, priceText.isEmpty, let price = draft.price {
+                                    priceText = String(price)
+                                }
+                            }
+                        } label: {
+                            if prefilling {
+                                HStack(spacing: 8) { ProgressView(); Text("Looking up details…") }
+                            } else {
+                                Label("Fetch details", systemImage: "sparkle.magnifyingglass")
+                            }
+                        }
+                        .disabled(prefilling)
+                    }
                     TextField("Price", text: $priceText).keyboardType(.decimalPad)
                     TextField("Category", text: $category)
                     Picker("Priority", selection: $priority) {
@@ -59,6 +90,7 @@ struct ItemEditView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
+                    // @spec IOS-CUR-005
                     Button("Save") { save() }.disabled(description.isEmpty || saving)
                 }
             }
@@ -66,6 +98,7 @@ struct ItemEditView: View {
     }
 
     private func save() {
+        // @spec IOS-CUR-006
         saving = true
         let draft = ItemDraft(
             description: description,

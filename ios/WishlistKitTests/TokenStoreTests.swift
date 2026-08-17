@@ -3,6 +3,7 @@ import XCTest
 
 final class TokenStoreTests: XCTestCase {
     func testSaveReadClearRoundTrip() {
+        // @spec IOS-AUTH-005
         let store = InMemoryTokenStore()
         XCTAssertNil(store.read())
         store.save("abc")

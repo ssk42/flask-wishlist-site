@@ -36,5 +36,6 @@ public struct Item: Codable, Identifiable, Sendable, Hashable {
     }
 
     /// True when this item belongs to the viewing user (status hidden by the server).
+    /// @spec IOS-NET-004
     public var isOwn: Bool { status == nil }
 }

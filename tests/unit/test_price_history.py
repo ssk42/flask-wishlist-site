@@ -24,6 +24,7 @@ class TestPriceHistory:
             self.item_id = new_item.id
 
     def test_record_price_history_initial(self):
+        # @spec AUTO-PRC-002
         """Test recording initial price history."""
         with self.app.app_context():
             result = record_price_history(self.item_id, 100.0, source='initial')
@@ -35,6 +36,7 @@ class TestPriceHistory:
             assert history[0].source == 'initial'
 
     def test_record_price_history_duplicate_ignored(self):
+        # @spec AUTO-PRC-002
         """Test that duplicate price within 6 hours is ignored."""
         with self.app.app_context():
             record_price_history(self.item_id, 100.0)
@@ -47,6 +49,7 @@ class TestPriceHistory:
             assert len(history) == 1
 
     def test_record_price_history_change_accepted(self):
+        # @spec AUTO-PRC-002
         """Test that price change is recorded regardless of time."""
         with self.app.app_context():
             record_price_history(self.item_id, 100.0)
@@ -60,6 +63,7 @@ class TestPriceHistory:
             assert history[0].price == 90.0
 
     def test_record_price_history_stale_update(self):
+        # @spec AUTO-PRC-002
         """Test that same price is recorded if > 6 hours passed."""
         with self.app.app_context():
             # Create old record manually
@@ -113,6 +117,7 @@ class TestPriceHistory:
         assert 'min' in data['stats']
 
     def test_record_price_history_invalid_price_none(self):
+        # @spec AUTO-PRC-002
         """Test that None price is rejected."""
         with self.app.app_context():
             result = record_price_history(self.item_id, None)
@@ -123,6 +128,7 @@ class TestPriceHistory:
             assert len(history) == 0
 
     def test_record_price_history_invalid_price_negative(self):
+        # @spec AUTO-PRC-002
         """Test that negative price is rejected."""
         with self.app.app_context():
             result = record_price_history(self.item_id, -10.0)

@@ -322,6 +322,7 @@ def _fetch_standard_price(url):
 
 
 def _fetch_amazon_price(url):
+    # @spec AUTO-PRC-005
     """Fetch price from Amazon product page.
 
     Uses stealth extraction when AMAZON_STEALTH_ENABLED is True and identity
@@ -471,6 +472,7 @@ def _fetch_amazon_metadata(url):
 
 
 def _fetch_generic_metadata(url):
+    # @spec AUTO-PRC-008
     """Fetch metadata using OpenGraph and generic extractors."""
     metadata = {}
     try:
@@ -533,6 +535,7 @@ def _failed_fetch_retry_timestamp():
 
 
 def update_stale_prices(app, db, Item, Notification=None, force_all=False):
+    # @spec AUTO-PRC-006, AUTO-PRC-007
     """Update prices for items that haven't been updated in 7 days.
 
     # @spec AUTO-PRC-006, AUTO-PRC-007, AUTO-PRC-009
@@ -667,6 +670,7 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
 
 
 def _create_price_drop_notifications(item, old_price, new_price, drop_percent, db, Notification):
+    # @spec AUTO-PRC-003, AUTO-PRC-004
     """Create notifications for significant price drops.
     
     Notifies:

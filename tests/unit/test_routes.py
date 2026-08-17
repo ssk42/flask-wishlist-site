@@ -49,6 +49,7 @@ def test_submit_item_get_returns_blank_form(client, login):
 
 
 def test_items_filtered_by_status(client, app, login, user):
+    # @spec VW-FEED-005
     with app.app_context():
         user_obj = db.session.get(User, user)
         available = Item(
@@ -75,6 +76,7 @@ def test_items_filtered_by_status(client, app, login, user):
 
 
 def test_items_filtered_by_user_priority_and_search(client, app, login, user, other_user):
+    # @spec VW-FEED-005
     with app.app_context():
         db.session.add_all(
             [
@@ -139,6 +141,7 @@ def test_register_duplicate_email_shows_warning(client, app):
 
 
 def test_login_success_redirects_home(client, app, user):
+    # @spec AUTH-FLOW-005, AUTH-FLOW-006
     response = client.post(
         "/login",
         data={"email": "test@example.com", "password": "testsecret"},
@@ -150,6 +153,7 @@ def test_login_success_redirects_home(client, app, user):
 
 
 def test_login_failure_renders_error(client):
+    # @spec AUTH-FLOW-003
     response = client.post(
         "/login",
         data={"email": "missing@example.com", "password": "testsecret"},
@@ -527,6 +531,7 @@ def test_submit_item_database_error_shows_message(client, user, monkeypatch):
 
 
 def test_items_preserves_nonexistent_event_filter(client, app, login, user):
+    # @spec VW-FEED-005
     """
     Test that filtering by an event that doesn't exist (e.g. valid ID format but no match)
     still preserves the filter value in the session.
@@ -537,9 +542,12 @@ def test_items_preserves_nonexistent_event_filter(client, app, login, user):
     # Should be preserved in session as int
     with client.session_transaction() as sess:
         assert sess.get('event_filter') == 999
+    # The "Filters active" badge must render when only an event filter is set
+    assert b'Filters active' in response.data
 
 
 def test_items_default_sorting_by_price_desc(client, app, login, user):
+    # @spec VW-FEED-006
     with app.app_context():
         cheap = Item(
             description="Budget Watch",
@@ -569,6 +577,7 @@ def test_items_default_sorting_by_price_desc(client, app, login, user):
 
 
 def test_items_summary_rows_include_totals(client, app, login, user, other_user):
+    # @spec VW-FEED-007, VW-FEED-008
     with app.app_context():
         db.session.add_all(
             [
@@ -632,6 +641,7 @@ def test_claim_item_not_available_redirects(client, app, user, other_user):
 
 
 def test_clear_filters_removes_all_session_filters(client, app, login, user):
+    # @spec VW-FEED-004
     """Test that ?clear_filters=true clears all filters from session."""
     # First, set some filters in the session
     with client.session_transaction() as sess:
@@ -763,6 +773,7 @@ def test_unclaim_item_non_htmx_success(client, app, login, user, other_user):
 
 
 def test_items_preserves_all_session_filters(client, app, login, user):
+    # @spec VW-FEED-001, VW-FEED-002, VW-FEED-003
     """Test that items page preserves all session filter types."""
     with app.app_context():
         item = Item(
@@ -791,6 +802,7 @@ def test_items_preserves_all_session_filters(client, app, login, user):
 
 
 def test_items_preserves_event_filter(client, app, login, user):
+    # @spec VW-FEED-002, VW-FEED-003
     """Test that items page preserves event filter in session."""
     from models import Event
     import datetime

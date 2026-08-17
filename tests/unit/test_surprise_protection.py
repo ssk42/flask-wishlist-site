@@ -418,3 +418,54 @@ class TestSurpriseProtection:
         assert '<select class="form-select" id="status" name="status">' in response_text
         # Check that the dropdown contains the status options
         assert '<option value="Available" selected>Available</option>' in response_text
+
+class TestQuickViewAndDashboardSurprise:
+    """Owners must not see claim status via the dashboard or quick-view modal."""
+    # @spec OWN-VIS-001
+
+    def _seed(self, app, user, other_user):
+        with app.app_context():
+            item = Item(
+                description="Secret Gift",
+                status="Claimed",
+                priority="Medium",
+                user_id=user,
+                last_updated_by_id=other_user,
+            )
+            db.session.add(item)
+            db.session.commit()
+            return item.id
+
+    def test_dashboard_excludes_own_claimed_item(self, client, app, user, other_user):
+        """Own items never reach the dashboard feed (`Item.user_id != current_user.id`)."""
+        self._seed(app, user, other_user)
+        login_via_post(client, "test@example.com")
+
+        response = client.get("/")
+        assert response.status_code == 200
+        text = ' '.join(response.data.decode('utf-8').split())
+        assert "Secret Gift" not in text, "Owner's own item must not appear on the dashboard"
+
+    def test_quick_view_modal_hides_claim_status_from_owner(self, client, app, user, other_user):
+        item_id = self._seed(app, user, other_user)
+        login_via_post(client, "test@example.com")
+
+        response = client.get(f"/items/{item_id}/modal")
+        assert response.status_code == 200
+        text = ' '.join(response.data.decode('utf-8').split())
+        assert "Secret Gift" in text, "Modal should still show the item to its owner"
+        assert "Item is Claimed" not in text, "Quick-view modal must not reveal claim status to the owner"
+
+    def test_quick_view_modal_shows_status_to_third_party_giver(self, client, app, user, other_user):
+        """A giver who is neither owner nor claimer still sees the claim status."""
+        item_id = self._seed(app, user, other_user)
+        with app.app_context():
+            third = User(name="Third User", email="third@example.com")
+            db.session.add(third)
+            db.session.commit()
+        login_via_post(client, "third@example.com")
+
+        response = client.get(f"/items/{item_id}/modal")
+        assert response.status_code == 200
+        text = ' '.join(response.data.decode('utf-8').split())
+        assert "Item is Claimed" in text, "Third-party giver must still see the claim status in the modal"

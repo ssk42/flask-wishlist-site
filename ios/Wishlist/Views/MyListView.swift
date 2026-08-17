@@ -6,6 +6,7 @@ struct MyListView: View {
     @State private var vm: MyListViewModel
     @State private var showingAdd = false
     @State private var editingItem: Item?
+    @State private var confirmingLogout = false
 
     init(session: Session) {
         self.session = session
@@ -37,6 +38,7 @@ struct MyListView: View {
                                 Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
                                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                             }
+                            // @spec IOS-CUR-007 — own items have nil status, so rows render no claim badge/actions.
                             ForEach(vm.items) { item in
                                 Button { editingItem = item } label: {
                                     HStack {
@@ -64,12 +66,34 @@ struct MyListView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Log out", role: .destructive) { confirmingLogout = true }
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(Color.wlSecondary)
+                    }
+                }
+            }
+            .confirmationDialog("Log out?", isPresented: $confirmingLogout, titleVisibility: .visible) {
+                // @spec IOS-AUTH-008
+                Button("Log out", role: .destructive) {
+                    Task { await session.logOut() }
+                }
+            } message: {
+                Text("Your saved items stay on your wishlist.")
+            }
             .task { if vm.items.isEmpty { await vm.load() } }
             .sheet(isPresented: $showingAdd) {
-                ItemEditView(title: "Add Item") { draft in await vm.create(draft) }
+                ItemEditView(title: "Add Item",
+                             onSave: { draft in await vm.create(draft) },
+                             onPrefill: { url in await vm.prefill(url: url) })
             }
             .sheet(item: $editingItem) { item in
-                ItemEditView(title: "Edit Item", item: item) { draft in await vm.update(id: item.id, draft) }
+                ItemEditView(title: "Edit Item", item: item,
+                             onSave: { draft in await vm.update(id: item.id, draft) },
+                             onPrefill: { url in await vm.prefill(url: url) })
             }
         }
         .tint(.wlAccent)

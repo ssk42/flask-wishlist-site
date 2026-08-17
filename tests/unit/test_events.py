@@ -58,6 +58,7 @@ class TestEventsPage:
         assert b'Events' in response.data
 
     def test_events_shows_upcoming_and_past(self, app, client, login_event_owner):
+        # @spec OWN-EVT-001
         """Events should be grouped into upcoming and past."""
         with app.app_context():
             today = datetime.date.today()
@@ -92,6 +93,7 @@ class TestCreateEvent:
         assert b'New Event' in response.data
 
     def test_create_event_success(self, app, client, login_event_owner):
+        # @spec OWN-EVT-002
         """Creating an event should work with valid data."""
         response = client.post('/events/new', data={
             'name': 'Christmas 2025',
@@ -160,6 +162,7 @@ class TestEditEvent:
         assert b'Test Event' in response.data
 
     def test_edit_event_success(self, app, client, login_event_owner):
+        # @spec OWN-EVT-003
         """Editing an event should work."""
         with app.app_context():
             event = Event(
@@ -181,6 +184,7 @@ class TestEditEvent:
         assert b'updated successfully' in response.data
 
     def test_edit_event_only_owner_can_edit(self, app, client, login_event_owner, login_other_user):
+        # @spec OWN-EVT-004
         """Only the event creator can edit."""
         with app.app_context():
             event = Event(
@@ -315,6 +319,7 @@ class TestDeleteEvent:
             assert db.session.get(Event, event_id) is not None
 
     def test_delete_event_clears_item_associations(self, app, client, login_event_owner):
+        # @spec OWN-EVT-005
         """Deleting an event should unlink items but not delete them."""
         with app.app_context():
             event = Event(

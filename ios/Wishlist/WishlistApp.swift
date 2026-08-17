@@ -9,7 +9,9 @@ struct WishlistApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(session: session)
+                .task { await session.bootstrap() }
                 .onChange(of: session.state) { _, newState in
+                    // @spec IOS-ACT-004
                     // First successful login → ask for push permission + register.
                     if case .loggedIn = newState {
                         PushManager.shared.requestAuthorization()

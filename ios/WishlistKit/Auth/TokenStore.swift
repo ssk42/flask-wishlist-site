@@ -23,6 +23,7 @@ public final class InMemoryTokenStore: TokenStoring, @unchecked Sendable {
 /// the last saved token even if every Keychain write fails (e.g. unsigned
 /// simulator builds without the keychain entitlement). The Keychain remains
 /// the persistent layer for relaunches and the Share Extension.
+/// @spec IOS-AUTH-004
 public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
     private let account = "api-token"
     private let service = "com.reitz.wishlist"
@@ -70,6 +71,7 @@ public final class KeychainTokenStore: TokenStoring, @unchecked Sendable {
     }
 
     public func save(_ token: String) {
+        // @spec IOS-AUTH-005
         lock.withLock { cached = token }
         clearKeychain()
         for group in groupsToTry {

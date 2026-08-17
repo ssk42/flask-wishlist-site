@@ -1,5 +1,5 @@
 ---
-status: MAPPED
+status: AUDITED
 ---
 
 # feed-filtering Arrow

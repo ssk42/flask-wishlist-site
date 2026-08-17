@@ -4,6 +4,7 @@ from models import User, db
 
 
 def test_forgot_email_page_loads(client):
+    # @spec AUTH-REC-001
     """Test that the forgot email page loads successfully."""
     response = client.get("/forgot_email")
     assert response.status_code == 200
@@ -12,6 +13,7 @@ def test_forgot_email_page_loads(client):
 
 
 def test_forgot_email_finds_exact_match(client, app):
+    # @spec AUTH-REC-002
     """Test that forgot email finds a user with exact name match."""
     with app.app_context():
         # Create a test user
@@ -32,6 +34,7 @@ def test_forgot_email_finds_exact_match(client, app):
 
 
 def test_forgot_email_case_insensitive(client, app):
+    # @spec AUTH-REC-003
     """Test that forgot email search is case-insensitive."""
     with app.app_context():
         # Create a test user
@@ -52,6 +55,7 @@ def test_forgot_email_case_insensitive(client, app):
 
 
 def test_forgot_email_not_found(client):
+    # @spec AUTH-REC-004
     """Test that forgot email shows error when user not found."""
     response = client.post(
         "/forgot_email",
@@ -64,6 +68,7 @@ def test_forgot_email_not_found(client):
 
 
 def test_forgot_email_empty_name(client):
+    # @spec AUTH-REC-005
     """Test that forgot email shows error when name is empty."""
     response = client.post(
         "/forgot_email",
@@ -76,6 +81,7 @@ def test_forgot_email_empty_name(client):
 
 
 def test_forgot_email_strips_whitespace(client, app):
+    # @spec AUTH-REC-006
     """Test that forgot email strips whitespace from input."""
     with app.app_context():
         # Create a test user
@@ -96,8 +102,30 @@ def test_forgot_email_strips_whitespace(client, app):
 
 
 def test_login_page_has_forgot_email_link(client):
+    # @spec AUTH-REC-007
     """Test that login page has a link to forgot email."""
     response = client.get("/login")
     assert response.status_code == 200
     assert b"Forgot your email?" in response.data
     assert b'href="/forgot_email"' in response.data
+
+
+def test_forgot_email_multiple_matches_shows_warning(client, app):
+    # @spec AUTH-REC-008
+    """AUTH-REC-008: multiple name matches must not leak any email."""
+    with app.app_context():
+        # `name` is UNIQUE (case-sensitive), but `ilike` matches case-insensitively,
+        # so same-name-different-case rows legitimately collide and must not leak.
+        db.session.add_all([
+            User(name="Jane Smith", email="jane.smith@example.com"),
+            User(name="jane smith", email="jane2@example.com"),
+        ])
+        db.session.commit()
+
+    response = client.post("/forgot_email", data={"name": "Jane Smith"})
+
+    assert response.status_code == 200
+    assert b"We found 2 accounts with similar names" in response.data
+    # No specific email may leak when the name is ambiguous
+    assert b"jane.smith@example.com" not in response.data
+    assert b"jane2@example.com" not in response.data

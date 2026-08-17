@@ -15,6 +15,7 @@ final class WishlistAPITests: XCTestCase {
     }
 
     func testDefaultFallsBackToProductionWhenPlistKeyAbsent() {
+        // @spec IOS-NET-008
         // The test bundle has no WLAPIBaseURL, so this exercises the fallback.
         XCTAssertNil(Bundle.main.object(forInfoDictionaryKey: "WLAPIBaseURL"))
         XCTAssertEqual(WishlistAPI.defaultBaseURL, WishlistAPI.productionBaseURL)

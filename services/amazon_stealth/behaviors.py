@@ -34,6 +34,7 @@ def generate_bezier_points(
     num_points: int = 20,
     noise: float = 10.0
 ) -> List[Tuple[float, float]]:
+    # @spec AUTO-STL-009
     """Generate points along a bezier curve for natural mouse movement.
 
     Args:
@@ -74,6 +75,7 @@ def generate_bezier_points(
 
 
 async def human_mouse_move(page, target_x: float, target_y: float):
+    # @spec AUTO-STL-009
     """Move mouse in a natural curve to target position.
 
     Args:
@@ -101,6 +103,7 @@ async def human_mouse_move(page, target_x: float, target_y: float):
 
 
 async def human_scroll(page, scroll_amount: int = None):
+    # @spec AUTO-STL-010
     """Scroll page in a human-like manner.
 
     Args:
@@ -128,6 +131,7 @@ async def human_scroll(page, scroll_amount: int = None):
 
 
 async def handle_cookie_banner(page) -> bool:
+    # @spec AUTO-STL-011
     """Attempt to accept/dismiss cookie banner.
 
     Args:
@@ -151,6 +155,7 @@ async def handle_cookie_banner(page) -> bool:
 
 
 async def interact_like_human(page):
+    # @spec AUTO-STL-012
     """Simulate human browsing behavior before extracting data.
 
     Args:

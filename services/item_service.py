@@ -24,6 +24,7 @@ def claim_item(item, user_id):
     # "no longer available to claim" — telling them someone claimed it, which
     # is exactly what surprise protection exists to hide. Pinned by
     # test_claim_own_item_reports_own_item_even_when_claimed.
+    # @spec GIV-CLM-001, GIV-CLM-002, GIV-CLM-003, GIV-CLM-004
     if item.user_id == user_id:
         raise ItemActionError('own_item', 'You cannot claim your own item.')
     if item.status != 'Available':

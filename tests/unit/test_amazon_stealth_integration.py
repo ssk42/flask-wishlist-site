@@ -8,6 +8,7 @@ class TestAmazonStealthIntegration:
 
     @patch('services.amazon_stealth.stealth_fetch_amazon_sync')
     def test_uses_stealth_when_enabled(self, mock_stealth):
+        # @spec AUTO-PRC-005
         """Should use stealth extraction when enabled."""
         from services.amazon_stealth import ExtractionResult
 
@@ -28,6 +29,7 @@ class TestAmazonStealthIntegration:
 
     @patch('services.amazon_stealth.stealth_fetch_amazon_sync')
     def test_marks_burned_on_captcha(self, mock_stealth):
+        # @spec AUTO-PRC-005
         """Should mark identity as burned on CAPTCHA."""
         from services.amazon_stealth import ExtractionResult, AmazonFailureType
 
@@ -51,6 +53,7 @@ class TestAmazonStealthIntegration:
     @patch('services.price_service.AMAZON_STEALTH_ENABLED', True)
     @patch('services.price_service._get_identity_manager')
     def test_skips_when_all_identities_burned(self, mock_get_manager):
+        # @spec AUTO-PRC-005
         """Should skip extraction when all identities are burned."""
         mock_manager = MagicMock()
         mock_manager.get_healthy_identity.return_value = None
@@ -64,6 +67,7 @@ class TestAmazonStealthIntegration:
     @patch('services.price_service.AMAZON_STEALTH_ENABLED', False)
     @patch('services.price_service._make_request')
     def test_uses_legacy_when_disabled(self, mock_request):
+        # @spec AUTO-PRC-005
         """Should use legacy extraction when stealth is disabled."""
         mock_response = MagicMock()
         mock_response.text = '<html><span class="a-price"><span class="a-offscreen">$29.99</span></span></html>'
@@ -80,6 +84,7 @@ class TestAmazonStealthIntegration:
     @patch('services.amazon_stealth.extractor.stealth_fetch_amazon_sync')
     @patch('services.price_service._fetch_amazon_price_legacy')
     def test_falls_back_to_legacy_on_no_manager(self, mock_legacy, mock_stealth, mock_get_manager):
+        # @spec AUTO-PRC-005
         """Should fall back to legacy when identity manager unavailable."""
         mock_get_manager.return_value = None
         mock_legacy.return_value = 19.99

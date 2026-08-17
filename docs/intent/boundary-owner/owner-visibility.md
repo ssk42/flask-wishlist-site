@@ -8,7 +8,7 @@ The implementation relies on comparing the current session's `current_user.id` a
 There are no new tables introduced for this boundary, but it heavily influences how the `Item`, `Comment`, and `Contribution` data is rendered and serialized.
 
 ## Components
-- **Item Cards/UI (`_item_card.html`, `_dashboard_item_card.html`, `_item_quick_view.html`)**: Conditionally renders badges (e.g. "Your Item" instead of "Claimed") and hides the "Last updated by" and "Claimed by" text when `current_user.id == item.user_id`.
+- **Item Cards/UI (`_item_card.html`, `_dashboard_item_card.html`, `_item_quick_view.html`)**: Conditionally renders badges (e.g. "Your Item" instead of "Claimed") and hides the "Last updated by" and "Claimed by" text when `current_user.id == item.user_id`. The quick-view modal's status fallback ("Item is …") is guarded with `item.user_id != current_user.id` so the owner never sees claim state (OWN-VIS-001). The dashboard route already excludes the owner's own items (`Item.user_id != current_user.id`), so dashboard cards only ever render giver-facing statuses.
 - **Edit Item Form**: Hides the `status` dropdown and the current status when a user edits their own item.
 - **Summary Table (`items.py` / `items_list` endpoint)**: The `At a Glance` summary totals exclude claimed/purchased items that belong to the current user (preventing mathematical deduction of claimed items).
 - **Split Gifts (`_split_progress.html`)**: Hides the split progress bar and contribution amounts from the owner; they just see the item as normal and "Available".

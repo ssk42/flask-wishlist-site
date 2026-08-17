@@ -1,4 +1,5 @@
 """Tests for SessionFilterManager class."""
+# @spec VW-UI-001, VW-UI-002, VW-UI-003
 import pytest
 
 from services.session_filter_manager import SessionFilterManager
