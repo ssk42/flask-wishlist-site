@@ -175,8 +175,12 @@ jobs:
 
   ios:
     name: iOS (WishlistKit tests + app build)
-    # AppIntents (@available(iOS 27, *) + @AppIntent macro) needs the iOS 26+
-    # SDK; macos-15 defaults to Xcode 16.4 and cannot parse it.
+    # The Siri AppIntents code (@available(iOS 27, *) + `.system.open` /
+    # `.system.searchInApp` schema members) needs the iOS 27 SDK, which only
+    # ships with Xcode 27. macos-15's Xcode 16.4 can't even parse @AppIntent;
+    # macos-26's Xcode 26.6 parses it but lacks the schema members. WishlistKit
+    # tests always run; the app build is gated on Xcode >= 27 (auto-activates
+    # once hosted images ship it, without breaking the build on older SDKs).
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
@@ -194,7 +198,15 @@ jobs:
         run: |
           xcodebuild -project ios/Wishlist.xcodeproj -scheme WishlistKit \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" test
-      - name: Build app scheme
+      - name: Check Xcode version
+        id: xcode
+        run: |
+          VER=$(xcodebuild -version | awk 'NR==1 {print $2}')
+          MAJOR=${VER%%.*}
+          echo "xcode=$VER major=$MAJOR"
+          if [ "$MAJOR" -ge 27 ]; then echo "appintents_sdk=yes" >> "$GITHUB_OUTPUT"; else echo "appintents_sdk=no" >> "$GITHUB_OUTPUT"; fi
+      - name: Build app scheme (requires iOS 27 SDK)
+        if: steps.xcode.outputs.appintents_sdk == 'yes'
         run: |
           xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist \
             -destination 'generic/platform=iOS Simulator' build
