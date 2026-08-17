@@ -175,7 +175,9 @@ jobs:
 
   ios:
     name: iOS (WishlistKit tests + app build)
-    runs-on: macos-15
+    # AppIntents (@available(iOS 27, *) + @AppIntent macro) needs the iOS 26+
+    # SDK; macos-15 defaults to Xcode 16.4 and cannot parse it.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
       - name: Install XcodeGen
