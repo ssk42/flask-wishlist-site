@@ -46,5 +46,5 @@ dependencies = [
     "whitenoise>=6.11.0",
     "sentry-sdk[flask]==2.67.1",
     "Flask-Limiter==4.1.1",
-    "redis>=3.0",
+    "redis>=8.1.0",
 ]
