@@ -29,7 +29,32 @@ The presentation and aggregation layer.
 ### 5. `boundary-autonomous`
 The background processing context, completely detached from HTTP requests.
 - **Segments**: `price-stealth`, `price-processing`, `system-tasks`
-- **Key Invariants**: Periodically sweeps URLs using rotating stealth Playwright identities to extract prices and record histories. Handles Celery-based async workloads like event reminders.
+- **Key Invariants**: Periodically sweeps URLs using rotating stealth Playwright
+  identities to extract prices and record histories. Handles Celery-based async
+  workloads like event reminders.
+
+### 6. `boundary-ios`
+The native SwiftUI client, a mirror of the server surfaces plus shared plumbing.
+The client never re-implements server rules — it depends on the `/api/v1` JSON
+contract (`docs/API_V1.md`) and preserves surprise protection in its own types
+(`Item.status`/`lastUpdatedBy` absent for the viewer's own items).
+- **Segments**: `ios-networking`, `ios-auth`, `ios-gifting`, `ios-curation`,
+  `ios-activity`, `ios-share`
+- **Key Invariants**:
+  - `ios-networking` / `ios-auth`: the shared `WishlistKit` framework (APIClient,
+    Codable models, Session, Keychain token store) consumed by both the app and the
+    Share Extension; the token store's shared access group lets the extension
+    authenticate without its own login UI.
+  - `ios-gifting`: gift-giver coordination — browse family, claim/unclaim/purchase;
+    claim state is rendered only where the server sent it (another member's items).
+  - `ios-curation`: own-list CRUD; never shows claim badges for the user's own items.
+  - `ios-activity`: notifications + push; a tapped notification currently routes
+    only to the Activity tab.
+  - `ios-share`: Safari share-sheet add-item, a separate process authenticating via
+    the app's stored token.
+- **Open gaps** (captured as `[ ]` specs): session restore from a stored token, a
+  logout affordance, real push-payload deep-link routing, and once-per-install push
+  authorization.
 
 ## Inferred Design Decisions & Technical Debt
 During the codebase mapping, several recurring themes and idiosyncrasies were discovered:

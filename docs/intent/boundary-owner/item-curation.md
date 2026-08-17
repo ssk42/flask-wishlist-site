@@ -8,7 +8,7 @@ The item curation boundary manages the lifecycle of a user's wishlist items. It 
 - **Session state (`item_mutations`)**: Tracks a rolling buffer of the last 20 successful submission tokens to prevent duplicate requests.
 
 ## Components
-- **Item Form Validation (`_validate_item_fields`)**: Validates description length, HTTP URLs for links/images, positive prices, quantity bounds, and valid event IDs.
+- **Item Form Validation (`validate_item_fields`)**: Validates description length, HTTP URLs for links/images, positive prices, quantity bounds, and valid event IDs.
 - **Idempotency Tracking (`_completed_submission`, `_remember_submission`)**: Tracks submission tokens in the session to prevent duplicate item creations/updates from repeated form submissions or accidental refreshes.
 - **Owner Edit Protections (`edit_item`)**: Validates if `item.user_id == current_user.id`. Owners can edit all fields; non-owners can only update the item's status.
 - **Item Deletion (`delete_item`)**: Strictly enforces owner-only deletion.

@@ -1,5 +1,5 @@
 ---
-status: MAPPED
+status: OK
 ---
 
 # price-processing Arrow

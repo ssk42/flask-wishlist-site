@@ -18,10 +18,12 @@ Secret coordination allows multiple family members to organize gift purchases wh
 | Decision | Alternative Considered | Rationale |
 |----------|------------------------|-----------|
 | **[inferred]** Synchronous Notification Generation | Offloading notification generation to a background task (Celery). | Simpler architecture. Generating notifications for previous commenters requires minimal DB inserts and is fast enough to run in the request lifecycle (`social.py` L33-47). |
-| **[inferred]** Python-level filtering for Surprise Protection | Complex SQL query filtering during aggregation. | Easier to maintain and reason about. Items are iterated and filtered in Python (`items.py` L206) when calculating summary totals. |
+| **[inferred]** Python-level filtering for Surprise Protection | Complex SQL query filtering during aggregation. | Easier to maintain and reason about. Items are iterated and filtered in Python (`items.py` L184-188) when calculating summary totals. |
 | **[inferred]** Notification Recipients | Notifying everyone in the family or just the organizer. | Notifying only previous commenters limits noise, creating opt-in discussion threads for specific items. |
 
 ## Open Questions
-- **[inferred]** TODO in `items.py` L737: Need to implement notification sending to all contributors when a split gift is marked as completed by the organizer.
+- **[inferred]** Contributor notification on split completion: `complete_split`
+  notifies every other contributor (excluding the organizer and the item owner)
+  via `create_notification` (GIV-SEC-007).
 - **[inferred]** Do notifications auto-delete after a certain period, or will the `Notification` table grow unbounded over time?
 - **[inferred]** If an item is unclaimed or deleted, what happens to the associated coordination comments? (Assuming cascade deletes, but worth verifying).

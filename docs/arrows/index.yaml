@@ -1,73 +1,204 @@
+schema_version: 1
+last_updated: 2026-08-16
+
 arrows:
   - id: boundary-auth
     status: GROUP
     parent: null
     children: [auth-flow, account-recovery]
   - id: auth-flow
-    status: MAPPED
+    status: OK
     parent: boundary-auth
     detail: boundary-auth/auth-flow.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: account-recovery
-    status: MAPPED
+    status: OK
     parent: boundary-auth
     detail: boundary-auth/account-recovery.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: boundary-owner
     status: GROUP
     parent: null
     children: [item-curation, event-management, owner-visibility]
   - id: item-curation
-    status: MAPPED
+    status: OK
     parent: boundary-owner
     detail: boundary-owner/item-curation.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: event-management
-    status: MAPPED
+    status: OK
     parent: boundary-owner
     detail: boundary-owner/event-management.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: owner-visibility
-    status: MAPPED
+    status: OK
     parent: boundary-owner
     detail: boundary-owner/owner-visibility.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: boundary-giver
     status: GROUP
     parent: null
     children: [item-claiming, split-contributions, secret-coordination]
   - id: item-claiming
-    status: MAPPED
+    status: OK
     parent: boundary-giver
     detail: boundary-giver/item-claiming.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: split-contributions
-    status: MAPPED
+    status: OK
     parent: boundary-giver
     detail: boundary-giver/split-contributions.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: secret-coordination
-    status: MAPPED
+    status: OK
     parent: boundary-giver
     detail: boundary-giver/secret-coordination.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: "GIV-SEC-001 duplicates GIV-CLM-011 (same code path)"
   - id: boundary-viewer
     status: GROUP
     parent: null
     children: [feed-filtering, ui-state]
   - id: feed-filtering
-    status: MAPPED
+    status: OK
     parent: boundary-viewer
     detail: boundary-viewer/feed-filtering.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: ui-state
-    status: MAPPED
+    status: OK
     parent: boundary-viewer
     detail: boundary-viewer/ui-state.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: boundary-autonomous
     status: GROUP
     parent: null
     children: [price-stealth, price-processing, system-tasks]
   - id: price-stealth
-    status: MAPPED
+    status: OK
     parent: boundary-autonomous
     detail: boundary-autonomous/price-stealth.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: price-processing
-    status: MAPPED
+    status: OK
     parent: boundary-autonomous
     detail: boundary-autonomous/price-processing.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
   - id: system-tasks
-    status: MAPPED
+    status: OK
     parent: boundary-autonomous
     detail: boundary-autonomous/system-tasks.md
+    sampled: 2026-07-25
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+  - id: boundary-ios
+    status: GROUP
+    parent: null
+    children: [ios-networking, ios-auth, ios-gifting, ios-curation, ios-activity, ios-share]
+  - id: ios-networking
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-networking.md
+    sampled: 2026-08-15
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+  - id: ios-auth
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-auth.md
+    sampled: 2026-08-15
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+  - id: ios-gifting
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-gifting.md
+    sampled: 2026-08-15
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+  - id: ios-curation
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-curation.md
+    sampled: 2026-08-15
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+  - id: ios-activity
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-activity.md
+    sampled: 2026-08-15
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+  - id: ios-share
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-share.md
+    sampled: 2026-08-15
+    audited: 2026-08-16
+    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    next: null
+    drift: null
+
+unmapped:
+  docs:
+    llds: []
+    specs: []
