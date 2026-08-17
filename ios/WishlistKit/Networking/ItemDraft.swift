@@ -19,12 +19,15 @@ public struct ItemDraft: Sendable {
         self.size = size; self.color = color; self.quantity = quantity
     }
 
-    /// Only non-nil fields are sent, so PATCH is a true partial update.
+    /// All fields, nils included. The single place nil-dropping happens is
+    /// `APIClient.sendRaw` (`compactMapValues`), so PATCH stays a true partial
+    /// update without a second filter here.
+    /// @spec IOS-NET-006
     public var payload: [String: Any?] {
         [
             "description": description, "link": link, "price": price, "category": category,
             "image_url": imageURL, "priority": priority, "size": size, "color": color,
             "quantity": quantity,
-        ].filter { $0.value != nil }
+        ]
     }
 }

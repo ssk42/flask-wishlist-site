@@ -11,6 +11,7 @@ public final class ClaimsViewModel {
     public init(client: APIClient) { self.client = client }
 
     public func load() async {
+        // @spec IOS-GIFT-007
         isLoading = true
         error = nil
         do { items = try await client.myClaims() }
@@ -19,6 +20,7 @@ public final class ClaimsViewModel {
     }
 
     public func unclaim(_ item: Item) async {
+        // @spec IOS-GIFT-007
         error = nil
         do {
             _ = try await client.unclaim(itemID: item.id)
@@ -29,6 +31,7 @@ public final class ClaimsViewModel {
     }
 
     public func purchase(_ item: Item) async {
+        // @spec IOS-GIFT-007
         error = nil
         do {
             let updated = try await client.purchase(itemID: item.id)

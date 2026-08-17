@@ -6,6 +6,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var familyCode = ""
     @State private var loggingIn = false
+    // @spec IOS-AUTH-006
     @State private var failed = false
     @State private var appeared = false
 
@@ -73,6 +74,7 @@ struct LoginView: View {
         .onAppear { withAnimation(.easeOut(duration: 0.65)) { appeared = true } }
     }
 
+    // @spec IOS-AUTH-006
     private var canSubmit: Bool { !email.isEmpty && !familyCode.isEmpty && !loggingIn }
 
     @ViewBuilder

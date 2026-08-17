@@ -63,6 +63,11 @@ struct ActivityView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .task { if vm.notifications.isEmpty { await vm.load() } }
+            .onChange(of: vm.unreadCount) { _, count in
+                // One hook covers initial load and both markRead/markAllRead paths.
+                // @spec IOS-ACT-010
+                PushManager.shared.syncBadge(unreadCount: count)
+            }
         }
         .tint(.wlAccent)
     }

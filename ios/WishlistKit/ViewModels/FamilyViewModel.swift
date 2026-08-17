@@ -11,6 +11,7 @@ public final class FamilyViewModel {
     public init(client: APIClient) { self.client = client }
 
     public func load() async {
+        // @spec IOS-GIFT-001
         isLoading = true
         error = nil
         do { users = try await client.users() }

@@ -12,6 +12,7 @@ public final class ActivityViewModel {
     public init(client: APIClient) { self.client = client }
 
     public func load() async {
+        // @spec IOS-ACT-001
         isLoading = true
         error = nil
         do {
@@ -25,6 +26,7 @@ public final class ActivityViewModel {
     }
 
     public func markRead(_ notification: WishlistNotification) async {
+        // @spec IOS-ACT-002
         guard !notification.isRead else { return }
         do {
             try await client.markNotificationRead(id: notification.id)
@@ -35,6 +37,7 @@ public final class ActivityViewModel {
     }
 
     public func markAllRead() async {
+        // @spec IOS-ACT-003
         do {
             try await client.markAllNotificationsRead()
             await load()

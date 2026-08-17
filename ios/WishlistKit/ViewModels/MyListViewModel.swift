@@ -15,6 +15,7 @@ public final class MyListViewModel {
     }
 
     public func load() async {
+        // @spec IOS-CUR-001
         isLoading = true
         error = nil
         do { items = try await client.items(userID: userID) }
@@ -24,6 +25,7 @@ public final class MyListViewModel {
 
     @discardableResult
     public func create(_ draft: ItemDraft) async -> Bool {
+        // @spec IOS-CUR-002
         error = nil
         do {
             let item = try await client.createItem(draft)
@@ -40,6 +42,7 @@ public final class MyListViewModel {
 
     @discardableResult
     public func update(id: Int, _ patch: ItemDraft) async -> Bool {
+        // @spec IOS-CUR-003
         error = nil
         do {
             let updated = try await client.updateItem(id: id, patch)
@@ -55,6 +58,7 @@ public final class MyListViewModel {
     }
 
     public func delete(_ item: Item) async {
+        // @spec IOS-CUR-004
         error = nil
         do {
             try await client.deleteItem(id: item.id)
@@ -62,5 +66,13 @@ public final class MyListViewModel {
         } catch {
             self.error = "Couldn't delete item."
         }
+    }
+
+    /// Best-effort metadata prefill for the add/edit form. Always returns a draft
+    /// whose `link` is the given URL (never loses what the user typed); server
+    /// fields (description/price/image) are filled when the lookup succeeds.
+    /// @spec IOS-CUR-008
+    public func prefill(url: String) async -> ItemDraft {
+        (try? await client.fetchMetadata(url: url)) ?? ItemDraft(link: url)
     }
 }

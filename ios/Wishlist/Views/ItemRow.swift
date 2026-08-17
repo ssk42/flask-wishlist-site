@@ -27,6 +27,7 @@ struct ItemRow: View {
                 }
             }
             Spacer(minLength: 8)
+            // @spec IOS-GIFT-008
             // Claim badge only for others' items (own items have nil status).
             if let status = item.status, status != "Available" {
                 StatusPill(status: status)

@@ -42,6 +42,7 @@ final class ShareViewController: UIViewController {
     }
 
     /// Safari shares a `public.url`; some apps share the link as plain text.
+    /// @spec IOS-SHARE-001
     private func sharedURL() async -> String? {
         let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
         for item in items {

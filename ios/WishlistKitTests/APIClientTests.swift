@@ -18,6 +18,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testLoginSendsCredentialsAndDecodesToken() async throws {
+        // @spec IOS-NET-001, IOS-NET-002
         var captured: URLRequest?
         StubURLProtocol.handler = { req in
             captured = req
@@ -33,6 +34,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testAttachesBearerHeaderWhenTokenPresent() async throws {
+        // @spec IOS-NET-001
         var captured: URLRequest?
         StubURLProtocol.handler = { req in
             captured = req
@@ -43,6 +45,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testMaps401ToUnauthorized() async {
+        // @spec IOS-NET-005
         respond(401, #"{"error":"unauthorized"}"#)
         do { _ = try await makeClient().login(email: "x", familyCode: "y"); XCTFail("expected throw") }
         catch let APIError.unauthorized { /* ok */ }

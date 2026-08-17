@@ -31,6 +31,7 @@ public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
 ///
 /// Keep in sync with `ItemActionError` codes in `services/item_service.py`.
 public enum ConflictCopy {
+    /// @spec IOS-GIFT-004
     public static func friendly(_ code: String) -> String {
         switch code {
         case "own_item": "You can't claim your own item."

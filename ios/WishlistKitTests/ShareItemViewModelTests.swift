@@ -19,6 +19,7 @@ final class ShareItemViewModelTests: XCTestCase {
     // MARK: prefill
 
     func testPrefillMapsMetadataAndKeepsSharedURL() async {
+        // @spec IOS-SHARE-002
         let vm = ShareItemViewModel(client: client { _ in
             (200, #"{"title":"Cashmere throw","price":120.0,"image_url":"https://ex.com/t.jpg"}"#)
         })
@@ -47,6 +48,7 @@ final class ShareItemViewModelTests: XCTestCase {
     }
 
     func testPrefillWithoutTokenAsksUserToLogIn() async {
+        // @spec IOS-SHARE-004
         let vm = ShareItemViewModel(client: client { _ in (401, #"{"error":"unauthorized"}"#) })
 
         await vm.prefill(urlString: "https://shop.example/x")
@@ -77,6 +79,7 @@ final class ShareItemViewModelTests: XCTestCase {
     }
 
     func testSubmitRefusesEmptyDescriptionWithoutCallingAPI() async {
+        // @spec IOS-SHARE-003
         var called = false
         let vm = ShareItemViewModel(client: client { _ in called = true; return (201, "{}") })
         vm.draft.link = "https://shop.example/x"
@@ -89,6 +92,7 @@ final class ShareItemViewModelTests: XCTestCase {
     }
 
     func testSubmitSurfacesValidationError() async {
+        // @spec IOS-SHARE-005
         let vm = ShareItemViewModel(client: client { _ in
             (400, #"{"errors":["Link must be a valid http or https URL."]}"#)
         })
@@ -101,6 +105,7 @@ final class ShareItemViewModelTests: XCTestCase {
     }
 
     func testSubmitWithoutTokenAsksUserToLogIn() async {
+        // @spec IOS-SHARE-004
         let vm = ShareItemViewModel(client: client { _ in (401, #"{"error":"unauthorized"}"#) })
         vm.draft.description = "Something"
 

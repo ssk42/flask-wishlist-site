@@ -38,6 +38,7 @@ final class ActivityViewModelTests: XCTestCase {
     }
 
     func testLoadFillsNotificationsAndUnreadCount() async {
+        // @spec IOS-ACT-001
         let vm = ActivityViewModel(client: client(FakeServer()))
         await vm.load()
         XCTAssertEqual(vm.notifications.map(\.id), [1, 2])
@@ -46,6 +47,7 @@ final class ActivityViewModelTests: XCTestCase {
     }
 
     func testMarkAllReadPostsAndRefreshes() async {
+        // @spec IOS-ACT-003
         let server = FakeServer()
         let vm = ActivityViewModel(client: client(server))
         await vm.load()

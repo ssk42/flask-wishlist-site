@@ -17,6 +17,7 @@ final class FamilyViewModelTests: XCTestCase {
     }
 
     func testLoadFillsUsers() async {
+        // @spec IOS-GIFT-001
         let vm = FamilyViewModel(client: client { _ in
             (200, #"{"users":[{"id":1,"name":"Alex","email":"a@x.com","item_count":2}]}"#)
         })
@@ -33,6 +34,7 @@ final class FamilyViewModelTests: XCTestCase {
     }
 
     func testClaimUpdatesItem() async {
+        // @spec IOS-GIFT-002, IOS-GIFT-003
         let vm = MemberItemsViewModel(client: client { req in
             if req.url!.path.hasSuffix("/claim") {
                 return (200, #"{"item":{"id":5,"description":"Book","user_id":2,"status":"Claimed","last_updated_by":{"id":1,"name":"Alex"}}}"#)
@@ -46,6 +48,7 @@ final class FamilyViewModelTests: XCTestCase {
     }
 
     func testClaimConflictSetsFriendlyError() async {
+        // @spec IOS-GIFT-004
         let vm = MemberItemsViewModel(client: client { req in
             if req.url!.path.hasSuffix("/claim") { return (409, #"{"error":"own_item"}"#) }
             return (200, #"{"items":[{"id":5,"description":"Book","user_id":2,"status":"Available"}]}"#)

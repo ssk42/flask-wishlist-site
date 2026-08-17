@@ -8,6 +8,7 @@ import Observation
 public final class ShareItemViewModel {
     public var draft = ItemDraft()
     public private(set) var error: String?
+    /// @spec IOS-SHARE-004
     public private(set) var needsLogin = false
     public var isLoading = false
 
@@ -17,6 +18,7 @@ public final class ShareItemViewModel {
 
     /// Fetch title/price/image for the shared URL. Best-effort: a failed lookup
     /// still leaves a usable form (the link is filled, user types the rest).
+    /// @spec IOS-SHARE-002
     public func prefill(urlString: String) async {
         isLoading = true
         error = nil
@@ -38,12 +40,14 @@ public final class ShareItemViewModel {
         isLoading = false
     }
 
+    /// @spec IOS-SHARE-003
     public var canSubmit: Bool {
         !(draft.description ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     @discardableResult
     public func submit() async -> Bool {
+        // @spec IOS-SHARE-003, IOS-SHARE-005
         guard canSubmit else {
             error = "Add a short description."
             return false
