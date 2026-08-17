@@ -9,6 +9,7 @@ from models import PriceHistory
 logger = logging.getLogger(__name__)
 
 def record_price_history(item_id: int, price: float, source: str = 'auto') -> bool:
+    # @spec AUTO-PRC-002
     """
     Record a price point for an item.
     

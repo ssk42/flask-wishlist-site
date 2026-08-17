@@ -54,6 +54,7 @@ class GenericPriceExtractor(BasePriceExtractor):
         return True
 
     def extract_from_soup(self, soup):
+        # @spec AUTO-PRC-008
         """Extract price using multiple strategies."""
         try:
             # Strategy 1: Meta tags (most reliable when available)

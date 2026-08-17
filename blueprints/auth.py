@@ -25,6 +25,7 @@ def is_safe_url(target):
 @bp.route('/register', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def register():
+    # @spec AUTH-FLOW-001, AUTH-FLOW-002, AUTH-FLOW-004
     """Handle user registration."""
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -61,6 +62,7 @@ def register():
 @bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def login():
+    # @spec AUTH-FLOW-001, AUTH-FLOW-002, AUTH-FLOW-003, AUTH-FLOW-004, AUTH-FLOW-005, AUTH-FLOW-006
     """Handle user login."""
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -91,6 +93,7 @@ def login():
 @bp.route('/forgot_email', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def forgot_email():
+    # @spec AUTH-REC-001, AUTH-REC-002, AUTH-REC-003, AUTH-REC-004, AUTH-REC-005, AUTH-REC-006, AUTH-REC-007, AUTH-REC-008, AUTH-REC-009, AUTH-REC-010, AUTH-REC-011
     """Handle email recovery via name lookup."""
     if request.method == 'POST':
         name = request.form.get('name', '').strip()

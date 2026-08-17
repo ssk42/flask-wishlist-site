@@ -44,6 +44,8 @@ class TestEventReminderTask:
         assert callable(send_event_reminders)
 
     def test_finds_events_seven_days_out(self, app, event_creator):
+    # @spec OWN-EVT-008
+        # @spec OWN-EVT-006
         """Task should find events that are exactly 7 days away."""
         from services.tasks import send_event_reminders
 
@@ -82,6 +84,7 @@ class TestEventReminderTask:
             assert stats['events_processed'] == 1
 
     def test_skips_already_sent_reminders(self, app, event_creator):
+        # @spec OWN-EVT-009
         """Task should skip events that already had reminders sent."""
         from services.tasks import send_event_reminders
 

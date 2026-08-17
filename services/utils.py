@@ -4,6 +4,7 @@ from flask import session, url_for
 
 
 def get_items_url_with_filters():
+    # @spec VW-UI-004
     """
     Build items URL with preserved filters from session.
 

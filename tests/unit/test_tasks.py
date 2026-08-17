@@ -45,6 +45,8 @@ class TestSendEventReminders:
 
     @patch('services.email_service.send_event_reminder')
     def test_send_event_reminders_sends_email(self, mock_send, app, event_reminder_setup):
+    # @spec OWN-EVT-007
+        # @spec AUTO-TSK-001, AUTO-TSK-002, AUTO-TSK-004, AUTO-TSK-006
         """Should send reminder email for upcoming event."""
         from services.tasks import send_event_reminders
         from models import db, Event, Item, User
@@ -78,6 +80,7 @@ class TestSendEventReminders:
 
     @patch('services.email_service.send_event_reminder')
     def test_event_no_claimed_items(self, mock_send, app):
+        # @spec AUTO-TSK-003, AUTO-TSK-006
         """Should mark event as processed even with no claimed items."""
         from services.tasks import send_event_reminders
         from models import db, Event, Item, User
@@ -110,6 +113,7 @@ class TestSendEventReminders:
 
     @patch('services.email_service.send_event_reminder')
     def test_email_failure_handled(self, mock_send, app, event_reminder_setup):
+        # @spec AUTO-TSK-005
         """Should handle email send failure gracefully."""
         from services.tasks import send_event_reminders
         from models import db, Event, Item, User
@@ -123,6 +127,7 @@ class TestSendEventReminders:
 
     @patch('services.email_service.send_event_reminder')
     def test_email_exception_handled(self, mock_send, app, event_reminder_setup):
+        # @spec AUTO-TSK-005
         """Should handle email exception gracefully."""
         from services.tasks import send_event_reminders
         from models import db, Event, Item, User

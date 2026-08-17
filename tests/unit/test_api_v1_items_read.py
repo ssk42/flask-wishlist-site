@@ -76,3 +76,52 @@ def test_my_claims(app, client, user, other_user):
     items = response.get_json()["items"]
     assert [i["description"] for i in items] == ["Their claimed book"]
     assert items[0]["status"] == "Claimed"
+
+
+def _seed_one(app, user, other_user):
+    with app.app_context():
+        item = Item(description="Their gadget", user_id=other_user, status="Claimed",
+                    last_updated_by_id=user, price=42.5)
+        db.session.add(item)
+        db.session.commit()
+        return item.id
+
+
+def test_single_item_returns_item_and_owner(app, client, user, other_user):
+    item_id = _seed_one(app, user, other_user)
+    response = client.get(f"/api/v1/items/{item_id}", headers=_auth(client))
+
+    assert response.status_code == 200
+    body = response.get_json()
+    item = body["item"]
+    assert item["id"] == item_id
+    assert item["description"] == "Their gadget"
+    assert item["price"] == 42.5
+    # other's item: claim state visible
+    assert item["status"] == "Claimed"
+    assert item["last_updated_by"]["id"] == user
+    owner = body["owner"]
+    assert owner["id"] == other_user
+
+
+def test_single_item_hides_own_claim_status(app, client, user, other_user):
+    with app.app_context():
+        item = Item(description="My own", user_id=user, status="Claimed",
+                    last_updated_by_id=other_user)
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+    response = client.get(f"/api/v1/items/{item_id}", headers=_auth(client))
+
+    body = response.get_json()["item"]
+    assert "status" not in body  # surprise protection on own item
+    assert response.get_json()["owner"]["id"] == user
+
+
+def test_single_item_not_found(app, client, user):
+    assert client.get("/api/v1/items/999999", headers=_auth(client)).status_code == 404
+
+
+def test_single_item_requires_auth(app, client, user, other_user):
+    item_id = _seed_one(app, user, other_user)
+    assert client.get(f"/api/v1/items/{item_id}").status_code == 401

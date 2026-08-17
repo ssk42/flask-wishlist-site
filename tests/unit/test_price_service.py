@@ -92,6 +92,7 @@ class TestFetchPrice:
 
     @patch('services.price_service._make_request')
     def test_fetch_generic_meta_price(self, mock_request):
+        # @spec AUTO-PRC-008
         """Should extract price from meta tags."""
         from services.price_service import fetch_price
 
@@ -205,6 +206,7 @@ class TestUpdateStalePrices:
     """Tests for the batch price update function."""
 
     def test_update_stale_prices_finds_old_items(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should find items with price_updated_at older than 7 days."""
         from services.price_service import update_stale_prices
 
@@ -231,6 +233,7 @@ class TestUpdateStalePrices:
                 assert stats['prices_updated'] == 1
 
     def test_update_stale_prices_skips_recent(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should skip items updated recently."""
         from services.price_service import update_stale_prices
 
@@ -255,6 +258,7 @@ class TestUpdateStalePrices:
                 mock_asyncio_run.assert_not_called()
 
     def test_update_stale_prices_handles_null_date(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should process items with NULL price_updated_at."""
         from services.price_service import update_stale_prices
 
@@ -276,7 +280,46 @@ class TestUpdateStalePrices:
 
                 assert stats['items_processed'] == 1
 
+    def test_update_stale_prices_timestamps_failed_url(self, app, item_owner):
+        # @spec AUTO-PRC-007
+        """A URL that fails during a batch update must get a fresh price_updated_at
+        so it is not retried immediately on the next run."""
+        from services.price_service import update_stale_prices
+
+        with app.app_context():
+            item = Item(
+                description="Failing Item",
+                user_id=item_owner,
+                price=10.00,
+                link="https://example.com/doomed",
+                price_updated_at=None
+            )
+            db.session.add(item)
+            db.session.commit()
+
+            with patch('asyncio.run') as mock_asyncio_run:
+                # The URL is in the item set but ABSENT from results → it failed.
+                # Close the discarded coroutine so pytest doesn't warn about it.
+                def run_and_close(coro):
+                    coro.close()
+                    return {}
+                mock_asyncio_run.side_effect = run_and_close
+
+                before = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                stats = update_stale_prices(app, db, Item)
+
+            assert stats['errors'] == 1
+            # Fresh query (not the identity-map object created above) must show
+            # the failure timestamp was written at/after this batch ran.
+            updated = db.session.execute(
+                db.select(Item).where(Item.id == item.id)
+            ).scalar_one()
+            assert updated.price_updated_at is not None
+            assert updated.price_updated_at >= before
+
+
     def test_update_stale_prices_handles_errors(self, app, item_owner):
+        # @spec AUTO-PRC-006
         """Should handle errors gracefully and continue processing."""
         from services.price_service import update_stale_prices
 

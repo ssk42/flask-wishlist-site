@@ -1,4 +1,5 @@
 """Tests for view helper utilities."""
+# @spec VW-UI-005
 import pytest
 
 from services.view_helpers import flash_and_redirect

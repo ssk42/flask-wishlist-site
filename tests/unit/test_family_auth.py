@@ -18,6 +18,7 @@ def auth_app(app):
         app.config.pop('FAMILY_PASSWORD', None)
 
 def test_register_success(auth_app):
+    # @spec AUTH-FLOW-001, AUTH-FLOW-002
     """Test registration with correct family code."""
     client = auth_app.test_client()
     response = client.post('/register', data={
@@ -35,6 +36,7 @@ def test_register_success(auth_app):
         assert user.name == 'Test User'
 
 def test_register_failure_wrong_code(auth_app):
+    # @spec AUTH-FLOW-001, AUTH-FLOW-002
     """Test registration with incorrect family code."""
     client = auth_app.test_client()
     response = client.post('/register', data={
@@ -51,6 +53,7 @@ def test_register_failure_wrong_code(auth_app):
         assert user is None
 
 def test_login_success(auth_app):
+    # @spec AUTH-FLOW-001, AUTH-FLOW-002
     """Test login with correct family code."""
     # First create a user (manually to skip reg check)
     with auth_app.app_context():
@@ -68,6 +71,7 @@ def test_login_success(auth_app):
     assert b"Welcome back, Existing User!" in response.data
 
 def test_login_failure_wrong_code(auth_app):
+    # @spec AUTH-FLOW-001, AUTH-FLOW-002
     """Test login with incorrect family code."""
     # First create a user
     with auth_app.app_context():

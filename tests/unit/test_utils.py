@@ -1,4 +1,5 @@
 """Tests for utility functions."""
+# @spec VW-UI-004
 import pytest
 
 

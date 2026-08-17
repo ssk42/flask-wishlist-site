@@ -78,6 +78,7 @@ class TestMyClaimsPage:
         assert b'Test Purchased Item' in response.data
 
     def test_my_claims_does_not_show_own_items(self, app, client, login_claimer):
+        # @spec GIV-CLM-008
         """My Claims page should not show user's own items even if claimed status."""
         with app.app_context():
             item = Item(
@@ -94,6 +95,7 @@ class TestMyClaimsPage:
         assert b'My Own Item' not in response.data
 
     def test_my_claims_groups_by_recipient(self, app, client, login_claimer, recipient):
+        # @spec GIV-CLM-007
         """Items should be grouped by recipient."""
         with app.app_context():
             # Create another recipient
@@ -173,6 +175,7 @@ class TestNavbarBadge:
     """Tests for the My Claims navbar badge."""
 
     def test_navbar_badge_shows_claimed_count(self, app, client, login_claimer, recipient):
+        # @spec GIV-CLM-009
         """Navbar should show badge with count of claimed items."""
         with app.app_context():
             item = Item(
@@ -186,12 +189,14 @@ class TestNavbarBadge:
 
         response = client.get('/')
         assert response.status_code == 200
-        # Badge is shown in navbar
+        # Sidebar link + badge with the exact claimed count (1, not just link text)
         assert b'My Claims' in response.data
+        assert b'sidebar-badge">1</span>' in response.data
 
     def test_navbar_badge_not_shown_when_zero(self, client, login_claimer):
         """Navbar badge should not show when count is zero."""
         response = client.get('/')
         assert response.status_code == 200
         assert b'My Claims' in response.data
-        # No badge shown when count is 0 (just the link text)
+        # No badge count rendered when count is 0
+        assert b'sidebar-badge' not in response.data

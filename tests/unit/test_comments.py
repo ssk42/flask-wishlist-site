@@ -46,6 +46,7 @@ def test_add_comment_success(client, app, test_data):
         assert comment.item_id == item_id
 
 def test_add_comment_owner_forbidden(client, app, test_data):
+    # @spec GIV-SEC-002
     user_a_id, user_b_id, user_c_id, item_id = test_data
     
     # Login as Alice (Owner)
@@ -65,6 +66,7 @@ def test_add_comment_owner_forbidden(client, app, test_data):
         assert Comment.query.count() == 0
 
 def test_notification_generated_for_participants(client, app, test_data):
+    # @spec GIV-SEC-003, GIV-SEC-004
     user_a_id, user_b_id, user_c_id, item_id = test_data
     
     # 1. Bob comments first
@@ -168,6 +170,7 @@ def test_add_comment_whitespace_only_shows_warning(client, app, test_data):
 
 
 def test_mark_notification_read_ajax_returns_json(client, app, test_data):
+    # @spec GIV-SEC-006
     """Test that AJAX request to mark notification as read returns JSON."""
     user_a_id, user_b_id, user_c_id, item_id = test_data
 
@@ -192,3 +195,29 @@ def test_mark_notification_read_ajax_returns_json(client, app, test_data):
     with app.app_context():
         notif = db.session.get(Notification, notif_id)
         assert notif.is_read is True
+
+def test_notifications_ordered_newest_first(client, app, user):
+    # @spec GIV-SEC-005
+    """GIV-SEC-005: the notifications page lists newest notifications first."""
+    import datetime
+    from models import User as _User
+
+    with app.app_context():
+        notifications = [
+            Notification(message="Oldest", link="/", user_id=user,
+                         created_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=2)),
+            Notification(message="Middle", link="/", user_id=user,
+                         created_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)),
+            Notification(message="Newest", link="/", user_id=user,
+                         created_at=datetime.datetime.now(datetime.timezone.utc)),
+        ]
+        db.session.add_all(notifications)
+        db.session.commit()
+
+    login_via_post(client, "test@example.com")
+
+    response = client.get("/notifications")
+    assert response.status_code == 200
+    text = ' '.join(response.data.decode('utf-8').split())
+    assert text.find("Newest") < text.find("Middle") < text.find("Oldest"), \
+        "Notifications must render newest first"

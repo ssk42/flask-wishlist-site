@@ -7,6 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 def send_event_reminders(app, db, Event, Item, User):
+    # @spec AUTO-TSK-001, AUTO-TSK-002, AUTO-TSK-003, AUTO-TSK-004, AUTO-TSK-005, AUTO-TSK-006
+    # @spec OWN-EVT-007, OWN-EVT-008
     """Send reminder emails for events happening in 7 days.
 
     This function:

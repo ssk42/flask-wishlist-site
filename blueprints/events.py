@@ -15,6 +15,7 @@ bp = Blueprint('events', __name__, url_prefix='/events')
 @bp.route('')
 @login_required
 def events_list():
+    # @spec OWN-EVT-001
     """List all events grouped by upcoming vs past."""
     today = datetime.date.today()
 
@@ -32,6 +33,7 @@ def events_list():
 @bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_event():
+    # @spec OWN-EVT-002
     """Create a new event."""
     if request.method == 'POST':
         validator = FormValidator(request.form)
@@ -60,6 +62,7 @@ def new_event():
 @bp.route('/<int:event_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_event(event_id):
+    # @spec OWN-EVT-003, OWN-EVT-004
     """Edit an existing event."""
     event = db.session.get(Event, event_id)
     if event is None:
@@ -94,6 +97,7 @@ def edit_event(event_id):
 @bp.route('/<int:event_id>/delete', methods=['POST'])
 @login_required
 def delete_event(event_id):
+    # @spec OWN-EVT-004, OWN-EVT-005
     """Delete an event."""
     event = db.session.get(Event, event_id)
     if event is None:

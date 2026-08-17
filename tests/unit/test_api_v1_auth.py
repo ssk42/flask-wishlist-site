@@ -5,6 +5,10 @@ def _login(client, email="test@example.com", code="testsecret"):
     return client.post("/api/v1/auth/login", json={"email": email, "family_code": code})
 
 
+def _auth(client, email="test@example.com"):
+    return {"Authorization": f"Bearer {_login(client, email=email).get_json()['token']}"}
+
+
 def test_login_success_returns_token_and_user(client, user):
     response = _login(client)
 
@@ -61,3 +65,25 @@ def test_logout_revokes_token(client, user):
     assert client.post("/api/v1/auth/logout", headers=headers).status_code == 200
     # Token no longer works
     assert client.post("/api/v1/auth/logout", headers=headers).status_code == 401
+
+
+def test_me_returns_current_user(client, user):
+    response = client.get("/api/v1/me", headers=_auth(client))
+
+    assert response.status_code == 200
+    body = response.get_json()["user"]
+    assert body["id"] == user
+    assert body["email"] == "test@example.com"
+    assert "item_count" not in body  # /me is a profile, not a roster summary
+
+
+def test_me_requires_auth(client):
+    assert client.get("/api/v1/me").status_code == 401
+
+
+def test_me_rejects_revoked_token(client, user):
+    token = _login(client).get_json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    assert client.post("/api/v1/auth/logout", headers=headers).status_code == 200
+
+    assert client.get("/api/v1/me", headers=headers).status_code == 401

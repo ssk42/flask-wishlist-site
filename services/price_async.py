@@ -60,6 +60,7 @@ async def _get_async_session():
 
 
 async def fetch_prices_batch(urls: List[str]) -> Dict[str, Optional[float]]:
+    # @spec AUTO-PRC-001
     """Fetch multiple prices concurrently using asyncio.
 
     # @spec AUTO-PRC-010

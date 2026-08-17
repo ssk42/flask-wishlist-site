@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def make_celery():
+    # @spec AUTO-TSK-008
     """Create and configure Celery application."""
     env = os.getenv('FLASK_ENV', 'development')
     is_prod = env == 'production'
