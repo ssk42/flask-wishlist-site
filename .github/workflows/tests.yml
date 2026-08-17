@@ -37,11 +37,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - run: pip install safety==3.2.14
-      # Fail on any known vulnerability. The prior `|| true` made this a no-op;
-      # if a low-severity advisory is blocking a merge, add it to an ignore
-      # allowlist explicitly instead of disabling the whole check.
-      - run: safety check -r requirements.txt --full-report
+      - run: pip install pip-audit
+      - run: pip-audit -r requirements.txt
 
   migration:
     name: Migration (flask db upgrade)
@@ -185,12 +182,16 @@ jobs:
         run: brew install xcodegen
       - name: Generate project
         run: xcodegen generate --spec ios/project.yml --project-root .
+      - name: Resolve simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c \
+            "import json,sys; d=json.load(sys.stdin)['devices']; print([x['udid'] for k,v in d.items() if 'iOS' in k for x in v][0])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
       - name: Run WishlistKit tests
         run: |
-          # Resolve the newest available simulator runtime regardless of the
-          # runner image's device names (they vary between macOS images).
           xcodebuild -project ios/Wishlist.xcodeproj -scheme WishlistKit \
-            -destination 'platform=iOS Simulator,OS=latest' test
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" test
       - name: Build app scheme
         run: |
           xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist \

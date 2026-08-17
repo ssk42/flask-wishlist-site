@@ -179,9 +179,8 @@ def downgrade():
     op.drop_table('notification')
     op.drop_table('event')
     op.drop_table('user')
-    with op.batch_alter_table('price_extraction_log', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_price_extraction_log_domain'))
-        batch_op.drop_index(batch_op.f('ix_price_extraction_log_created_at'))
-
+    # Dropping the table removes its indexes; the batch-mode f() index drops
+    # are redundant AND fail on Postgres (batch_op.f name resolution during
+    # downgrade). Drop the table directly.
     op.drop_table('price_extraction_log')
     # ### end Alembic commands ###
