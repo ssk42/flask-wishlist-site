@@ -39,10 +39,10 @@ def upgrade():
 
 
 def downgrade():
-    conn = op.get_bind()
-    inspector = sa.inspect(conn)
-    if 'price_extraction_log' in inspector.get_table_names():
-        with op.batch_alter_table('price_extraction_log', schema=None) as batch_op:
-            batch_op.drop_index(batch_op.f('ix_price_extraction_log_domain'))
-            batch_op.drop_index(batch_op.f('ix_price_extraction_log_created_at'))
-        op.drop_table('price_extraction_log')
+    # This migration is a guard: the table and indexes were created by
+    # 3bf7272ee759's upgrade, and 3bf7272ee759's downgrade owns their removal.
+    # Its upgrade is a no-op when the table already exists, so its downgrade
+    # must be a no-op too — dropping the table here would make the next
+    # downgrade (3bf7272ee759) crash on a missing table. All reversibility is
+    # owned by the migration that created the tables.
+    pass
