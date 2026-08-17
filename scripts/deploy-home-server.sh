@@ -35,9 +35,9 @@ if [[ "$SKIP_BACKUP" == "1" ]]; then
 else
   STAMP="$(date +%F-%H%M)"
   echo "== pg_dump backup → ~/wishlist-backup-${STAMP}.sql =="
-  # pg container + creds live in the home-server compose project's .env
+  # The compose service is `db` (container postgres_db); creds in .env.
   ssh "$HOST" "cd $COMPOSE_DIR && set -a && source .env && set +a && \
-    docker exec \$(docker compose ps -q postgres_db) pg_dump -U \"\$POSTGRES_USER\" \"\$POSTGRES_DB\" \
+    docker compose exec -T db pg_dump -U \"\$POSTGRES_USER\" \"\$POSTGRES_DB\" \
     > ~/wishlist-backup-${STAMP}.sql"
   ssh "$HOST" "test -s ~/wishlist-backup-${STAMP}.sql && echo 'backup ok' || { echo '!! empty backup — stop'; exit 1; }"
 fi
@@ -87,13 +87,18 @@ ssh "$HOST" "docker exec celery_worker celery -A celery_app inspect ping || echo
 
 echo "== API + surprise-protection smoke (paste output back) =="
 ssh "$HOST" "bash -s" <<'REMOTE'
+  set -a; source ~/home-server/.env; set +a
   CODE=$(curl -s -o /tmp/login.json -w '%{http_code}' \
     -X POST http://localhost:5000/api/v1/auth/login \
     -H 'Content-Type: application/json' \
-    -d '{"email":"sthreitz@gmail.com","family_code":"wishlist2025"}')
+    -d "{\"email\":\"sthreitz@gmail.com\",\"family_code\":\"${FAMILY_PASSWORD}\"}")
   echo "login: $CODE"
   TOKEN=$(python3 -c "import json;print(json.load(open('/tmp/login.json'))['token'])" 2>/dev/null || true)
-  [ -n "$TOKEN" ] && curl -s http://localhost:5000/api/v1/items -H "Authorization: Bearer $TOKEN" | head -c 300 || echo "no token"
+  if [ -n "$TOKEN" ]; then
+    curl -s http://localhost:5000/api/v1/items -H "Authorization: Bearer $TOKEN" | head -c 300
+  else
+    echo "no token — check FAMILY_PASSWORD / email"
+  fi
   echo
 REMOTE
 
