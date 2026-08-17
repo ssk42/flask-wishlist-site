@@ -282,8 +282,8 @@ class TestUpdateStalePrices:
 
     def test_update_stale_prices_timestamps_failed_url(self, app, item_owner):
         # @spec AUTO-PRC-007
-        """A URL that fails during a batch update must get a fresh price_updated_at
-        so it is not retried immediately on the next run."""
+        """A URL that fails during a batch update gets retry-paced: stamped ~6
+        days old so it crosses the 7-day staleness window again in ~1 day."""
         from services.price_service import update_stale_prices
 
         with app.app_context():
@@ -305,17 +305,19 @@ class TestUpdateStalePrices:
                     return {}
                 mock_asyncio_run.side_effect = run_and_close
 
-                before = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 stats = update_stale_prices(app, db, Item)
 
             assert stats['errors'] == 1
             # Fresh query (not the identity-map object created above) must show
-            # the failure timestamp was written at/after this batch ran.
+            # the failure was retry-paced: stamped ~6 days old (roughly 1 day
+            # from the 7-day staleness window), NOT freshly updated.
             updated = db.session.execute(
                 db.select(Item).where(Item.id == item.id)
             ).scalar_one()
             assert updated.price_updated_at is not None
-            assert updated.price_updated_at >= before
+            age = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - updated.price_updated_at
+            assert datetime.timedelta(days=5) < age < datetime.timedelta(days=7), \
+                f"failed URL should be retry-paced ~6d old, got age {age}"
 
 
     def test_update_stale_prices_handles_errors(self, app, item_owner):
