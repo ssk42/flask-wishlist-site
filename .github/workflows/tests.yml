@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -14,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - run: pip install flake8
+      - run: pip install flake8==7.1.1
       - run: flake8 --max-line-length=120 --ignore=E501,W503,W291,W293,E302,E303,E306,E111,E114,E117,E701,E722 app.py blueprints/ services/ models.py
 
   security:
@@ -25,7 +26,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - run: pip install bandit
+      - run: pip install bandit==1.8.3
       - run: bandit -r app.py blueprints/ services/ models.py -ll
 
   dependency-check:
@@ -36,13 +37,52 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - run: pip install safety
-      - run: safety check -r requirements.txt --full-report || true  # Don't fail on known issues
+      - run: pip install safety==3.2.14
+      # Fail on any known vulnerability. The prior `|| true` made this a no-op;
+      # if a low-severity advisory is blocking a merge, add it to an ignore
+      # allowlist explicitly instead of disabling the whole check.
+      - run: safety check -r requirements.txt --full-report
+
+  migration:
+    name: Migration (flask db upgrade)
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        # Sandbox (hp-server) runs Postgres 15 — mirror it so the gate de-risks
+        # the actual first deploy target (repo compose pins 16; don't align).
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: wishlist
+          POSTGRES_PASSWORD: wishlist
+          POSTGRES_DB: wishlist_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wishlist"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Upgrade from empty DB
+        env:
+          DATABASE_URL: postgresql://wishlist:wishlist@localhost:5432/wishlist_test
+          FLASK_APP: app.py
+        run: flask db upgrade
+      - name: Reversibility check
+        env:
+          DATABASE_URL: postgresql://wishlist:wishlist@localhost:5432/wishlist_test
+          FLASK_APP: app.py
+        run: flask db downgrade base
 
   tests:
     name: Run pytest and browser regression
     runs-on: ubuntu-22.04
-    needs: [lint]  # Only run tests if linting passes
+    needs: [lint]
 
     steps:
       - name: Check out repository
@@ -52,11 +92,18 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: '3.11'
+          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium
 
       - name: Install Playwright browsers
         run: |
@@ -66,30 +113,61 @@ jobs:
         env:
           PYTHONPATH: "${{ github.workspace }}"
         run: |
-          # Run pytest and capture exit code
-          # Exit code 1 can mean test failures OR teardown errors
-          # We check the actual test results to distinguish
           set +e
           pytest --junitxml=test-results.xml
           PYTEST_EXIT=$?
           set -e
-          
-          # Check if any tests actually FAILED (ignore teardown errors)
-          # In JUnit XML: failures = actual test failures, errors can include teardown issues
-          if [ $PYTEST_EXIT -ne 0 ]; then
-            FAILURES=$(grep -oP 'failures="\K[0-9]+' test-results.xml | head -1)
-            echo "Pytest exit code: $PYTEST_EXIT, Test failures: $FAILURES"
-            
-            if [ "$FAILURES" = "0" ]; then
-              echo "⚠️ Pytest exited with code $PYTEST_EXIT but no tests failed"
-              echo "This is likely a teardown error - treating as success"
-            else
-              echo "❌ $FAILURES test(s) failed"
-              exit 1
-            fi
-          else
-            echo "✅ All tests passed"
+
+          # The previous logic treated any non-zero exit with failures=0 as
+          # "teardown noise" and passed — but that ALSO swallowed collection
+          # errors (exit 2/4), usage errors (exit 4), and the coverage gate
+          # (pytest-cov exits non-zero with zero JUnit failures). Narrow it:
+          # - fail on exit codes that mean collection/usage/internal problems
+          # - fail on XML errors (teardown/setup errors)
+          # - only the exact failures=0 + errors=0 case may pass a non-zero exit
+          if [ ! -s test-results.xml ]; then
+            echo "❌ No JUnit XML produced — pytest failed to run"
+            exit 1
           fi
+
+          FAILURES=$(grep -oP 'failures="\K[0-9]+' test-results.xml | head -1)
+          ERRORS=$(grep -oP 'errors="\K[0-9]+' test-results.xml | head -1)
+          echo "pytest exit=$PYTEST_EXIT failures=$FAILURES errors=$ERRORS"
+
+          case "$PYTEST_EXIT" in
+            0) : ;;
+            1)
+              # Test failures OR coverage-gate failure. Distinguish:
+              # failures>0 = real test failures; failures=0 with errors=0 means
+              # the coverage gate tripped (pytest-cov) — enforce it below.
+              if [ "${FAILURES:-0}" -gt 0 ] || [ "${ERRORS:-0}" -gt 0 ]; then
+                echo "❌ $FAILURES test(s) failed"
+                exit 1
+              fi
+              ;;
+            2|3|4|5)
+              echo "❌ pytest exited $PYTEST_EXIT (collection/usage/internal error)"
+              exit 1
+              ;;
+            *)
+              echo "❌ pytest exited $PYTEST_EXIT"
+              exit 1
+              ;;
+          esac
+
+          # Enforce the coverage gate directly from coverage.xml — pytest-cov's
+          # non-zero exit is NOT reflected in JUnit failures, so rely on the
+          # line-rate attribute instead of the process exit code.
+          python - <<'EOF'
+          import xml.etree.ElementTree as ET
+          import sys
+          root = ET.parse("coverage.xml").getroot()
+          rate = float(root.get("line-rate"))
+          print(f"coverage line-rate: {rate:.1%}")
+          if rate < 0.90:
+              print(f"❌ coverage {rate:.1%} below 90% gate")
+              sys.exit(1)
+          EOF
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
@@ -98,3 +176,22 @@ jobs:
           path: coverage.xml
           if-no-files-found: error
 
+  ios:
+    name: iOS (WishlistKit tests + app build)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate --spec ios/project.yml --project-root .
+      - name: Run WishlistKit tests
+        run: |
+          # Resolve the newest available simulator runtime regardless of the
+          # runner image's device names (they vary between macOS images).
+          xcodebuild -project ios/Wishlist.xcodeproj -scheme WishlistKit \
+            -destination 'platform=iOS Simulator,OS=latest' test
+      - name: Build app scheme
+        run: |
+          xcodebuild -project ios/Wishlist.xcodeproj -scheme Wishlist \
+            -destination 'generic/platform=iOS Simulator' build
