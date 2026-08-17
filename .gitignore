@@ -123,3 +123,6 @@ coverage.xml
 # LID codebase-mapping working artifacts (not durable intent)
 scratch/
 .lid/map-codebase/
+
+# Local agent harness config
+WATCHDOG.yml
