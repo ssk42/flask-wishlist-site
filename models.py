@@ -1,8 +1,11 @@
 """Database models for the Wishlist application."""
 
 import datetime
+
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.orm import Session, attributes
 
 # SQLAlchemy instance - initialized in app.py and passed here
 db = SQLAlchemy()
@@ -61,6 +64,10 @@ class Item(db.Model):
     last_updated_by = db.relationship('User', foreign_keys=[last_updated_by_id])
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=True, index=True)
     price_updated_at = db.Column(db.DateTime, nullable=True)
+    # Price-fetch circuit breaker (@spec AUTO-PRC-011): consecutive failure
+    # count and the time until the automatic sweep may retry this item.
+    price_fail_streak = db.Column(db.Integer, nullable=False, default=0)
+    price_backoff_until = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
 
@@ -105,6 +112,19 @@ class Item(db.Model):
 
     def __repr__(self):
         return f'<Item {self.description[:30]}...>'
+
+
+@event.listens_for(Session, 'before_flush')
+def _reset_price_backoff_on_link_change(session, flush_context, instances):
+    # @spec AUTO-PRC-014
+    """One choke point for every write path: a changed item.link invalidates
+    the failure history of the old URL, so both circuit-breaker fields reset.
+    Registered on the Session class at import time — catches web edits, API
+    PATCHes, and scripts without touching blueprints."""
+    for obj in session.dirty:
+        if isinstance(obj, Item) and attributes.get_history(obj, 'link').has_changes():
+            obj.price_fail_streak = 0
+            obj.price_backoff_until = None
 
 
 class Comment(db.Model):

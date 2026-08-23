@@ -1,5 +1,6 @@
 """Price fetching service for wishlist items."""
 import datetime
+import os
 import logging
 import random
 import time
@@ -534,6 +535,43 @@ def _failed_fetch_retry_timestamp():
     return datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=6)
 
 
+def _backoff_settings():
+    # @spec AUTO-PRC-016
+    """(floor, max_days) for the circuit breaker, read at call time so
+    PRICE_BACKOFF_FLOOR / PRICE_BACKOFF_MAX_DAYS overrides apply without a
+    process restart."""
+    return (
+        int(os.getenv('PRICE_BACKOFF_FLOOR', '3')),
+        int(os.getenv('PRICE_BACKOFF_MAX_DAYS', '30')),
+    )
+
+
+def _apply_fetch_failure(item):
+    # @spec AUTO-PRC-011
+    """Account for one failed automatic attempt: advance the streak and, at
+    or beyond the floor, shelve the item with a doubling, capped backoff."""
+    floor, max_days = _backoff_settings()
+    item.price_fail_streak = (item.price_fail_streak or 0) + 1
+    if item.price_fail_streak >= floor:
+        delay = min(
+            datetime.timedelta(days=2 * 2 ** (item.price_fail_streak - floor)),
+            datetime.timedelta(days=max_days),
+        )
+        item.price_backoff_until = datetime.datetime.now(datetime.timezone.utc) + delay
+    else:
+        # Below the floor there is no active backoff — clear any expired
+        # leftover so the field reads "no backoff" unambiguously.
+        item.price_backoff_until = None
+    item.price_updated_at = _failed_fetch_retry_timestamp()
+
+
+def _reset_backoff_state(item):
+    # @spec AUTO-PRC-012
+    """A successful fetch clears the circuit breaker."""
+    item.price_fail_streak = 0
+    item.price_backoff_until = None
+
+
 def update_stale_prices(app, db, Item, Notification=None, force_all=False):
     # @spec AUTO-PRC-006, AUTO-PRC-007
     """Update prices for items that haven't been updated in 7 days.
@@ -628,6 +666,7 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
                         if new_price is not None:
                             old_price = item.price
                             item.price = new_price
+                            _reset_backoff_state(item)
                             item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
 
                             # Record history
@@ -644,15 +683,15 @@ def update_stale_prices(app, db, Item, Notification=None, force_all=False):
                                             item, old_price, new_price, drop_percent, db, Notification
                                         )
                         else:
-                            # URL returned no price (blocked/missing) — retry-pace it
-                            item.price_updated_at = _failed_fetch_retry_timestamp()
+                            # URL returned no price (blocked/missing) —
+                            # retry-pace it and advance the circuit breaker.
+                            _apply_fetch_failure(item)
 
                 # URLs in this chunk that produced no result at all
                 for url in chunk:
                     if url not in results:
                         for item in url_to_items[url]:
-                            item.price_updated_at = _failed_fetch_retry_timestamp()
-
+                            _apply_fetch_failure(item)
                 db.session.commit()
                 chunks_total = (len(urls) + CHUNK_SIZE - 1) // CHUNK_SIZE
                 logger.info(f"Chunk {(i // CHUNK_SIZE) + 1}/{chunks_total} committed "
@@ -692,23 +731,27 @@ def _create_price_drop_notifications(item, old_price, new_price, drop_percent, d
 
     db.session.commit()
 
-
 def get_items_needing_update(Item, db, cutoff_date, force_all=False):
-    """Query items that need price updates based on schedule or force flag."""
+    # @spec AUTO-PRC-013
+    """Query items that need price updates based on schedule or force flag.
+    Backed-off items are skipped until their price_backoff_until passes, at
+    which point they become eligible again automatically (self-healing)."""
     query = Item.query.filter(
         Item.link.isnot(None),
         Item.link != ''
     )
-    
+
     if not force_all:
         query = query.filter(
             db.or_(
                 Item.price_updated_at.is_(None),
                 Item.price_updated_at < cutoff_date
+            ),
+            db.or_(
+                Item.price_backoff_until.is_(None),
+                Item.price_backoff_until <= datetime.datetime.now(datetime.timezone.utc)
             )
         )
-        
-    # Potential future optimization: order by priority/staleness
     # query = query.order_by(Item.price_updated_at.asc())
     
     return query.all()
@@ -733,6 +776,7 @@ def refresh_item_price(item, db):
         if new_price is not None:
             old_price = item.price
             item.price = new_price
+            _reset_backoff_state(item)
             item.price_updated_at = datetime.datetime.now(datetime.timezone.utc)
 
             # Record history

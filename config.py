@@ -103,6 +103,12 @@ class Config:
     # browser once, using the same stealth/identity infrastructure as Amazon.
     BROWSER_RESCUE_ENABLED = os.environ.get('BROWSER_RESCUE_ENABLED', 'true').lower() == 'true'
 
+    # Price-fetch backoff circuit breaker (AUTO-PRC-011..016). The price
+    # service re-reads these from the environment at call time so overrides
+    # apply without a process restart.
+    PRICE_BACKOFF_FLOOR = int(os.getenv('PRICE_BACKOFF_FLOOR', '3'))
+    PRICE_BACKOFF_MAX_DAYS = int(os.getenv('PRICE_BACKOFF_MAX_DAYS', '30'))
+
     # APNs push notifications (feature-flagged: push is skipped unless all are set)
     APNS_KEY_ID = os.getenv('APNS_KEY_ID')
     APNS_TEAM_ID = os.getenv('APNS_TEAM_ID')
