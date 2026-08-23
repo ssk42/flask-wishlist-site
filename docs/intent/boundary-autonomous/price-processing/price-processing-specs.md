@@ -1,5 +1,7 @@
 # EARS Specifications: Price Processing
 
+> Convention: `- [D]` marks a spec deferred BY INTENT — no code implements it yet and none is expected to cite it. Deferred ids are excluded from @spec annotation coverage (wishlist-arrow-coherence Check 2) and must not be reported as missing annotations.
+
 - [x] **AUTO-PRC-001**: While processing async price batches, if the system encounters an Amazon URL, it shall process the Amazon requests sequentially (one at a time) to prevent memory exhaustion, while processing non-Amazon URLs concurrently (up to 5 at a time).
 - [x] **AUTO-PRC-002**: When the system fetches a new price, it shall record the new price in `PriceHistory` if the price changed by more than $0.01, or if it has been more than 6 hours since the last record.
 - [x] **AUTO-PRC-003**: When a price drops by 10% or more compared to its old price, the system shall generate a Notification for the item owner.
