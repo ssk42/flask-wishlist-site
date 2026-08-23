@@ -175,12 +175,23 @@ class FormValidator:
 
 
 def is_http_url(value):
-    """Accept blank optional values or absolute HTTP(S) URLs only."""
+    """Accept blank optional values or absolute HTTP(S) URLs only.
+
+    A paste accident like ``https://hosthttps://host/...`` parses with most of
+    the second URL absorbed into *netloc* (``hosthttps:``) and the rest into
+    *path*, so neither component alone proves corruption. A genuine URL,
+    however, carries exactly one ``://`` once query and fragment are set
+    aside — count them there. ``?return=https://...`` style queries stay
+    valid. # OWN-ITEM-008
+    """
     from urllib.parse import urlparse
     if not value:
         return True
     parsed = urlparse(value)
-    return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return False
+    without_qs = f'{parsed.scheme}://{parsed.netloc}{parsed.path}'
+    return without_qs.count('://') == 1
 
 
 def validate_item_fields(validator, description, link, image_url, price, event_id):

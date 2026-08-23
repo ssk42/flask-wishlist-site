@@ -462,3 +462,38 @@ class TestIntegration:
         assert 'Price must be a number.' in validator.errors
         assert 'Quantity must be positive.' in validator.errors
         assert 'Invalid date.' in validator.errors
+
+
+class TestValidateItemFieldsLinkUrls:
+    """OWN-ITEM-008: link/image_url must be absolute HTTP(S) URLs."""
+
+    def _errors_for(self, link=None, image_url=None):
+        from services.form_validators import FormValidator, validate_item_fields
+        validator = FormValidator({})
+        validate_item_fields(validator, 'A description', link, image_url, None, None)
+        return validator.errors
+
+    # @spec OWN-ITEM-008
+    def test_doubled_scheme_link_rejected(self):
+        """A paste accident like https://hosthttps://host/... hides its second
+        scheme inside urlparse's path component; it is not a valid URL."""
+        errors = self._errors_for(
+            link='https://www.cidermillpress.comhttps://www.cidermillpress.com/products/x')
+        assert 'Link must be a valid http or https URL.' in errors
+
+    # @spec OWN-ITEM-008
+    def test_doubled_scheme_image_url_rejected(self):
+        errors = self._errors_for(image_url='https://cdn.example.comhttps://cdn.example.com/img.jpg')
+        assert 'Image URL must be a valid http or https URL.' in errors
+
+    # @spec OWN-ITEM-008
+    def test_query_string_mentioning_another_url_accepted(self):
+        """A legitimate URL whose query references another URL must still pass —
+        only a second scheme in the *path* position indicates corruption."""
+        errors = self._errors_for(link='https://shop.example/buy?return=https://other.example/x')
+        assert errors == []
+
+    # @spec OWN-ITEM-008
+    def test_plain_product_url_accepted(self):
+        errors = self._errors_for(link='https://www.cidermillpress.com/products/deck?variant=41771627839620')
+        assert errors == []
