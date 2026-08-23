@@ -57,7 +57,7 @@ Backoff schedule (default floor 3, default max 30 days):
 
 **Link change resets both** — via ONE choke point: a SQLAlchemy `before_flush` event listener that detects a dirty `item.link` change and clears both fields. The listener is registered where other model events/extensions initialize (app factory), so every write path (web `edit_item`, api_v1 PATCH, scripts) is caught without editing blueprints.
 
-**Manual refresh bypasses backoff** — the `items.refresh_price` route calls `services.price_service.refresh_item_price(item, db)` directly: it always attempts the fetch regardless of `price_backoff_until`, resets both fields on success, and applies normal failure accounting otherwise.
+**Manual refresh bypasses backoff** — the `items.refresh_price` route calls `services.price_service.refresh_item_price(item, db)` directly: it always attempts the fetch regardless of `price_backoff_until`, resets both fields on success, and leaves both untouched on failure — breaker accounting is exclusive to automatic sweep attempts (AUTO-PRC-011).
 
 **User-visible indication** — [D] deferred: a card badge showing that auto-pricing is paused is recorded in Open Questions and AUTO-PRC-017, not built with this behavior.
 
