@@ -48,13 +48,9 @@ contract (`docs/API_V1.md`) and preserves surprise protection in its own types
   - `ios-gifting`: gift-giver coordination — browse family, claim/unclaim/purchase;
     claim state is rendered only where the server sent it (another member's items).
   - `ios-curation`: own-list CRUD; never shows claim badges for the user's own items.
-  - `ios-activity`: notifications + push; a tapped notification currently routes
-    only to the Activity tab.
+  - `ios-activity`: notifications; tapping one deep-links into the referenced item (own item -> My List, another member's -> full-screen ItemDetail) with an Activity-tab fallback for non-item links.
   - `ios-share`: Safari share-sheet add-item, a separate process authenticating via
     the app's stored token.
-- **Open gaps** (captured as `[ ]` specs): session restore from a stored token, a
-  logout affordance, real push-payload deep-link routing, and once-per-install push
-  authorization.
 
 ## Inferred Design Decisions & Technical Debt
 During the codebase mapping, several recurring themes and idiosyncrasies were discovered:
