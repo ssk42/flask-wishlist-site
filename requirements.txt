@@ -22,7 +22,7 @@ openpyxl==3.1.5
 packaging==26.3
 pandas==3.0.5
 playwright==1.62.0
-playwright-stealth>=1.0.6
+playwright-stealth>=2.0.3
 psycopg2-binary>=2.9.12
 pygments==2.20.0
 pytest==9.1.1
