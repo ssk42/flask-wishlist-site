@@ -1,7 +1,6 @@
 """Tests for Wishlist Archive (#46): owner-only soft-delete via Item.archived_at."""
 import datetime
-
-from models import db, Item
+from models import db, Event, Item, User
 
 
 def _login_as(client, user_id):
@@ -194,3 +193,67 @@ class TestArchivedExcludedFromCrawler:
                 Item, db, cutoff)]
             assert "Live" in descriptions
             assert "Buried" not in descriptions
+
+
+class TestArchivedSecondarySurfaces:
+    def test_export_excludes_archived(self, app, client, user, other_user):
+        # @spec OWN-ITEM-012
+        import io
+
+        import pandas as pd
+
+        _login_as(client, other_user)
+        live_id = _make_item(app, "Live claim", user, status="Claimed",
+                             claimer_id=other_user)
+        buried_id = _make_item(app, "Buried claim", user, status="Claimed",
+                               claimer_id=other_user)
+        _archive(app, buried_id)
+
+        response = client.get("/export_my_status_updates")
+        assert response.status_code == 200
+        descriptions = pd.read_excel(io.BytesIO(response.data))["Description"].tolist()
+        assert descriptions == ["Live claim"]
+
+    def test_users_count_excludes_archived(self, app, client, user):
+        # @spec OWN-ITEM-012
+        _make_item(app, "Live", user)
+        hidden_id = _make_item(app, "Hidden", user)
+        _archive(app, hidden_id)
+
+        users = {u["name"]: u for u in client.get(
+            "/api/v1/users", headers=_v1_headers(client)).get_json()["users"]}
+        assert users["Test User"]["item_count"] == 1
+
+    def test_reminders_skip_archived(self, app, user, other_user):
+        # @spec OWN-ITEM-012
+        import datetime as dt
+        from unittest.mock import patch
+
+        from models import Event
+        from services.tasks import send_event_reminders
+
+        with app.app_context():
+            event = Event(name="Party",
+                          date=dt.date.today() + dt.timedelta(days=7),
+                          created_by_id=user, reminder_sent=False)
+            db.session.add(event)
+            db.session.commit()
+            live = Item(description="Live gift", user_id=user,
+                        status="Claimed", event_id=event.id,
+                        last_updated_by_id=other_user)
+            buried = Item(description="Buried gift", user_id=user,
+                          status="Claimed", event_id=event.id,
+                          last_updated_by_id=other_user)
+            db.session.add_all([live, buried])
+            db.session.commit()
+            buried.archived_at = dt.datetime.now(dt.timezone.utc)
+            db.session.commit()
+            event_id = event.id
+
+        with patch("services.email_service.send_event_reminder",
+                   return_value=True) as mock_send:
+            stats = send_event_reminders(app, db, Event, Item, User)
+
+        assert stats["emails_sent"] == 1
+        sent = mock_send.call_args.kwargs["claimed_items"]
+        assert [i["description"] for i in sent] == ["Live gift"]

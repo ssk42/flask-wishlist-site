@@ -52,7 +52,8 @@ def send_event_reminders(app, db, Event, Item, User):
             claimed_items = Item.query.filter(
                 Item.event_id == event.id,
                 Item.status.in_(['Claimed', 'Purchased']),
-                Item.last_updated_by_id.isnot(None)
+                Item.last_updated_by_id.isnot(None),
+                Item.archived_at.is_(None)  # @spec OWN-ITEM-012
             ).all()
 
             if not claimed_items:

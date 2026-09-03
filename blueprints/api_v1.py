@@ -88,8 +88,9 @@ def me():
 
 @bp.route('/users', methods=['GET'])
 def list_users():
+    # @spec OWN-ITEM-012
     counts = dict(
-        db.session.query(Item.user_id, func.count(Item.id)).group_by(Item.user_id).all()
+        db.session.query(Item.user_id, func.count(Item.id)).filter(Item.archived_at.is_(None)).group_by(Item.user_id).all()
     )
     users = User.query.order_by(User.name).all()
     return jsonify({'users': [serialize_user(u, item_count=counts.get(u.id, 0)) for u in users]})

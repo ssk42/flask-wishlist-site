@@ -665,8 +665,9 @@ def my_claims():
 @bp.route('/export_my_status_updates')
 @login_required
 def export_my_status_updates():
+    # @spec OWN-ITEM-012
     """Export current user's claimed/purchased items to Excel."""
-    items = Item.query.filter_by(last_updated_by_id=current_user.id).all()
+    items = Item.query.filter_by(last_updated_by_id=current_user.id).filter(Item.archived_at.is_(None)).all()
 
     data = {
         'Description': [item.description for item in items],

@@ -102,7 +102,7 @@ def test_critical_wishlist_flow(page, live_server):
     item_card_to_delete = page.locator(f'.glass-card:has-text("{item_desc_2}")')
     
     # Grab the delete form action URL so we can manually hit it later
-    delete_form_action = item_card_to_delete.locator('form').get_attribute('action')
+    delete_form_action = item_card_to_delete.locator('form[action*="/delete_item/"]').get_attribute('action')
     
     page.on("dialog", lambda dialog: dialog.accept())
     item_card_to_delete.locator('button:has-text("Delete")').click()
