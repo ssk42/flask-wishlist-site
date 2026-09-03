@@ -15,4 +15,4 @@ status: OK
 
 ## Work Required
 
-1. ~~Archived items still leak into secondary surfaces~~ Resolved 2026-09-03 — `export_my_status_updates`, `/users` counts, and event-reminder claimed items now filter `archived_at` (`OWN-ITEM-012`), covered by `TestArchivedSecondarySurfaces`.
+1. ~~Archived items still leak into secondary surfaces~~ Resolved 2026-09-03 — full export, status export, `/users` counts, event reminders, my-claims contributions, and event badges all filter `archived_at` (`OWN-ITEM-012` extended), covered by `TestArchivedSecondarySurfaces` (17 archive tests green).
