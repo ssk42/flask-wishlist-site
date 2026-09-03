@@ -12,11 +12,14 @@ bp = Blueprint('social', __name__)
 @bp.route('/item/<int:item_id>/comment', methods=['POST'])
 @login_required
 def add_comment(item_id):
-    # @spec GIV-SEC-002, GIV-SEC-003, GIV-SEC-004
+    # @spec GIV-SEC-002, GIV-SEC-003, GIV-SEC-004, OWN-ITEM-013
     """Add a comment to an item."""
     item = db.session.get(Item, item_id)
     if item is None:
         abort(404)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
     text = request.form.get('text', '').strip()
 
     if not text:

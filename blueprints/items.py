@@ -114,6 +114,7 @@ def items_list():
     # @spec GIV-SEC-001, GIV-CLM-011, OWN-VIS-002, OWN-VIS-003, OWN-VIS-004, OWN-VIS-005,
     # @spec VW-FEED-001, VW-FEED-002, VW-FEED-003, VW-FEED-004,
     # @spec VW-FEED-005, VW-FEED-006, VW-FEED-007, VW-FEED-008
+    # @spec OWN-ITEM-012, OWN-ITEM-016
     """List all items with filtering, sorting, and grouping."""
     # Use SessionFilterManager for filter persistence
     filter_manager = SessionFilterManager(request)
@@ -125,6 +126,8 @@ def items_list():
     filters = filter_manager.get_filters()
     user_filter = filters['user_filter']
     status_filter = filters['status_filter']
+    if status_filter != 'Archived' and request.args.get('status') == 'Archived':
+        status_filter = 'Archived'
     priority_filter = filters['priority_filter']
     event_filter = filters['event_filter']
     search_query = filters['q']
@@ -141,11 +144,19 @@ def items_list():
         .join(User, Item.user_id == User.id)
     )
 
-    if user_filter:
-        query = query.filter(Item.user_id == user_filter)
+    if status_filter == 'Archived':
+        query = query.filter(
+            Item.archived_at.isnot(None),
+            Item.user_id == current_user.id
+        )
+    else:
+        query = query.filter(Item.archived_at.is_(None))
 
-    if status_filter:
-        query = query.filter(Item.status == status_filter)
+        if user_filter:
+            query = query.filter(Item.user_id == user_filter)
+
+        if status_filter:
+            query = query.filter(Item.status == status_filter)
 
     if priority_filter:
         query = query.filter(Item.priority == priority_filter)
@@ -186,8 +197,11 @@ def items_list():
     totals_dict = defaultdict(lambda: {'count': 0, 'total': 0.0})
     grouped_items = OrderedDict()
     for item in all_items:
+        # Archived items never contribute to summary totals.
+        if item.archived_at is not None:
+            pass
         # For summary totals, exclude the current user's own claimed/purchased items to preserve surprise
-        if item.user_id == current_user.id and item.status in ['Claimed', 'Purchased']:
+        elif item.user_id == current_user.id and item.status in ['Claimed', 'Purchased']:
             # Skip adding to totals_dict for surprise protection
             pass
         else:
@@ -212,10 +226,9 @@ def items_list():
         })
 
     summary_rows.sort(key=lambda row: ((row['user'].name if row['user'] else ''), row['status']))
-
     event_options = Event.query.order_by(Event.date.desc()).all()
     status_options = [value for value, in db.session.query(Item.status).filter(Item.status.isnot(None)).distinct().order_by(Item.status)]
-    status_options = sorted(set(status_options + STATUS_CHOICES))
+    status_options = sorted(set(status_options + STATUS_CHOICES + ['Archived']))
 
     active_filters = {
         'user_filter': user_filter,
@@ -328,6 +341,7 @@ def submit_item():
 @login_required
 def edit_item(item_id):
     # @spec OWN-ITEM-002, OWN-ITEM-003, OWN-ITEM-007, OWN-VIS-006
+    # @spec OWN-ITEM-013, OWN-ITEM-014
     """Edit an existing item."""
     item = _get_item_or_404(item_id)
 
@@ -345,6 +359,9 @@ def edit_item(item_id):
 
         if item.user_id != current_user.id:
             # Non-owner can only update status
+            if item.archived_at is not None:
+                flash('This item is archived.', 'warning')
+                return redirect(get_items_url_with_filters())
             status = form_data.get('status')
             if status not in STATUS_CHOICES:
                 flash('Please choose a valid status.', 'danger')
@@ -417,8 +434,12 @@ def edit_item(item_id):
 @bp.route('/claim_item/<int:item_id>', methods=['POST'])
 @login_required
 def claim_item(item_id):
+    # @spec OWN-ITEM-013
     """Claim an item for purchase."""
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     try:
         item_service.claim_item(item, current_user.id)
@@ -437,8 +458,12 @@ def claim_item(item_id):
 @bp.route('/unclaim_item/<int:item_id>', methods=['POST'])
 @login_required
 def unclaim_item(item_id):
+    # @spec OWN-ITEM-013
     """Unclaim an item back to Available status."""
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     try:
         item_service.unclaim_item(item, current_user.id)
@@ -476,10 +501,14 @@ def get_split_modal(item_id):
 @bp.route('/item/<int:item_id>/refresh-price', methods=['POST'])
 @login_required
 def refresh_price(item_id):
+    # @spec OWN-ITEM-013
     """Refresh the price for an item by fetching from its URL."""
     from services.price_service import refresh_item_price
 
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     if not item.link:
         flash('This item has no link to fetch price from.', 'warning')
@@ -524,10 +553,65 @@ def delete_item(item_id):
     return redirect(get_items_url_with_filters())
 
 
+@bp.route('/archive_item/<int:item_id>', methods=['POST'])
+@login_required
+def archive_item(item_id):
+    # @spec OWN-ITEM-009, OWN-ITEM-010, OWN-ITEM-011, OWN-ITEM-017
+    """Archive an item (owner only)."""
+    item = db.session.get(Item, item_id)
+    if item is None:
+        flash('Item not found or already deleted.', 'warning')
+        return redirect(get_items_url_with_filters())
+    if item.user_id != current_user.id:
+        flash('You do not have permission to archive this item.', 'danger')
+        return redirect(get_items_url_with_filters())
+    if item.archived_at is not None:
+        flash('Item is already archived.', 'info')
+        return redirect(get_items_url_with_filters())
+
+    try:
+        item.archived_at = datetime.datetime.now(datetime.timezone.utc)
+        db.session.commit()
+        flash('Item archived.', 'success')
+    except Exception as exc:
+        current_app.logger.error(f'Failed to archive item_id={item_id}: {exc}', exc_info=True)
+        db.session.rollback()
+        flash('Failed to archive item. Please try again.', 'danger')
+    return redirect(get_items_url_with_filters())
+
+
+@bp.route('/unarchive_item/<int:item_id>', methods=['POST'])
+@login_required
+def unarchive_item(item_id):
+    # @spec OWN-ITEM-009, OWN-ITEM-010, OWN-ITEM-011, OWN-ITEM-017
+    """Restore an archived item (owner only)."""
+    item = db.session.get(Item, item_id)
+    if item is None:
+        flash('Item not found or already deleted.', 'warning')
+        return redirect(get_items_url_with_filters())
+    if item.user_id != current_user.id:
+        flash('You do not have permission to unarchive this item.', 'danger')
+        return redirect(get_items_url_with_filters())
+    if item.archived_at is None:
+        flash('Item is not archived.', 'info')
+        return redirect(get_items_url_with_filters())
+
+    try:
+        item.archived_at = None
+        db.session.commit()
+        flash('Item restored.', 'success')
+    except Exception as exc:
+        current_app.logger.error(f'Failed to unarchive item_id={item_id}: {exc}', exc_info=True)
+        db.session.rollback()
+        flash('Failed to restore item. Please try again.', 'danger')
+    return redirect(get_items_url_with_filters())
+
+
 @bp.route('/my-claims')
 @login_required
 def my_claims():
     # @spec GIV-CLM-007, GIV-CLM-008
+    # @spec OWN-ITEM-012
     """Show items the current user has claimed or purchased for others."""
     items = (
         Item.query.options(
@@ -536,6 +620,7 @@ def my_claims():
             joinedload(Item.comments).joinedload(Comment.author)
         )
         .filter(
+            Item.archived_at.is_(None),
             Item.last_updated_by_id == current_user.id,
             Item.status.in_(['Claimed', 'Purchased']),
             Item.user_id != current_user.id  # Exclude own items
@@ -600,9 +685,12 @@ def export_my_status_updates():
 @bp.route('/items/<int:item_id>/split', methods=['POST'])
 @login_required
 def start_split(item_id):
-    # @spec GIV-SPL-001
+    # @spec GIV-SPL-001, OWN-ITEM-013
     """Start a split on an available item."""
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     if item.user_id == current_user.id:
         flash('You cannot split your own item.', 'warning')
@@ -636,9 +724,12 @@ def start_split(item_id):
 @bp.route('/items/<int:item_id>/contribute', methods=['POST'])
 @login_required
 def join_split(item_id):
-    # @spec GIV-SPL-002
+    # @spec GIV-SPL-002, OWN-ITEM-013
     """Join an existing split."""
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     if item.user_id == current_user.id:
         flash('You cannot contribute to your own item.', 'warning')
@@ -675,9 +766,12 @@ def join_split(item_id):
 @bp.route('/items/<int:item_id>/withdraw', methods=['POST'])
 @login_required
 def withdraw_contribution(item_id):
-    # @spec GIV-SPL-003, GIV-SPL-004, GIV-SPL-005
+    # @spec GIV-SPL-003, GIV-SPL-004, GIV-SPL-005, OWN-ITEM-013
     """Withdraw contribution from a split."""
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     contribution = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
     if not contribution:
@@ -707,9 +801,12 @@ def withdraw_contribution(item_id):
 @bp.route('/items/<int:item_id>/complete-split', methods=['POST'])
 @login_required
 def complete_split(item_id):
-    # @spec GIV-SEC-007, GIV-SPL-006, GIV-SPL-007
+    # @spec GIV-SEC-007, GIV-SPL-006, GIV-SPL-007, OWN-ITEM-013
     """Mark split gift as purchased (Organizer only)."""
     item = _get_item_or_404(item_id)
+    if item.archived_at is not None:
+        flash('This item is archived.', 'warning')
+        return redirect(get_items_url_with_filters())
 
     contribution = Contribution.query.filter_by(item_id=item.id, user_id=current_user.id).first()
 

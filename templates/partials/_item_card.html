@@ -84,6 +84,21 @@
                 <div class="d-flex gap-2 w-100">
                     <a href="{{ url_for('items.edit_item', item_id=item.id) }}"
                         class="btn btn-sm btn-outline-primary flex-grow-1">Edit</a>
+                    {% if item.archived_at %}
+                    <form action="{{ url_for('items.unarchive_item', item_id=item.id) }}" method="post" class="flex-grow-1">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                            Unarchive
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="{{ url_for('items.archive_item', item_id=item.id) }}" method="post" class="flex-grow-1">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                            Archive
+                        </button>
+                    </form>
+                    {% endif %}
                     <form action="{{ url_for('items.delete_item', item_id=item.id) }}" method="post" class="flex-grow-1"
                         onsubmit="if (!confirm('Are you sure you want to delete this item?')) return false; const button = this.querySelector('button[type=submit]'); button.disabled = true; button.setAttribute('aria-busy', 'true'); button.innerHTML = '<span class=\'spinner-border spinner-border-sm\' role=\'status\' aria-hidden=\'true\'></span> ' + button.dataset.savingLabel; return true;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />

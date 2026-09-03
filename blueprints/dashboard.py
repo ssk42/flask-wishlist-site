@@ -22,6 +22,7 @@ def make_cache_key():
 @bp.route('/')
 @cache.cached(timeout=60, key_prefix=make_cache_key)
 def index():
+    # @spec OWN-ITEM-012
     """Render the dashboard/home page."""
     dashboard_data = None
     recent_items = []
@@ -32,12 +33,14 @@ def index():
         claimed_count = Item.query.filter(
             Item.last_updated_by_id == current_user.id,
             Item.status == 'Claimed',
-            Item.user_id != current_user.id
+            Item.user_id != current_user.id,
+            Item.archived_at.is_(None)
         ).count()
         purchased_count = Item.query.filter(
             Item.last_updated_by_id == current_user.id,
             Item.status == 'Purchased',
-            Item.user_id != current_user.id
+            Item.user_id != current_user.id,
+            Item.archived_at.is_(None)
         ).count()
         dashboard_data = {
             'claimed_count': claimed_count,
@@ -46,7 +49,8 @@ def index():
 
         # Fetch recent items from other users
         recent_items = Item.query.options(joinedload(Item.user))\
-            .filter(Item.user_id != current_user.id)\
+            .filter(Item.user_id != current_user.id,
+                    Item.archived_at.is_(None))\
             .order_by(Item.id.desc())\
             .limit(6).all()
 

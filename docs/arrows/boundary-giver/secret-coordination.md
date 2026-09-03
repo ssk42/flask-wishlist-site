@@ -1,5 +1,5 @@
 ---
-status: AUDITED
+status: OK
 ---
 
 # secret-coordination Arrow

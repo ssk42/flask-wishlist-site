@@ -1,5 +1,5 @@
 schema_version: 1
-last_updated: 2026-08-23
+last_updated: 2026-09-03
 
 arrows:
   - id: boundary-auth
@@ -11,8 +11,8 @@ arrows:
     parent: boundary-auth
     detail: boundary-auth/auth-flow.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: account-recovery
@@ -20,8 +20,8 @@ arrows:
     parent: boundary-auth
     detail: boundary-auth/account-recovery.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: boundary-owner
@@ -33,8 +33,8 @@ arrows:
     parent: boundary-owner
     detail: boundary-owner/item-curation.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: event-management
@@ -42,8 +42,8 @@ arrows:
     parent: boundary-owner
     detail: boundary-owner/event-management.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: owner-visibility
@@ -51,8 +51,8 @@ arrows:
     parent: boundary-owner
     detail: boundary-owner/owner-visibility.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: boundary-giver
@@ -64,8 +64,8 @@ arrows:
     parent: boundary-giver
     detail: boundary-giver/item-claiming.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: split-contributions
@@ -73,8 +73,8 @@ arrows:
     parent: boundary-giver
     detail: boundary-giver/split-contributions.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: secret-coordination
@@ -82,8 +82,8 @@ arrows:
     parent: boundary-giver
     detail: boundary-giver/secret-coordination.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: "GIV-SEC-001 duplicates GIV-CLM-011 (same code path)"
   - id: boundary-viewer
@@ -95,8 +95,8 @@ arrows:
     parent: boundary-viewer
     detail: boundary-viewer/feed-filtering.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: ui-state
@@ -104,8 +104,8 @@ arrows:
     parent: boundary-viewer
     detail: boundary-viewer/ui-state.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: boundary-autonomous
@@ -117,8 +117,8 @@ arrows:
     parent: boundary-autonomous
     detail: boundary-autonomous/price-stealth.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: price-processing
@@ -126,8 +126,8 @@ arrows:
     parent: boundary-autonomous
     detail: boundary-autonomous/price-processing.md
     sampled: 2026-07-25
-    audited: 2026-08-23
-    audited_sha: c40683e6d188a3ad3cce20e6b22a66218725353e
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: system-tasks
@@ -135,8 +135,8 @@ arrows:
     parent: boundary-autonomous
     detail: boundary-autonomous/system-tasks.md
     sampled: 2026-07-25
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: boundary-ios
@@ -148,8 +148,8 @@ arrows:
     parent: boundary-ios
     detail: boundary-ios/ios-networking.md
     sampled: 2026-08-15
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: ios-auth
@@ -157,8 +157,8 @@ arrows:
     parent: boundary-ios
     detail: boundary-ios/ios-auth.md
     sampled: 2026-08-15
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: ios-gifting
@@ -166,8 +166,8 @@ arrows:
     parent: boundary-ios
     detail: boundary-ios/ios-gifting.md
     sampled: 2026-08-15
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: ios-curation
@@ -175,8 +175,8 @@ arrows:
     parent: boundary-ios
     detail: boundary-ios/ios-curation.md
     sampled: 2026-08-15
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: ios-activity
@@ -184,8 +184,8 @@ arrows:
     parent: boundary-ios
     detail: boundary-ios/ios-activity.md
     sampled: 2026-08-15
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
   - id: ios-share
@@ -193,8 +193,8 @@ arrows:
     parent: boundary-ios
     detail: boundary-ios/ios-share.md
     sampled: 2026-08-15
-    audited: 2026-08-16
-    audited_sha: b9b104d666b4d51a04c956e5e8c009d45f51f08d
+    audited: 2026-09-03
+    audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
 

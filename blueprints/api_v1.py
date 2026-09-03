@@ -97,7 +97,9 @@ def list_users():
 
 @bp.route('/items', methods=['GET'])
 def list_items():
-    query = Item.query.options(joinedload(Item.last_updated_by))
+    # @spec OWN-ITEM-012
+    query = Item.query.options(joinedload(Item.last_updated_by))\
+        .filter(Item.archived_at.is_(None))
 
     user_id = request.args.get('user_id', type=int)
     status = request.args.get('status')
@@ -121,12 +123,14 @@ def list_items():
 
 @bp.route('/my-claims', methods=['GET'])
 def my_claims():
+    # @spec OWN-ITEM-012
     items = (
         Item.query.options(joinedload(Item.user), joinedload(Item.last_updated_by))
         .filter(
             Item.last_updated_by_id == current_user.id,
             Item.status.in_(['Claimed', 'Purchased']),
             Item.user_id != current_user.id,
+            Item.archived_at.is_(None),
         )
         .order_by(Item.user_id, Item.description)
         .all()
@@ -135,7 +139,11 @@ def my_claims():
 
 
 def _get_item_or_none(item_id):
-    return db.session.get(Item, item_id)
+    # @spec OWN-ITEM-012, OWN-ITEM-013
+    item = db.session.get(Item, item_id)
+    if item is not None and item.archived_at is not None:
+        return None
+    return item
 
 
 def _stringified(data):
@@ -187,7 +195,7 @@ def create_item():
 
 @bp.route('/items/<int:item_id>', methods=['GET'])
 def get_item(item_id):
-    # @spec IOS-NET-013
+    # @spec IOS-NET-013, OWN-ITEM-012
     """Single-item fetch with its owner, for deep-link routing.
     Surprise protection is enforced by serialize_item (omits status/last_updated_by
     for the viewer's own item)."""
@@ -195,7 +203,7 @@ def get_item(item_id):
         Item.query.options(joinedload(Item.last_updated_by), joinedload(Item.user))
         .filter(Item.id == item_id).first()
     )
-    if item is None:
+    if item is None or item.archived_at is not None:
         return _json_error(404, 'not_found')
     return jsonify({
         'item': serialize_item(item, current_user),

@@ -1,5 +1,5 @@
 ---
-status: AUDITED
+status: OK
 ---
 
 # item-claiming Arrow

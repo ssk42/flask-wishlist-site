@@ -732,13 +732,14 @@ def _create_price_drop_notifications(item, old_price, new_price, drop_percent, d
     db.session.commit()
 
 def get_items_needing_update(Item, db, cutoff_date, force_all=False):
-    # @spec AUTO-PRC-013
+    # @spec AUTO-PRC-013, OWN-ITEM-015
     """Query items that need price updates based on schedule or force flag.
     Backed-off items are skipped until their price_backoff_until passes, at
     which point they become eligible again automatically (self-healing)."""
     query = Item.query.filter(
         Item.link.isnot(None),
-        Item.link != ''
+        Item.link != '',
+        Item.archived_at.is_(None)
     )
 
     if not force_all:

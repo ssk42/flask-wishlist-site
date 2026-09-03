@@ -68,6 +68,8 @@ class Item(db.Model):
     # count and the time until the automatic sweep may retry this item.
     price_fail_streak = db.Column(db.Integer, nullable=False, default=0)
     price_backoff_until = db.Column(db.DateTime, nullable=True)
+    # @spec OWN-ITEM-009, OWN-ITEM-011
+    archived_at = db.Column(db.DateTime, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
 

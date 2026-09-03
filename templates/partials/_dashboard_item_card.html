@@ -12,7 +12,14 @@
     </div>
 
     <div class="mt-auto pt-2 border-top border-light-subtle d-flex justify-content-between align-items-center">
-        {% if item.status == 'Available' %}
+        {% if item.user_id == current_user.id and not item.archived_at %}
+        <form action="{{ url_for('items.archive_item', item_id=item.id) }}" method="post" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill" title="Archive this item">
+                <i class="bi bi-archive"></i> Archive
+            </button>
+        </form>
+        {% elif item.status == 'Available' %}
         <button class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill"
             hx-post="{{ url_for('items.claim_item', item_id=item.id, context='dashboard') }}"
             hx-target="#dashboard-item-{{ item.id }}" hx-swap="outerHTML">

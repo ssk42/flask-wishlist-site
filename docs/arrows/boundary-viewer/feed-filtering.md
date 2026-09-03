@@ -1,5 +1,5 @@
 ---
-status: AUDITED
+status: OK
 ---
 
 # feed-filtering Arrow
