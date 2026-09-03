@@ -209,10 +209,16 @@ class TestArchivedSecondarySurfaces:
                                claimer_id=other_user)
         _archive(app, buried_id)
 
-        response = client.get("/export_my_status_updates")
-        assert response.status_code == 200
-        descriptions = pd.read_excel(io.BytesIO(response.data))["Description"].tolist()
-        assert descriptions == ["Live claim"]
+        try:
+            response = client.get("/export_my_status_updates")
+            assert response.status_code == 200
+            descriptions = pd.read_excel(io.BytesIO(response.data))["Description"].tolist()
+            assert descriptions == ["Live claim"]
+        finally:
+            import os
+            litter = "status_updates_by_Other User.xlsx"
+            if os.path.exists(litter):
+                os.remove(litter)
 
     def test_users_count_excludes_archived(self, app, client, user):
         # @spec OWN-ITEM-012
@@ -257,3 +263,69 @@ class TestArchivedSecondarySurfaces:
         assert stats["emails_sent"] == 1
         sent = mock_send.call_args.kwargs["claimed_items"]
         assert [i["description"] for i in sent] == ["Live gift"]
+
+
+    def test_full_export_excludes_archived(self, app, client, login, user):
+        # @spec OWN-ITEM-012
+        import io
+
+        import pandas as pd
+
+        _make_item(app, "Live export", user)
+        hidden_id = _make_item(app, "Hidden export", user)
+        _archive(app, hidden_id)
+
+        try:
+            response = client.get("/export_items")
+            assert response.status_code == 200
+            descriptions = pd.read_excel(io.BytesIO(response.data))["Description"].tolist()
+            assert descriptions == ["Live export"]
+        finally:
+            import os
+            if os.path.exists("allWishlistItems.xlsx"):
+                os.remove("allWishlistItems.xlsx")
+
+    def test_contributions_exclude_archived(self, app, client, user, other_user):
+        # @spec OWN-ITEM-012
+        from models import Contribution
+
+        _login_as(client, other_user)
+        with app.app_context():
+            live = Item(description="Live split", user_id=user,
+                        status="Splitting", price=100.0)
+            buried = Item(description="Buried split", user_id=user,
+                          status="Splitting", price=100.0)
+            db.session.add_all([live, buried])
+            db.session.commit()
+            db.session.add_all([
+                Contribution(item_id=live.id, user_id=other_user, amount=10.0),
+                Contribution(item_id=buried.id, user_id=other_user, amount=10.0),
+            ])
+            db.session.commit()
+            buried.archived_at = datetime.datetime.now(datetime.timezone.utc)
+            db.session.commit()
+
+        data = client.get("/my-claims").data
+        assert b"Live split" in data
+        assert b"Buried split" not in data
+
+    def test_event_badge_excludes_archived(self, app, client, login, user):
+        # @spec OWN-ITEM-012
+        import datetime as dt
+
+        with app.app_context():
+            event = Event(name="Gala",
+                          date=dt.date.today() + dt.timedelta(days=7),
+                          created_by_id=user, reminder_sent=False)
+            db.session.add(event)
+            db.session.commit()
+            live = Item(description="Live favor", user_id=user,
+                        event_id=event.id)
+            buried = Item(description="Buried favor", user_id=user,
+                          event_id=event.id)
+            db.session.add_all([live, buried])
+            db.session.commit()
+            buried.archived_at = dt.datetime.now(dt.timezone.utc)
+            db.session.commit()
+
+        assert b"1 items" in client.get("/events").data

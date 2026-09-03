@@ -35,7 +35,7 @@
                             {% if event.items %}
                             <span
                                 class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill ms-1">{{
-                                event.items|length }} items</span>
+                                event.items|selectattr('archived_at', 'none')|list|length }} items</span>
                             {% endif %}
                         </div>
                     </div>
@@ -88,7 +88,7 @@
                             {% if event.items %}
                             <span
                                 class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill ms-1">{{
-                                event.items|length }} items</span>
+                                event.items|selectattr('archived_at', 'none')|list|length }} items</span>
                             {% endif %}
                         </div>
                     </div>

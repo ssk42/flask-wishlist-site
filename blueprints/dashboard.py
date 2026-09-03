@@ -69,8 +69,9 @@ def index():
 @bp.route('/export_items')
 @login_required
 def export_items():
+    # @spec OWN-ITEM-012
     """Export all items to Excel file."""
-    items = Item.query.all()
+    items = Item.query.filter(Item.archived_at.is_(None)).all()
 
     # Create a DataFrame
     data = {

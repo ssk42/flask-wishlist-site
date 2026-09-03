@@ -636,7 +636,11 @@ def my_claims():
             joinedload(Contribution.item).joinedload(Item.user),
             joinedload(Contribution.item).joinedload(Item.contributions)
         )
-        .filter_by(user_id=current_user.id)
+        .join(Item, Contribution.item_id == Item.id)
+        .filter(
+            Contribution.user_id == current_user.id,
+            Item.archived_at.is_(None)  # @spec OWN-ITEM-012
+        )
         .order_by(Contribution.created_at.desc())
         .all()
     )
