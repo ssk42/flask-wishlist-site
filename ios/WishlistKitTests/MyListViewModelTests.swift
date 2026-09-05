@@ -44,6 +44,62 @@ final class MyListViewModelTests: XCTestCase {
         XCTAssertTrue(vm.items.isEmpty)
     }
 
+    func testQueryFiltersByDescriptionAndCategory() async {
+        // @spec IOS-CUR-009
+        let vm = MyListViewModel(client: client { _ in
+            (200, #"{"items":[{"id":1,"description":"Stand mixer","category":"Kitchen","user_id":1},{"id":2,"description":"Novel","category":"Books","user_id":1}]}"#)
+        }, userID: 1)
+        await vm.load()
+        vm.query = "kitchen"
+        XCTAssertEqual(vm.filteredItems.map(\.id), [1])
+        vm.query = "NOVEL"
+        XCTAssertEqual(vm.filteredItems.map(\.id), [2])
+        vm.query = ""
+        XCTAssertEqual(vm.filteredItems.map(\.id), [1, 2])
+        vm.query = "nope"
+        XCTAssertTrue(vm.filteredItems.isEmpty)
+    }
+
+    func testUserIDFromState() {
+        // @spec IOS-CUR-010
+        XCTAssertEqual(MyListViewModel.userID(from: .loggedIn(User(id: 7, name: "Alex", email: "a@x.com", itemCount: 0))), 7)
+        XCTAssertNil(MyListViewModel.userID(from: .loggedOut))
+    }
+
+    func testPriorityAndCategoryFiltersAndWithQuery() async {
+        // @spec IOS-CUR-011
+        let vm = MyListViewModel(client: client { _ in
+            (200, #"{"items":[{"id":1,"description":"Stand mixer","category":"Kitchen","priority":"High","user_id":1},{"id":2,"description":"Novel","category":"Books","priority":"Low","user_id":1},{"id":3,"description":"Socks","user_id":1}]}"#)
+        }, userID: 1)
+        await vm.load()
+        vm.selectedPriority = "High"
+        XCTAssertEqual(vm.filteredItems.map(\.id), [1])
+        vm.selectedPriority = nil
+        vm.selectedCategory = "Books"
+        XCTAssertEqual(vm.filteredItems.map(\.id), [2])
+        vm.query = "mixer"
+        vm.selectedCategory = nil
+        vm.selectedPriority = "High"
+        XCTAssertEqual(vm.filteredItems.map(\.id), [1])
+        vm.query = "novel"
+        XCTAssertTrue(vm.filteredItems.isEmpty)
+        XCTAssertEqual(vm.items.count, 3)
+    }
+
+    func testNilFieldsMatchOnlyAll() async {
+        // @spec IOS-CUR-011
+        let vm = MyListViewModel(client: client { _ in
+            (200, #"{"items":[{"id":1,"description":"Stand mixer","category":"Kitchen","priority":"High","user_id":1},{"id":3,"description":"Socks","user_id":1}]}"#)
+        }, userID: 1)
+        await vm.load()
+        vm.selectedCategory = "Kitchen"
+        XCTAssertEqual(vm.filteredItems.map(\.id), [1])
+        vm.selectedCategory = nil
+        vm.selectedPriority = "Low"
+        XCTAssertTrue(vm.filteredItems.isEmpty)
+        XCTAssertEqual(vm.items.count, 2)
+    }
+
     func testCreateValidationErrorSurfacesMessage() async {
         let vm = MyListViewModel(client: client { _ in (400, #"{"errors":["Description is required."]}"#) }, userID: 1)
         let ok = await vm.create(ItemDraft(description: ""))

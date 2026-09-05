@@ -19,43 +19,76 @@ struct MemberItemsView: View {
         _vm = State(initialValue: MemberItemsViewModel(client: client, member: member))
     }
 
+    /// Distinct sorted categories present in the loaded items — the category
+    /// filter's options.
+    /// @spec IOS-GIFT-012
+    private var categoryOptions: [String] {
+        Array(Set(vm.items.compactMap(\.category).filter { !$0.isEmpty })).sorted()
+    }
+
+    /// True while a query or any filter narrows the list — drives the
+    /// "No matches" empty state below.
+    /// @spec IOS-GIFT-011, IOS-GIFT-012
+    private var isFiltering: Bool {
+        !vm.query.isEmpty || vm.selectedStatus != nil
+            || vm.selectedPriority != nil || vm.selectedCategory != nil
+    }
+
     var body: some View {
         ZStack {
             Color.wlBg.ignoresSafeArea()
-            if vm.items.isEmpty && !vm.isLoading {
+            if vm.items.isEmpty && !vm.isLoading && !isFiltering {
                 ContentUnavailableView("No items yet", systemImage: "gift")
             } else {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            if let error = vm.error {
-                                Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            ForEach(vm.items) { item in
-                                NavigationLink(value: item) {
-                                    HStack {
-                                        ItemRow(item: item)
-                                        Image(systemName: "chevron.right")
-                                            .font(.footnote.weight(.semibold))
-                                            .foregroundStyle(Color.wlSecondary.opacity(0.5))
+                VStack(spacing: 0) {
+                    // @spec IOS-GIFT-012
+                    FilterBar(status: $vm.selectedStatus,
+                              priority: $vm.selectedPriority,
+                              category: $vm.selectedCategory,
+                              statusOptions: ["Available", "Claimed", "Purchased"],
+                              categoryOptions: categoryOptions,
+                              showStatus: true)
+                    // @spec IOS-GIFT-011 — the list is narrowed and nothing
+                    // matches; distinct from the never-had-items state above.
+                    if vm.filteredItems.isEmpty && !vm.isLoading {
+                        Spacer()
+                        ContentUnavailableView("No matches", systemImage: "magnifyingglass",
+                                               description: Text("Nothing here matches your search or filters."))
+                        Spacer()
+                    } else {
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                LazyVStack(spacing: 12) {
+                                    if let error = vm.error {
+                                        Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
                                     }
-                                    .wlCard()
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .strokeBorder(Color.wlAccent, lineWidth: highlightedItemID == item.id ? 2 : 0)
-                                    )
+                                    ForEach(vm.filteredItems) { item in
+                                        NavigationLink(value: item) {
+                                            HStack {
+                                                ItemRow(item: item)
+                                                Image(systemName: "chevron.right")
+                                                    .font(.footnote.weight(.semibold))
+                                                    .foregroundStyle(Color.wlSecondary.opacity(0.5))
+                                            }
+                                            .wlCard()
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                    .strokeBorder(Color.wlAccent, lineWidth: highlightedItemID == item.id ? 2 : 0)
+                                            )
+                                        }
+                                        .buttonStyle(WLCardButtonStyle())
+                                        .id(item.id)
+                                    }
                                 }
-                                .buttonStyle(WLCardButtonStyle())
-                                .id(item.id)
+                                .animation(.easeOut(duration: 0.3), value: highlightedItemID)
+                                .padding(.horizontal, 18).padding(.top, 8)
+                            }
+                            .refreshable { await vm.load() }
+                            .task(id: vm.items) {
+                                await revealHighlightIfNeeded(proxy: proxy)
                             }
                         }
-                        .animation(.easeOut(duration: 0.3), value: highlightedItemID)
-                        .padding(.horizontal, 18).padding(.top, 8)
-                    }
-                    .refreshable { await vm.load() }
-                    .task(id: vm.items) {
-                        await revealHighlightIfNeeded(proxy: proxy)
                     }
                 }
             }
@@ -65,6 +98,7 @@ struct MemberItemsView: View {
         .navigationDestination(for: Item.self) { item in
             ItemDetailView(item: item, vm: vm)
         }
+        .searchable(text: $vm.query, prompt: "Search items")
         .task { if vm.items.isEmpty { await vm.load() } }
     }
 

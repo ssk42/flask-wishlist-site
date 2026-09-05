@@ -22,3 +22,17 @@
   taps "Fetch details", the system shall best-effort prefill empty
   description/price fields from the link's metadata without clobbering user-typed
   values, and never block saving when the lookup fails.
+- `[x]` **IOS-CUR-009**: When the user types in the My List search field, the
+  system shall show only items whose description or category contains the query
+  (case- and diacritic-insensitive); an empty query shall show the full list; a
+  query with no matches shall show a no-results state distinct from the empty-list
+  state. Deletion shall resolve by item id, not list index, so swipe-to-delete
+  removes the intended item while filtered.
+- `[x]` **IOS-CUR-010**: When the My List tab is built while logged out, the system
+  shall render a log-in empty state and issue no items request.
+- `[x]` **IOS-CUR-011**: When priority or category filters are set on My List,
+  the system shall show only items matching ALL active filters AND the search
+  query; unset filters shall constrain nothing; items with nil priority/category
+  shall appear only when that filter is unset; no status filter shall exist on
+  this surface (own items carry no status). Deletion while filtered shall resolve
+  by item id. No matches shall show the no-results state.

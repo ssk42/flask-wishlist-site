@@ -67,18 +67,11 @@ struct RootTabView: View {
 
     private func route(link: String) {
         // @spec IOS-ACT-008
-        guard let itemID = Self.itemID(from: link) else {
+        guard let itemID = ItemLink.itemID(from: link) else {
             selectedTab = 3
             return
         }
         Task { await openItem(id: itemID) }
-    }
-
-    /// Extracts the integer item id from a "/items/42"-shaped link.
-    static func itemID(from link: String) -> Int? {
-        let pattern = #"/items/(\d+)"#
-        guard let range = link.range(of: pattern, options: .regularExpression) else { return nil }
-        return Int(link[range].split(separator: "/").last ?? "")
     }
 
     private func openItem(id: Int) async {

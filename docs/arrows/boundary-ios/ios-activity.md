@@ -10,12 +10,13 @@ and tapped-notification routing.
 ## Artifacts
 - **LLD**: [docs/intent/boundary-ios/ios-activity.md](../../intent/boundary-ios/ios-activity.md)
 - **EARS Specs**: [docs/intent/boundary-ios/ios-activity/ios-activity-specs.md](../../intent/boundary-ios/ios-activity/ios-activity-specs.md)
-- **Tests**: `ios/WishlistKitTests/ActivityViewModelTests.swift`
+- **Tests**: `ios/WishlistKitTests/ActivityViewModelTests.swift`, `ios/WishlistKitTests/ItemLinkTests.swift`
 - **Code**: `ios/Wishlist/Views/ActivityView.swift`, `ios/Wishlist/Views/RootTabView.swift`,
   `ios/Wishlist/Views/DeepLinkDetailView.swift`,
   `ios/Wishlist/PushManager.swift`, `ios/Wishlist/AppDelegate.swift`,
   `ios/Wishlist/WishlistApp.swift`,
   `ios/WishlistKit/PushPermissionPolicy.swift`, `ios/WishlistKit/Badge.swift`,
+  `ios/WishlistKit/TextSearch.swift` (`ItemLink` link parser),
   `ios/WishlistKit/ViewModels/ActivityViewModel.swift`
 
 ## Spec Coverage
@@ -24,10 +25,10 @@ and tapped-notification routing.
 |----------|----------|-------------|----------|------|
 | Activity | IOS-ACT-001 to IOS-ACT-003 | 3 | 0 | 0 |
 | Push     | IOS-ACT-004 to IOS-ACT-007 | 4 | 0 | 0 |
-| Routing  | IOS-ACT-008, IOS-ACT-009 | 2 | 0 | 0 |
+| Routing  | IOS-ACT-008, IOS-ACT-009, IOS-ACT-011 | 3 | 0 | 0 |
 | Badge    | IOS-ACT-010 | 1 | 0 | 0 |
 
-**Summary:** 10 of 10 active specs implemented.
+**Summary:** 11 of 11 active specs implemented.
 
 ## Key Findings
 
@@ -43,6 +44,10 @@ and tapped-notification routing.
    `.onChange(of: unreadCount)`; `PushManager` clears on notification tap
    (IOS-ACT-010).
 4. **Registration failures are logged** (were silently swallowed).
+5. **In-app notification taps navigate** — tap marks read, then item-shaped links
+   present the same `DeepLinkDetailView` cover push uses (own items included);
+   bare links stay, failed fetches show inline (IOS-ACT-011). Push and in-app
+   taps share the `ItemLink` parser so the two can never drift.
 
 ## Work Required
 

@@ -38,11 +38,16 @@ struct FamilyView: View {
                     } else if let error = vm.error, vm.users.isEmpty {
                         ContentUnavailableView("Couldn't load", systemImage: "wifi.slash",
                                                description: Text(error))
+                    } else if vm.filteredUsers.isEmpty && !vm.query.isEmpty {
+                        // @spec IOS-GIFT-010
+                        ContentUnavailableView("No matches", systemImage: "magnifyingglass",
+                                               description: Text("No family members match your search."))
                     } else {
                         ScrollView {
                             WLScreenTitle("Family")
                             LazyVStack(spacing: 12) {
-                                ForEach(vm.users) { user in
+                                // @spec IOS-GIFT-010
+                                ForEach(vm.filteredUsers) { user in
                                     NavigationLink(value: user) { memberCard(user) }
                                         .buttonStyle(WLCardButtonStyle())
                                 }
@@ -50,6 +55,7 @@ struct FamilyView: View {
                             .padding(.horizontal, 18)
                         }
                         .refreshable { await vm.load() }
+                        .searchable(text: $vm.query, prompt: "Search family")
                     }
                 }
             }

@@ -27,3 +27,24 @@
   shall resolve the item's owner and present the item detail (same full-screen
   cover as a tapped push notification); if the roster can't be loaded it shall stay
   on the list.
+- `[x]` **IOS-GIFT-010**: When the user types in the Family roster search field,
+  the system shall show only members whose name contains the query (case- and
+  diacritic-insensitive); an empty query shall show the full roster; a query with
+  no matches shall show a no-results state, not an empty roster.
+- `[x]` **IOS-GIFT-011**: When the user types in a member's items search field,
+  the system shall show only items whose description or category contains the
+  query (case- and diacritic-insensitive); an empty query shall show the full
+  list; a query with no matches shall show a no-results state distinct from the
+  empty-list state.
+- `[x]` **IOS-GIFT-012**: When status, priority, or category filters are set on
+  a member's items, the system shall show only items matching ALL active filters
+  AND the search query; unset filters shall constrain nothing; items with a nil
+  priority/category shall appear only when that filter is unset; a filter
+  combination with no matches shall show the no-results state.
+- `[x]` **IOS-GIFT-013**: When the user types in the Claims search field, the
+  system shall show only claims whose description or category contains the query
+  (case- and diacritic-insensitive); when a status filter (Claimed/Purchased) is
+  set, it shall show only claims with that status; an empty query and unset
+  filter shall show all claims; no matches shall show a no-results state
+  distinct from the empty-claims state. Swipe actions and tap-to-detail shall
+  operate on the filtered rows.

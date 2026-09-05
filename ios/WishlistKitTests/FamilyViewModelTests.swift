@@ -58,4 +58,36 @@ final class FamilyViewModelTests: XCTestCase {
         XCTAssertEqual(vm.error, "You can't claim your own item.")
         XCTAssertEqual(vm.items[0].status, "Available")
     }
+
+    func testQueryFiltersRosterByName() async {
+        // @spec IOS-GIFT-010
+        let vm = FamilyViewModel(client: client { _ in
+            (200, #"{"users":[{"id":1,"name":"Alex","email":"a@x.com","item_count":2},{"id":2,"name":"Sam","email":"s@x.com","item_count":0}]}"#)
+        })
+        await vm.load()
+        vm.query = "sam"
+        XCTAssertEqual(vm.filteredUsers.map(\.name), ["Sam"])
+    }
+
+    func testEmptyQueryShowsFullRoster() async {
+        // @spec IOS-GIFT-010
+        let vm = FamilyViewModel(client: client { _ in
+            (200, #"{"users":[{"id":1,"name":"Alex","email":"a@x.com","item_count":2},{"id":2,"name":"Sam","email":"s@x.com","item_count":0}]}"#)
+        })
+        await vm.load()
+        vm.query = ""
+        XCTAssertEqual(vm.filteredUsers.map(\.name), ["Alex", "Sam"])
+    }
+
+    func testQueryIgnoresCaseAndDiacritics() async {
+        // @spec IOS-GIFT-010
+        let vm = FamilyViewModel(client: client { _ in
+            (200, #"{"users":[{"id":1,"name":"Zoë","email":"z@x.com","item_count":1}]}"#)
+        })
+        await vm.load()
+        vm.query = "zoe"
+        XCTAssertEqual(vm.filteredUsers.map(\.name), ["Zoë"])
+        vm.query = "nope"
+        XCTAssertTrue(vm.filteredUsers.isEmpty)
+    }
 }

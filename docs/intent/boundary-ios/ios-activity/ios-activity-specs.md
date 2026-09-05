@@ -26,3 +26,8 @@
 - `[x]` **IOS-ACT-010**: The system shall mirror the unread notification count on
   the app-icon badge (capped at 99), syncing when the Activity tab loads and
   clearing it when the user taps a notification or marks all read.
+- `[x]` **IOS-ACT-011**: When the user taps a notification whose `link` is
+  item-shaped (`/items/<id>`), the system shall mark it read and present the item
+  detail cover in place (own items included); a bare or empty link shall mark read
+  and stay on the list; a failed item fetch shall leave the notification marked
+  read and surface an inline error.

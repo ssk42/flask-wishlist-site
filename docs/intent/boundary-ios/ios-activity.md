@@ -12,9 +12,16 @@ server's `system-tasks`/notification push flow.
 
 ### `ActivityView` + `ActivityViewModel`
 - **ActivityView** (`ios/Wishlist/Views/ActivityView.swift`): lists notifications;
-  unread = wlAccent dot + semibold; tap → `vm.markRead` only; "Read all" title
-  accessory when `unreadCount > 0` (:8-12). Empty state "All caught up". Does NOT
-  navigate from `notification.link`.
+  unread = wlAccent dot + semibold; tap → `vm.markRead` (mark-first: the tap means
+  seen, so the item is marked read even if detail navigation fails), then navigates
+  where the notification carries an item-shaped `link` (`/items/<id>` → fetch via
+  `APIClient.item(id:)` and present the `DeepLinkDetailView` cover in place, own
+  items included — price-drop links usually target own items, and a tab-switch
+  would lose the item context); bare/empty links stay on the list; a failed fetch
+  surfaces an inline error. "Read all" title accessory when `unreadCount > 0`
+  (:8-12). Empty state "All caught up". The cover is the same
+  `DeepLinkDetailView` the push deep-link path presents, so claim/purchase
+  mutation and live resolution behave identically.
 - **ActivityViewModel** (`ios/WishlistKit/ViewModels/ActivityViewModel.swift`):
   `load()` → `client.notifications()` sets `notifications` + `unreadCount`
   (:14-24); `markRead(_)` guards `!isRead`, calls endpoint, then **full reload**
@@ -64,7 +71,9 @@ server's `system-tasks`/notification push flow.
 |----------|--------|------------------------|-----------|
 | `[inferred]` Token registered only after a grant | Ask permission → register | Register always | Avoids pointless token registration when the user declines. |
 | `[inferred]` Device token hex-encoded | hex string in `apns_token` | Raw data | Matches server `Device.apns_token` string column. |
-| `[inferred]` Tap → NotificationCenter bus → tab switch | NotificationCenter | Direct navigation | Decouples PushManager from view hierarchy; RootTabView subscribes. |
+| `[inferred]` Activity tap marks read before navigating | Mark-first | Navigate-only | Tap means seen; matches IOS-ACT-002/010 badge-clear-on-tap. |
+| `[inferred]` In-app detail presents a cover in place, own items included | Cover in place | Reuse push tab-switch | Price-drop links target own items; switching to My List would lose the item context. |
+| `[inferred]` Push tap → NotificationCenter bus → tab switch | NotificationCenter | Direct navigation | Decouples PushManager from view hierarchy; RootTabView subscribes. |
 | `[inferred]` No optimistic reads | Full reload after markRead/all | Local flip | Keeps unread count authoritative; simpler correct state. |
 
 ## Open Questions & Future Decisions

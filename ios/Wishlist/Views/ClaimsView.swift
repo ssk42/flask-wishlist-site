@@ -11,6 +11,13 @@ struct ClaimsView: View {
         _vm = State(initialValue: ClaimsViewModel(client: client))
     }
 
+    /// True while a query or the status filter narrows the list — drives the
+    /// "No matches" empty state below.
+    /// @spec IOS-GIFT-013
+    private var isFiltering: Bool {
+        !vm.query.isEmpty || vm.selectedStatus != nil
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -18,7 +25,24 @@ struct ClaimsView: View {
                 VStack(spacing: 0) {
                     WLScreenTitle("My Claims")
 
-                    if vm.items.isEmpty && !vm.isLoading {
+                    // @spec IOS-GIFT-013 — status only; priority/category hidden.
+                    FilterBar(status: $vm.selectedStatus,
+                              priority: .constant(nil),
+                              category: .constant(nil),
+                              statusOptions: ["Claimed", "Purchased"],
+                              categoryOptions: [],
+                              showStatus: true,
+                              showPriority: false,
+                              showCategory: false)
+
+                    // @spec IOS-GIFT-013 — the list is narrowed and nothing
+                    // matches; distinct from the never-claimed state below.
+                    if vm.filteredItems.isEmpty && !vm.isLoading && isFiltering {
+                        Spacer()
+                        ContentUnavailableView("No matches", systemImage: "magnifyingglass",
+                                               description: Text("Nothing here matches your search or filters."))
+                        Spacer()
+                    } else if vm.items.isEmpty && !vm.isLoading {
                         Spacer()
                         ContentUnavailableView("No claims yet", systemImage: "gift",
                                                description: Text("Items you claim for others appear here."))
@@ -29,7 +53,7 @@ struct ClaimsView: View {
                                 Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
                                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                             }
-                            ForEach(vm.items) { item in
+                            ForEach(vm.filteredItems) { item in
                                 Button { Task { await openDetail(item) } } label: {
                                     ItemRow(item: item)
                                         .wlCard()
@@ -49,6 +73,7 @@ struct ClaimsView: View {
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
                         .refreshable { await vm.load() }
+                        .searchable(text: $vm.query, prompt: "Search claims")
                     }
                 }
             }

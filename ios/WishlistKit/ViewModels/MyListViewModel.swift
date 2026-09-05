@@ -3,6 +3,20 @@ import Observation
 
 @MainActor @Observable
 public final class MyListViewModel {
+    public var query = ""
+    /// nil = All for each filter. A nil item field matches only All.
+    public var selectedPriority: String?
+    public var selectedCategory: String?
+    /// @spec IOS-CUR-009, IOS-CUR-011
+    public var filteredItems: [Item] {
+        items.filter { item in
+            (TextSearch.matches(item.description, query: query)
+                || (item.category.map { TextSearch.matches($0, query: query) } ?? false))
+                && (selectedPriority.map { item.priority == $0 } ?? true)
+                && (selectedCategory.map { item.category == $0 } ?? true)
+        }
+    }
+
     public private(set) var items: [Item] = []
     public private(set) var error: String?
     public var isLoading = false
@@ -12,6 +26,12 @@ public final class MyListViewModel {
     public init(client: APIClient, userID: Int) {
         self.client = client
         self.userID = userID
+    }
+
+    /// @spec IOS-CUR-010
+    public static func userID(from state: SessionState) -> Int? {
+        if case .loggedIn(let u) = state { return u.id }
+        return nil
     }
 
     public func load() async {

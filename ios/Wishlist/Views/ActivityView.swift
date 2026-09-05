@@ -4,6 +4,8 @@ import WishlistKit
 struct ActivityView: View {
     let client: APIClient
     @State private var vm: ActivityViewModel
+    @State private var detailTarget: ItemDetail?
+    @State private var detailError: String?
 
     init(client: APIClient) {
         self.client = client
@@ -34,8 +36,14 @@ struct ActivityView: View {
                                 Text(error).font(.footnote).foregroundStyle(Color.wlAccent)
                                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                             }
+                            if let detailError {
+                                Text(detailError).font(.footnote).foregroundStyle(Color.wlAccent)
+                                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                            }
                             ForEach(vm.notifications) { notification in
-                                Button { Task { await vm.markRead(notification) } } label: {
+                                // @spec IOS-ACT-011 — tap marks read, then presents
+                                // the item cover in place where the link is item-shaped.
+                                Button { Task { await openDetail(notification) } } label: {
                                     HStack(spacing: 12) {
                                         Circle()
                                             .fill(notification.isRead ? Color.clear : Color.wlAccent)
@@ -53,7 +61,7 @@ struct ActivityView: View {
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                             }
-                        }
+                            }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
                         .refreshable { await vm.load() }
@@ -70,5 +78,23 @@ struct ActivityView: View {
             }
         }
         .tint(.wlAccent)
+        .fullScreenCover(item: $detailTarget) { target in
+            DeepLinkDetailView(client: client, detail: target)
+        }
+    }
+
+    /// Marks the notification read (tap means seen), then navigates where its
+    /// link is item-shaped; bare links stay on the list, failed fetches show an
+    /// inline error — the notification stays marked read either way.
+    /// @spec IOS-ACT-011
+    private func openDetail(_ notification: WishlistNotification) async {
+        detailError = nil
+        await vm.markRead(notification)
+        guard let id = ItemLink.itemID(from: notification.link) else { return }
+        do {
+            detailTarget = try await client.item(id: id)
+        } catch {
+            detailError = "Couldn't open that item."
+        }
     }
 }

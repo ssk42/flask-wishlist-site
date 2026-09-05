@@ -3,6 +3,11 @@ import Observation
 
 @MainActor @Observable
 public final class FamilyViewModel {
+    public var query = ""
+    /// @spec IOS-GIFT-010
+    public var filteredUsers: [User] {
+        users.filter { TextSearch.matches($0.name, query: query) }
+    }
     public private(set) var users: [User] = []
     public private(set) var error: String?
     public var isLoading = false
