@@ -167,7 +167,7 @@ arrows:
     detail: boundary-ios/ios-gifting.md
     sampled: 2026-08-15
     audited: 2026-09-04
-    audited_sha: 88c7577dc6420c40d292bc794f104a1dc26f651a
+    audited_sha: 31d1248fcbca2e163a6ee48cff89746f1e90dc67
     next: null
     drift: null
   - id: ios-curation
@@ -176,7 +176,7 @@ arrows:
     detail: boundary-ios/ios-curation.md
     sampled: 2026-08-15
     audited: 2026-09-04
-    audited_sha: 88c7577dc6420c40d292bc794f104a1dc26f651a
+    audited_sha: 31d1248fcbca2e163a6ee48cff89746f1e90dc67
     next: null
     drift: null
   - id: ios-activity
@@ -185,7 +185,7 @@ arrows:
     detail: boundary-ios/ios-activity.md
     sampled: 2026-08-15
     audited: 2026-09-04
-    audited_sha: 88c7577dc6420c40d292bc794f104a1dc26f651a
+    audited_sha: 31d1248fcbca2e163a6ee48cff89746f1e90dc67
     next: null
     drift: null
   - id: ios-share
