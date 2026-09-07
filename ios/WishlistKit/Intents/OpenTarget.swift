@@ -24,6 +24,11 @@ public final class OpenTarget {
 
     public private(set) var pendingItemID: Int?
     public private(set) var pendingOwnerID: Int?
+    /// Event deep-link target (`/events/<id>`), mirroring the item/owner pair
+    /// above: set by `RootTabView.route` before the Events tab has loaded its
+    /// list, consumed by `EventsView` once the event is visible.
+    /// @spec IOS-EVT-013
+    public private(set) var pendingEventID: Int?
 
     public init() {}
 
@@ -42,6 +47,23 @@ public final class OpenTarget {
         pendingItemID = nil
         pendingOwnerID = nil
         return (itemID, ownerID)
+    }
+
+    /// Records an event deep-link target. Called by `RootTabView.route`,
+    /// which may run before `EventsView` has loaded its list.
+    /// @spec IOS-EVT-013
+    public func setPendingEvent(id: Int) {
+        pendingEventID = id
+    }
+
+    /// Reads and clears the pending event target in one step. Returns `nil`
+    /// when nothing is pending.
+    /// @spec IOS-EVT-013
+    @discardableResult
+    public func consumePendingEvent() -> Int? {
+        guard let pendingEventID else { return nil }
+        self.pendingEventID = nil
+        return pendingEventID
     }
 
     /// The routing decision behind "open this item": given whatever member

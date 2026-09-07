@@ -29,6 +29,7 @@ autocorrect off), price (decimal), category, priority (Picker High/Medium/Low,
 default Medium), and Options section (size, color, quantity). Save disabled when
 description empty or saving (:59). Constructs an `ItemDraft`, `await onSave(draft)`,
 dismisses on `true`. Blank strings → `nil` so PATCH stays partial.
+Cascade: the form also reads the events list for an owner-only event picker (`event_id`, None = unlinked) — a one-way curation→events read, no co-ownership (IOS-EVT-012).
 
 ### `MyListViewModel` — `ios/WishlistKit/ViewModels/MyListViewModel.swift`
 Holds `query: String` plus `selectedPriority/selectedCategory: String?` (nil =

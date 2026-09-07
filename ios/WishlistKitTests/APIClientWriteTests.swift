@@ -112,4 +112,30 @@ final class APIClientWriteTests: XCTestCase {
         XCTAssertEqual(body["apns_token"] as? String, "dead")
         XCTAssertEqual(body["platform"] as? String, "ios")
     }
+
+    func testCreateItemIncludesEventIDWhenSet() async throws {
+        // @spec IOS-EVT-012
+        var captured: URLRequest?
+        StubURLProtocol.handler = { req in
+            captured = req
+            let body = #"{"item":{"id":9,"description":"Bike","user_id":1,"event_id":7}}"#
+            return (HTTPURLResponse(url: req.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        _ = try await client().createItem(ItemDraft(description: "Bike", eventID: 7))
+        let sentBody = try JSONSerialization.jsonObject(with: captured!.httpBody!) as! [String: Any]
+        XCTAssertEqual(sentBody["event_id"] as? Int, 7)
+    }
+
+    func testCreateItemOmitsEventIDWhenNil() async throws {
+        // @spec IOS-EVT-012
+        var captured: URLRequest?
+        StubURLProtocol.handler = { req in
+            captured = req
+            let body = #"{"item":{"id":9,"description":"Bike","user_id":1}}"#
+            return (HTTPURLResponse(url: req.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        _ = try await client().createItem(ItemDraft(description: "Bike"))
+        let sentBody = try JSONSerialization.jsonObject(with: captured!.httpBody!) as! [String: Any]
+        XCTAssertNil(sentBody["event_id"])
+    }
 }

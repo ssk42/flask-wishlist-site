@@ -86,10 +86,18 @@ struct ActivityView: View {
     /// Marks the notification read (tap means seen), then navigates where its
     /// link is item-shaped; bare links stay on the list, failed fetches show an
     /// inline error — the notification stays marked read either way.
-    /// @spec IOS-ACT-011
+    /// Event-shaped links re-post through the push channel so `RootTabView.route`
+    /// (one shared `ItemLink` parser, no drift) switches to the Events tab.
+    /// @spec IOS-ACT-011, IOS-EVT-013
     private func openDetail(_ notification: WishlistNotification) async {
         detailError = nil
         await vm.markRead(notification)
+        if ItemLink.eventID(from: notification.link) != nil {
+            NotificationCenter.default.post(name: PushManager.openLinkNotification,
+                                            object: nil,
+                                            userInfo: ["link": notification.link])
+            return
+        }
         guard let id = ItemLink.itemID(from: notification.link) else { return }
         do {
             detailTarget = try await client.item(id: id)

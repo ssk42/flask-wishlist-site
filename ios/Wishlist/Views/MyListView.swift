@@ -7,6 +7,9 @@ struct MyListView: View {
     @State private var showingAdd = false
     @State private var editingItem: Item?
     @State private var confirmingLogout = false
+    /// Events list feeding the item form's event picker (owner-only link).
+    /// @spec IOS-EVT-012
+    @State private var events: [WishlistEvent] = []
 
     init(session: Session) {
         self.session = session
@@ -124,17 +127,30 @@ struct MyListView: View {
                 Text("Your saved items stay on your wishlist.")
             }
             .task { if vm.items.isEmpty && MyListViewModel.userID(from: session.state) != nil { await vm.load() } }
+            .task { await loadEvents() }
             .sheet(isPresented: $showingAdd) {
                 ItemEditView(title: "Add Item",
                              onSave: { draft in await vm.create(draft) },
-                             onPrefill: { url in await vm.prefill(url: url) })
+                             onPrefill: { url in await vm.prefill(url: url) },
+                             events: events)
             }
             .sheet(item: $editingItem) { item in
                 ItemEditView(title: "Edit Item", item: item,
                              onSave: { draft in await vm.update(id: item.id, draft) },
-                             onPrefill: { url in await vm.prefill(url: url) })
+                             onPrefill: { url in await vm.prefill(url: url) },
+                             events: events)
             }
         }
         .tint(.wlAccent)
+    }
+
+    /// Best-effort events fetch for the picker; a failure just leaves the
+    /// picker hidden (the form renders it only when the list is non-empty).
+    /// @spec IOS-EVT-012
+    private func loadEvents() async {
+        guard MyListViewModel.userID(from: session.state) != nil else { return }
+        if let fetched = try? await session.client.events() {
+            events = fetched
+        }
     }
 }

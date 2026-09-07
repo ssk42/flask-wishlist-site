@@ -3,6 +3,7 @@ import WishlistKit
 
 /// Root tab bar: Family, My List, Claims, Activity, Events. A tapped push notification
 /// deep-links — /items/<id> presents the item detail (own items → My List tab),
+/// /events/<id> switches to the Events tab and presents that event's detail,
 /// any other link switches to the Activity tab.
 struct RootTabView: View {
     let session: Session
@@ -43,7 +44,8 @@ struct RootTabView: View {
             Text("That item may have been removed.")
         }
         // A tapped push notification deep-links: /items/<id> → the item detail
-        // (own items → My List tab); any other link → Activity tab.
+        // (own items → My List tab); /events/<id> → the Events tab + that
+        // event's detail; any other link → Activity tab.
         .onReceive(NotificationCenter.default.publisher(for: PushManager.openLinkNotification)) { note in
             let link = (note.userInfo?["link"] as? String) ?? ""
             route(link: link)
@@ -71,6 +73,15 @@ struct RootTabView: View {
 
     private func route(link: String) {
         // @spec IOS-ACT-008
+        // @spec IOS-EVT-013 — event links share `ItemLink` with the in-app
+        // tap path, so push and in-app routing can never drift. The detail
+        // itself is presented by `EventsView`, which consumes the pending id
+        // once its list has loaded (mirroring `OpenTarget.pendingOwnerID`).
+        if let eventID = ItemLink.eventID(from: link) {
+            openTarget.setPendingEvent(id: eventID)
+            selectedTab = 4
+            return
+        }
         guard let itemID = ItemLink.itemID(from: link) else {
             selectedTab = 3
             return

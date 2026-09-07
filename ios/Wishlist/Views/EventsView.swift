@@ -11,6 +11,11 @@ struct EventsView: View {
     var currentUserID: Int? { MyListViewModel.userID(from: session.state) }
     @State private var vm: EventsViewModel
     @State private var showingAdd = false
+    private let openTarget = OpenTarget.shared
+    /// Deep-link destination for `/events/<id>` taps, set once the pending
+    /// id resolves against the loaded list.
+    /// @spec IOS-EVT-013
+    @State private var pendingEvent: WishlistEvent?
 
     init(session: Session) {
         self.session = session
@@ -105,8 +110,31 @@ struct EventsView: View {
                     await vm.create(name: name, date: date)
                 }
             }
+            .navigationDestination(item: $pendingEvent) { event in
+                EventDetailView(client: client, event: event, vm: vm, currentUserID: currentUserID)
+            }
+            // @spec IOS-EVT-013 — warm case (link arrives while mounted),
+            // cold case (link pending before the list loads), and
+            // already-loaded case (view mounts after the link arrives):
+            // whichever flips last triggers the presentation.
+            .onAppear { presentPendingEventIfPossible() }
+            .onChange(of: openTarget.pendingEventID) { _, _ in presentPendingEventIfPossible() }
+            .onChange(of: vm.upcoming) { _, _ in presentPendingEventIfPossible() }
+            .onChange(of: vm.past) { _, _ in presentPendingEventIfPossible() }
         }
         .tint(.wlAccent)
+    }
+
+    /// Presents the pending `/events/<id>` target once the event is in the
+    /// loaded list, then consumes it. Leaves the target untouched when the
+    /// list hasn't loaded yet (or the id is unknown) so a later call can
+    /// still resolve it — mirroring `FamilyView`'s pending-owner binding.
+    /// @spec IOS-EVT-013
+    private func presentPendingEventIfPossible() {
+        guard let id = openTarget.pendingEventID else { return }
+        guard let event = (vm.upcoming + vm.past).first(where: { $0.id == id }) else { return }
+        pendingEvent = event
+        openTarget.consumePendingEvent()
     }
 }
 

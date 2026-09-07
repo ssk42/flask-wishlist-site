@@ -148,8 +148,9 @@ struct EventDetailView: View {
     }
 
     /// Resolves the item's owner from the roster, then presents the item detail
-    /// (same cover as a tapped push notification).
-    /// @spec IOS-GIFT-009
+    /// (same cover as a tapped push notification). Items arrive masked via
+    /// `serialize_item(viewer)` — never any claim UI on this surface.
+    /// @spec IOS-GIFT-009, IOS-EVT-011
     private func openDetail(_ item: Item) async {
         do {
             let owner = try await client.users().first { $0.id == item.userID }

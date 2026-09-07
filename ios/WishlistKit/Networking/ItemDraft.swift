@@ -4,6 +4,7 @@ public struct ItemDraft: Sendable {
     public var description: String?
     public var link: String?
     public var price: Double?
+    public var eventID: Int?
     public var category: String?
     public var imageURL: String?
     public var priority: String?
@@ -12,9 +13,11 @@ public struct ItemDraft: Sendable {
     public var quantity: Int?
 
     public init(description: String? = nil, link: String? = nil, price: Double? = nil,
+                eventID: Int? = nil,
                 category: String? = nil, imageURL: String? = nil, priority: String? = nil,
                 size: String? = nil, color: String? = nil, quantity: Int? = nil) {
         self.description = description; self.link = link; self.price = price
+        self.eventID = eventID
         self.category = category; self.imageURL = imageURL; self.priority = priority
         self.size = size; self.color = color; self.quantity = quantity
     }
@@ -22,10 +25,11 @@ public struct ItemDraft: Sendable {
     /// All fields, nils included. The single place nil-dropping happens is
     /// `APIClient.sendRaw` (`compactMapValues`), so PATCH stays a true partial
     /// update without a second filter here.
-    /// @spec IOS-NET-006
+    /// @spec IOS-NET-006, IOS-EVT-012
     public var payload: [String: Any?] {
         [
-            "description": description, "link": link, "price": price, "category": category,
+            "description": description, "link": link, "price": price, "event_id": eventID,
+            "category": category,
             "image_url": imageURL, "priority": priority, "size": size, "color": color,
             "quantity": quantity,
         ]

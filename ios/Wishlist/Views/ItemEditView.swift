@@ -11,6 +11,10 @@ struct ItemEditView: View {
     var item: Item?
     let onSave: (ItemDraft) async -> Bool
     var onPrefill: ((String) async -> ItemDraft?)?
+    /// Events available to link this item to. Owner-only surface: only
+    /// `MyListView` (own items) passes a list; blank/None means unlinked.
+    /// @spec IOS-EVT-012
+    var events: [WishlistEvent] = []
 
     @Environment(\.dismiss) private var dismiss
     @State private var description: String
@@ -23,16 +27,22 @@ struct ItemEditView: View {
     @State private var quantityText: String
     @State private var saving = false
     @State private var prefilling = false
+    /// Nil = unlinked; the save path omits `event_id` when nil.
+    /// @spec IOS-EVT-012
+    @State private var eventID: Int?
 
     private let priorities = ["High", "Medium", "Low"]
 
     init(title: String, item: Item? = nil,
          onSave: @escaping (ItemDraft) async -> Bool,
-         onPrefill: ((String) async -> ItemDraft?)? = nil) {
+         onPrefill: ((String) async -> ItemDraft?)? = nil,
+         events: [WishlistEvent] = []) {
         self.title = title
         self.item = item
         self.onSave = onSave
         self.onPrefill = onPrefill
+        self.events = events
+        _eventID = State(initialValue: item?.eventID)
         _description = State(initialValue: item?.description ?? "")
         _link = State(initialValue: item?.link ?? "")
         _priceText = State(initialValue: item?.price.map { String($0) } ?? "")
@@ -83,6 +93,15 @@ struct ItemEditView: View {
                     TextField("Size", text: $size)
                     TextField("Color", text: $color)
                     TextField("Quantity", text: $quantityText).keyboardType(.numberPad)
+                    // @spec IOS-EVT-012 — owner-only link picker; None = unlinked.
+                    if !events.isEmpty {
+                        Picker("Event", selection: $eventID) {
+                            Text("None").tag(nil as Int?)
+                            ForEach(events) { event in
+                                Text(event.name).tag(event.id as Int?)
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle(title)
@@ -104,6 +123,7 @@ struct ItemEditView: View {
             description: description,
             link: link.isEmpty ? nil : link,
             price: Double(priceText),
+            eventID: eventID,
             category: category.isEmpty ? nil : category,
             priority: priority,
             size: size.isEmpty ? nil : size,
