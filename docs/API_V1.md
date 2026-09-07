@@ -75,6 +75,13 @@ web app):
   `Purchased` (`already_purchased`), or it's `Claimed` by someone else
   (`claimed_by_other`). This is stricter than the legacy web edit form.
 
+### Events
+
+| Method & path | Success | Notes |
+|---|---|---|
+| `GET /api/v1/events` | `200 {events: [...]}` | All events, family-visible (no user filter), ordered by date ascending. Each event is `{id, name, date, created_by: {id, name}, item_count}`. `date` is a `"YYYY-MM-DD"` string, never epoch/datetime. `item_count` excludes archived items. `reminder_sent` is never exposed. |
+| `GET /api/v1/events/<id>` | `200 {event, items}` | Single event (same shape as above) plus its non-archived items, each serialized with `serialize_item(viewer)` so surprise protection applies. `404 {"error": "not_found"}` for a missing id. |
+
 ### Notifications & devices
 
 | Method & path | Body | Success | Notes |
@@ -110,7 +117,7 @@ Most error responses are `{"error": "<code>"}`, optionally with
 | `400` | Missing required field elsewhere (`missing_apns_token`, `missing_url`) | `{"error": "<code>"}`, no message. |
 | `401` | Missing/invalid/revoked token (`unauthorized`); bad login (`invalid_family_code`, `unknown_email`) | `{"error": "<code>"}`, no message. |
 | `403` | `PATCH`/`DELETE /items/<id>` by a non-owner (`forbidden`) | `{"error": "forbidden"}`, no message. |
-| `404` | Item or notification not found (or notification not yours) (`not_found`) | `{"error": "not_found"}`, no message. |
+| `404` | Event, item, or notification not found (or notification not yours) (`not_found`) | `{"error": "not_found"}`, no message. |
 | `409` | Claim/unclaim/purchase rule violation (`own_item`, `not_available`, `not_claimer`, `already_purchased`, `claimed_by_other`) | `{"error": "<code>", "message": "<human text>"}` — the only path where `message` is populated. |
 | `502` | `POST /metadata` upstream fetch raised an exception (`fetch_failed`) | `{"error": "fetch_failed"}`, no message. |
 

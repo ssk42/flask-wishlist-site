@@ -39,6 +39,19 @@ def serialize_item(item, viewer):
         )
     return data
 
+def serialize_event(event, item_count=None):
+    """Serialize an event as seen by any family member (all events are family-visible)."""
+    creator = event.created_by
+    data = {
+        'id': event.id,
+        'name': event.name,
+        'date': event.date.isoformat() if event.date else None,
+        'created_by': {'id': creator.id, 'name': creator.name} if creator else None,
+    }
+    if item_count is not None:
+        data['item_count'] = item_count
+    return data
+
 
 def serialize_notification(notification):
     return {

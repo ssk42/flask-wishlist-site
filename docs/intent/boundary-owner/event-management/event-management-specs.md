@@ -12,3 +12,7 @@
 - [x] **OWN-EVT-007**: When processing claimed items for a reminder, the system shall group them by the user who claimed them (`last_updated_by_id`), excluding items where the claimer is the item owner.
 - [x] **OWN-EVT-008**: For each claimer identified in the reminder task, the system shall send an email summarizing their claimed items and providing links to the items.
 - [x] **OWN-EVT-009**: After the system processes all claimers for an event's reminder, it shall set the event's `reminder_sent` flag to True to prevent duplicate reminders on subsequent runs.
+
+## Events API Specs
+- [x] **OWN-EVT-010**: GET /api/v1/events returns all events family-wide as {id, name, date "YYYY-MM-DD", created_by {id, name}, item_count}; item_count excludes archived items; reminder_sent never exposed.
+- [x] **OWN-EVT-011**: GET /api/v1/events/<id> returns the event plus non-archived items via serialize_item(viewer) (surprise protection); 404 {"error": "not_found"} for missing id.

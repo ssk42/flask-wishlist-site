@@ -14,9 +14,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from extensions import limiter
-from models import Device, Item, Notification, User, db
+from models import Device, Event, Item, Notification, User, db
 from services.api_auth import issue_token, revoke_token
-from services.api_serializers import serialize_item, serialize_notification, serialize_user
+from services.api_serializers import serialize_event, serialize_item, serialize_notification, serialize_user
 from config import PRIORITY_CHOICES
 from services import item_service
 from services.form_validators import FormValidator, validate_item_fields
@@ -94,6 +94,47 @@ def list_users():
     )
     users = User.query.order_by(User.name).all()
     return jsonify({'users': [serialize_user(u, item_count=counts.get(u.id, 0)) for u in users]})
+
+
+@bp.route('/events', methods=['GET'])
+def list_events():
+    # @spec OWN-EVT-001, OWN-EVT-010
+    """All events, family-visible (no user filter); item counts exclude archived."""
+    events = (
+        Event.query.options(joinedload(Event.created_by))
+        .order_by(Event.date.asc(), Event.id.asc())
+        .all()
+    )
+    counts = dict(
+        db.session.query(Item.event_id, func.count(Item.id))
+        .filter(Item.event_id.isnot(None), Item.archived_at.is_(None))
+        .group_by(Item.event_id)
+        .all()
+    )
+    return jsonify({'events': [serialize_event(e, item_count=counts.get(e.id, 0)) for e in events]})
+
+
+@bp.route('/events/<int:event_id>', methods=['GET'])
+def get_event(event_id):
+    # @spec OWN-EVT-001, OWN-EVT-011
+    """Single event with its (non-archived) items, surprise protection applied."""
+    event = (
+        Event.query.options(joinedload(Event.created_by))
+        .filter_by(id=event_id)
+        .first()
+    )
+    if event is None:
+        return _json_error(404, 'not_found')
+    items = (
+        Item.query.options(joinedload(Item.last_updated_by))
+        .filter(Item.event_id == event.id, Item.archived_at.is_(None))
+        .order_by(Item.created_at.desc(), Item.id.desc())
+        .all()
+    )
+    return jsonify({
+        'event': serialize_event(event, item_count=len(items)),
+        'items': [serialize_item(i, current_user) for i in items],
+    })
 
 
 @bp.route('/items', methods=['GET'])
