@@ -19,6 +19,21 @@ public struct ItemDetail: Decodable, Sendable, Identifiable {
     }
 }
 
+/// A single event plus its items — returned by `APIClient.event(id:)`. Each
+/// item is serialized with `serialize_item(viewer)`, so an absent `status`
+/// means the item belongs to the viewer (`Item.isOwn`).
+public struct EventDetail: Decodable, Sendable, Identifiable {
+    public let event: WishlistEvent
+    public let items: [Item]
+
+    public var id: Int { event.id }
+
+    public init(event: WishlistEvent, items: [Item]) {
+        self.event = event
+        self.items = items
+    }
+}
+
 public actor APIClient {
     public let baseURL: URL
     private let session: URLSession
@@ -49,6 +64,7 @@ public actor APIClient {
     // MARK: Reads
     private struct UsersEnvelope: Decodable { let users: [User] }
     private struct ItemsEnvelope: Decodable { let items: [Item] }
+    private struct EventsEnvelope: Decodable { let events: [WishlistEvent] }
     private struct MeEnvelope: Decodable { let user: User }
     private struct MetadataEnvelope: Decodable {
         let title: String?
@@ -99,6 +115,19 @@ public actor APIClient {
     /// @spec IOS-NET-013
     public func item(id: Int) async throws -> ItemDetail {
         try await send(.get, "/api/v1/items/\(id)")
+    }
+
+    /// All family events, ordered by date ascending.
+    /// @spec IOS-EVT-001
+    public func events() async throws -> [WishlistEvent] {
+        try await (send(.get, "/api/v1/events") as EventsEnvelope).events
+    }
+
+    /// A single event plus its items, each serialized with
+    /// `serialize_item(viewer)` so surprise protection applies.
+    /// @spec IOS-EVT-002
+    public func event(id: Int) async throws -> EventDetail {
+        try await send(.get, "/api/v1/events/\(id)")
     }
 
     // MARK: Writes

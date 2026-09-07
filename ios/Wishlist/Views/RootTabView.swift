@@ -1,7 +1,7 @@
 import SwiftUI
 import WishlistKit
 
-/// Root tab bar: Family, My List, Claims, Activity. A tapped push notification
+/// Root tab bar: Family, My List, Claims, Activity, Events. A tapped push notification
 /// deep-links — /items/<id> presents the item detail (own items → My List tab),
 /// any other link switches to the Activity tab.
 struct RootTabView: View {
@@ -28,6 +28,10 @@ struct RootTabView: View {
             ActivityView(client: session.client)
                 .tabItem { Label("Activity", systemImage: "bell") }
                 .tag(3)
+
+            EventsView(client: session.client)
+                .tabItem { Label("Events", systemImage: "calendar") }
+                .tag(4)
         }
         .tint(.wlAccent)
         .fullScreenCover(item: $deepLinkTarget) { target in

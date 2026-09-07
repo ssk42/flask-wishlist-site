@@ -1,5 +1,5 @@
 schema_version: 1
-last_updated: 2026-09-04
+last_updated: 2026-09-07
 
 arrows:
   - id: boundary-auth
@@ -142,7 +142,7 @@ arrows:
   - id: boundary-ios
     status: GROUP
     parent: null
-    children: [ios-networking, ios-auth, ios-gifting, ios-curation, ios-activity, ios-share]
+    children: [ios-networking, ios-auth, ios-gifting, ios-curation, ios-activity, ios-events, ios-share]
   - id: ios-networking
     status: OK
     parent: boundary-ios
@@ -188,6 +188,15 @@ arrows:
     audited_sha: 31d1248fcbca2e163a6ee48cff89746f1e90dc67
     next: null
     drift: null
+  - id: ios-events
+    status: OK
+    parent: boundary-ios
+    detail: boundary-ios/ios-events.md
+    sampled: 2026-09-04
+    audited: null
+    audited_sha: null
+    next: null
+    drift: null
   - id: ios-share
     status: OK
     parent: boundary-ios
@@ -197,7 +206,6 @@ arrows:
     audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
     next: null
     drift: null
-
 unmapped:
   docs:
     llds: []

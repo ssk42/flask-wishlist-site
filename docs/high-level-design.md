@@ -39,7 +39,7 @@ The client never re-implements server rules — it depends on the `/api/v1` JSON
 contract (`docs/API_V1.md`) and preserves surprise protection in its own types
 (`Item.status`/`lastUpdatedBy` absent for the viewer's own items).
 - **Segments**: `ios-networking`, `ios-auth`, `ios-gifting`, `ios-curation`,
-  `ios-activity`, `ios-share`
+  `ios-activity`, `ios-events`, `ios-share`
 - **Key Invariants**:
   - `ios-networking` / `ios-auth`: the shared `WishlistKit` framework (APIClient,
     Codable models, Session, Keychain token store) consumed by both the app and the
@@ -49,6 +49,7 @@ contract (`docs/API_V1.md`) and preserves surprise protection in its own types
     claim state is rendered only where the server sent it (another member's items).
   - `ios-curation`: own-list CRUD; never shows claim badges for the user's own items.
   - `ios-activity`: notifications; tapping one deep-links into the referenced item (own item -> My List, another member's -> full-screen ItemDetail) with an Activity-tab fallback for non-item links.
+  - `ios-events`: family-visible occasions (read-only slice 1); item rows reuse the masked `serialize_item` view so own-item status stays hidden.
   - `ios-share`: Safari share-sheet add-item, a separate process authenticating via
     the app's stored token.
 
