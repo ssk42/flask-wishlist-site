@@ -54,4 +54,8 @@ public struct WishlistEvent: Decodable, Identifiable, Sendable, Hashable {
         let calendar = Calendar.current
         return calendar.startOfDay(for: date) >= calendar.startOfDay(for: Date())
     }
+
+    /// Day string for write payloads (`POST`/`PATCH` send `"YYYY-MM-DD"`).
+    /// @spec IOS-EVT-006
+    public var dayString: String { Self.dayFormatter.string(from: date) }
 }

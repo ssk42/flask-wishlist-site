@@ -4,9 +4,10 @@ status: OK
 
 # ios-events Arrow
 
-The read-only Events surface: Events tab (upcoming/past), event detail with
-masked item rows, and the `GET /api/v1/events` / `GET /api/v1/events/<id>`
-client mirror.
+The Events surface: Events tab (upcoming/past), event detail with
+masked item rows, creator-side create/edit/delete, and the
+`GET /api/v1/events` / `GET /api/v1/events/<id>` / `POST /api/v1/events` /
+`PATCH` / `DELETE /api/v1/events/<id>` client mirror.
 
 ## Artifacts
 - **LLD**: [docs/intent/boundary-ios/ios-events.md](../../intent/boundary-ios/ios-events.md)
@@ -14,7 +15,9 @@ client mirror.
 - **Tests**: `ios/WishlistKitTests/APIClientEventsTests.swift`, `ios/WishlistKitTests/EventsViewModelTests.swift`
 - **Code**: `ios/Wishlist/Views/EventsView.swift`,
   `ios/Wishlist/Views/EventDetailView.swift`,
+  `ios/Wishlist/Views/EventFormView.swift`,
   `ios/WishlistKit/Models/WishlistEvent.swift`,
+  `ios/WishlistKit/Networking/APIClient.swift`,
   `ios/WishlistKit/ViewModels/EventsViewModel.swift`
 
 ## Spec Coverage
@@ -24,8 +27,9 @@ client mirror.
 | Listing  | IOS-EVT-001, IOS-EVT-005 | 2 | 0 | 0 |
 | Detail   | IOS-EVT-002 | 1 | 0 | 0 |
 | States   | IOS-EVT-003, IOS-EVT-004 | 2 | 0 | 0 |
+| Writes   | IOS-EVT-006, IOS-EVT-007, IOS-EVT-008, IOS-EVT-009, IOS-EVT-010 | 5 | 0 | 0 |
 
-**Summary:** 5 of 5 active specs implemented.
+**Summary:** 10 of 10 active specs implemented.
 
 ## Key Findings
 
@@ -35,13 +39,20 @@ client mirror.
 2. **Detail rows reuse the masked item view** — `GET /api/v1/events/<id>`
    items are `serialize_item(viewer)`; absent `status` reads as own via the
    shared `Item.isOwn`, so no claim state can leak (IOS-EVT-002).
-3. **Slice 1 hides creation** — the empty state ("No events yet") carries no
-   create affordance (IOS-EVT-003).
+3. **Slice 1 hid creation; slice 2 adds it** — the empty state
+   ("No events yet") carried no create affordance in slice 1 (IOS-EVT-003);
+   slice 2 adds the `+` button + `EventFormView` sheet (IOS-EVT-006).
 4. **Failures show "Couldn't load events." with retry** — retry re-invokes
    `load()`, which full-replaces the lists and clears the error (IOS-EVT-004).
+5. **Writes are creator-gated, full-replace, last-write-wins** — edit/delete
+   render only when `createdBy.id == session user id` (IOS-EVT-009); create
+   inserts by day, update drops + re-inserts, delete removes the row while
+   items are kept unlinked (IOS-EVT-006/007/008); 400 surfaces the server
+   message, 403/404 reloads then shows a friendly error, no conflict UI
+   (IOS-EVT-010).
 
 ## Work Required
 
-### Slices 2-3
-1. Event create/edit + RSVP/attendance (needs server write contract).
+### Slice 3
+1. RSVP/attendance tracking.
 2. Device-calendar sync and user-specific filtering.

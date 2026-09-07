@@ -16,3 +16,6 @@
 ## Events API Specs
 - [x] **OWN-EVT-010**: GET /api/v1/events returns all events family-wide as {id, name, date "YYYY-MM-DD", created_by {id, name}, item_count}; item_count excludes archived items; reminder_sent never exposed.
 - [x] **OWN-EVT-011**: GET /api/v1/events/<id> returns the event plus non-archived items via serialize_item(viewer) (surprise protection); 404 {"error": "not_found"} for missing id.
+- [x] **OWN-EVT-012**: POST /api/v1/events with {name, date "YYYY-MM-DD"} shall create an event with created_by = current_user; 201 {event}; 400 {"errors": [...]} on invalid name/date.
+- [x] **OWN-EVT-013**: PATCH /api/v1/events/<id> with partial {name?, date?} shall update the event; 200 {event}; 404 {"error": "not_found"} for missing id; 403 {"error": "forbidden"} unless creator; 400 {"errors": [...]} on invalid values.
+- [x] **OWN-EVT-014**: DELETE /api/v1/events/<id> shall null associated items' event_id first (items survive) then delete the event; 200 {ok: true}; 404 {"error": "not_found"} for missing id; 403 {"error": "forbidden"} unless creator.

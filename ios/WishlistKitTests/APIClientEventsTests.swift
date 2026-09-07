@@ -51,4 +51,90 @@ final class APIClientEventsTests: XCTestCase {
         catch APIError.unauthorized { /* expected */ }
         catch { XCTFail("wrong error: \(error)") }
     }
+
+    // MARK: - Slice 2 writes
+
+    private func eventBody(id: Int = 7) -> String {
+        #"{"event":{"id":\#(id),"name":"Bday","date":"2026-09-10","created_by":{"id":2,"name":"Mom"},"item_count":0}}"#
+    }
+
+    private func bodyJSON(_ req: URLRequest) -> [String: Any] {
+        (try? JSONSerialization.jsonObject(with: req.httpBody ?? Data()) as? [String: Any]) ?? [:]
+    }
+
+    private static func dayDate() -> Date {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: "2026-09-10")!
+    }
+
+    func testCreateEventPostsNameAndDateEnvelope() async throws {
+        // @spec IOS-EVT-006
+        var method: String?
+        var path: String?
+        var body: [String: Any] = [:]
+        StubURLProtocol.handler = { req in
+            method = req.httpMethod; path = req.url?.path
+            body = (try? JSONSerialization.jsonObject(with: req.httpBody ?? Data()) as? [String: Any]) ?? [:]
+            return (HTTPURLResponse(url: req.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!,
+                    Data(self.eventBody().utf8))
+        }
+        let event = try await client().createEvent(name: "Bday", date: Self.dayDate())
+        XCTAssertEqual(method, "POST")
+        XCTAssertEqual(path, "/api/v1/events")
+        XCTAssertEqual(body["name"] as? String, "Bday")
+        XCTAssertEqual(body["date"] as? String, "2026-09-10")
+        XCTAssertEqual(event.id, 7)
+        XCTAssertEqual(event.name, "Bday")
+    }
+
+    func testUpdateEventPatchesPartialEnvelope() async throws {
+        // @spec IOS-EVT-007
+        var method: String?
+        var path: String?
+        var body: [String: Any] = [:]
+        StubURLProtocol.handler = { req in
+            method = req.httpMethod; path = req.url?.path
+            body = (try? JSONSerialization.jsonObject(with: req.httpBody ?? Data()) as? [String: Any]) ?? [:]
+            return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(self.eventBody().utf8))
+        }
+        let event = try await client().updateEvent(id: 7, name: "Bday", date: nil)
+        XCTAssertEqual(method, "PATCH")
+        XCTAssertEqual(path, "/api/v1/events/7")
+        XCTAssertEqual(body["name"] as? String, "Bday")
+        XCTAssertNil(body["date"])
+        XCTAssertEqual(event.id, 7)
+    }
+
+    func testDeleteEventUsesDeletePath() async throws {
+        // @spec IOS-EVT-008
+        var method: String?
+        var path: String?
+        StubURLProtocol.handler = { req in
+            method = req.httpMethod; path = req.url?.path
+            return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(#"{"ok":true}"#.utf8))
+        }
+        try await client().deleteEvent(id: 7)
+        XCTAssertEqual(method, "DELETE")
+        XCTAssertEqual(path, "/api/v1/events/7")
+    }
+
+    func testCreateEventDecodes400Validation() async {
+        // @spec IOS-EVT-010
+        StubURLProtocol.handler = { req in
+            (HTTPURLResponse(url: req.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!,
+             Data(#"{"errors":["Event name is required."]}"#.utf8))
+        }
+        do {
+            _ = try await client().createEvent(name: "", date: Self.dayDate())
+            XCTFail("expected throw")
+        } catch APIError.validation(let messages) {
+            XCTAssertEqual(messages, ["Event name is required."])
+        } catch {
+            XCTFail("wrong error: \(error)")
+        }
+    }
 }

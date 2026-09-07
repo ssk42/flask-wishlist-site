@@ -81,6 +81,9 @@ web app):
 |---|---|---|
 | `GET /api/v1/events` | `200 {events: [...]}` | All events, family-visible (no user filter), ordered by date ascending. Each event is `{id, name, date, created_by: {id, name}, item_count}`. `date` is a `"YYYY-MM-DD"` string, never epoch/datetime. `item_count` excludes archived items. `reminder_sent` is never exposed. |
 | `GET /api/v1/events/<id>` | `200 {event, items}` | Single event (same shape as above) plus its non-archived items, each serialized with `serialize_item(viewer)` so surprise protection applies. `404 {"error": "not_found"}` for a missing id. |
+| `POST /api/v1/events` | `201 {event}` | Body `{name, date}` where `date` is a `"YYYY-MM-DD"` string. Any logged-in user may create; `created_by` is `current_user`. New events have `item_count: 0`. `400 {"errors": [...]}` on invalid name/date (same `FormValidator` rules as the web form). |
+| `PATCH /api/v1/events/<id>` | `200 {event}` | Partial body `{name?, date?}` — only keys present are validated and persisted. Creator-only: `404 {"error": "not_found"}` for a missing id, `403 {"error": "forbidden"}` otherwise, `400 {"errors": [...]}` on invalid values. |
+| `DELETE /api/v1/events/<id>` | `200 {ok: true}` | Creator-only (`404`/`403` as above). Associated items' `event_id` is nulled first — items survive. |
 
 ### Notifications & devices
 
@@ -113,16 +116,16 @@ Most error responses are `{"error": "<code>"}`, optionally with
 
 | Status | When | Shape |
 |---|---|---|
-| `400` | Validation failed on `POST /items` or `PATCH /items/<id>` | `{"errors": ["message", ...]}` — **plural, a list**, not the `{error}` envelope. |
+| `400` | Validation failed on `POST`/`PATCH /events` or `POST /items` or `PATCH /items/<id>` | `{"errors": ["message", ...]}` — **plural, a list**, not the `{error}` envelope. |
 | `400` | Missing required field elsewhere (`missing_apns_token`, `missing_url`) | `{"error": "<code>"}`, no message. |
 | `401` | Missing/invalid/revoked token (`unauthorized`); bad login (`invalid_family_code`, `unknown_email`) | `{"error": "<code>"}`, no message. |
-| `403` | `PATCH`/`DELETE /items/<id>` by a non-owner (`forbidden`) | `{"error": "forbidden"}`, no message. |
+| `403` | `PATCH`/`DELETE /events/<id>` by a non-creator, or `PATCH`/`DELETE /items/<id>` by a non-owner (`forbidden`) | `{"error": "forbidden"}`, no message. |
 | `404` | Event, item, or notification not found (or notification not yours) (`not_found`) | `{"error": "not_found"}`, no message. |
 | `409` | Claim/unclaim/purchase rule violation (`own_item`, `not_available`, `not_claimer`, `already_purchased`, `claimed_by_other`) | `{"error": "<code>", "message": "<human text>"}` — the only path where `message` is populated. |
 | `502` | `POST /metadata` upstream fetch raised an exception (`fetch_failed`) | `{"error": "fetch_failed"}`, no message. |
 
 Clients should switch on the `error` code, not the HTTP status alone, and
-must special-case `POST/PATCH /items` (400 with `errors: [...]`) separately
+must special-case `POST/PATCH /events` and `POST/PATCH /items` (400 with `errors: [...]`) separately
 from every other error path.
 
 ## Push notifications (APNs)

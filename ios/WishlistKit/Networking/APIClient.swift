@@ -142,6 +142,30 @@ public actor APIClient {
     public func deleteItem(id: Int) async throws {
         _ = try await sendRaw(.delete, "/api/v1/items/\(id)", body: nil, authenticated: true)
     }
+    private struct EventEnvelope: Decodable { let event: WishlistEvent }
+
+    /// Creates an event owned by the token's user.
+    /// @spec IOS-EVT-006
+    public func createEvent(name: String, date: Date) async throws -> WishlistEvent {
+        let day = WishlistEvent.dayFormatter.string(from: date)
+        return try await (send(.post, "/api/v1/events",
+                               body: ["name": name, "date": day]) as EventEnvelope).event
+    }
+
+    /// Partial event update; creator-only.
+    /// @spec IOS-EVT-007
+    public func updateEvent(id: Int, name: String?, date: Date?) async throws -> WishlistEvent {
+        var body: [String: Any?] = [:]
+        if let name { body["name"] = name }
+        if let date { body["date"] = WishlistEvent.dayFormatter.string(from: date) }
+        return try await (send(.patch, "/api/v1/events/\(id)", body: body) as EventEnvelope).event
+    }
+
+    /// Deletes an event; linked items survive with `event_id` nulled.
+    /// @spec IOS-EVT-008
+    public func deleteEvent(id: Int) async throws {
+        _ = try await sendRaw(.delete, "/api/v1/events/\(id)", body: nil, authenticated: true)
+    }
     public func claim(itemID: Int) async throws -> Item {
         try await (send(.post, "/api/v1/items/\(itemID)/claim") as ItemEnvelope).item
     }

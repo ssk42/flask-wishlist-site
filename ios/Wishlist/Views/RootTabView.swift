@@ -29,7 +29,7 @@ struct RootTabView: View {
                 .tabItem { Label("Activity", systemImage: "bell") }
                 .tag(3)
 
-            EventsView(client: session.client)
+            EventsView(session: session)
                 .tabItem { Label("Events", systemImage: "calendar") }
                 .tag(4)
         }

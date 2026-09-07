@@ -1,15 +1,35 @@
 import SwiftUI
 import WishlistKit
 
-/// A single event: name, full date, creator, and its items, read-only.
-/// @spec IOS-EVT-002
+/// A single event: name, full date, creator, and its items. The creator gets
+/// Edit/Delete toolbar actions; other viewers see none.
+/// @spec IOS-EVT-002, IOS-EVT-009
 struct EventDetailView: View {
     let client: APIClient
-    let event: WishlistEvent
+    @State private var event: WishlistEvent
+    var vm: EventsViewModel
+    var currentUserID: Int?
     @State private var items: [Item] = []
     @State private var isLoading = false
     @State private var error: String?
     @State private var detailTarget: ItemDetail?
+    @State private var showingEdit = false
+    @State private var confirmingDelete = false
+    @Environment(\.dismiss) private var dismiss
+
+    init(client: APIClient, event: WishlistEvent, vm: EventsViewModel, currentUserID: Int?) {
+        self.client = client
+        _event = State(initialValue: event)
+        self.vm = vm
+        self.currentUserID = currentUserID
+    }
+
+    /// Edit/delete render only for the creator; logged-out or other viewers
+    /// get no affordance.
+    /// @spec IOS-EVT-009
+    private var isCreator: Bool {
+        currentUserID.map { $0 == event.createdBy.id } ?? false
+    }
 
     var body: some View {
         ZStack {
@@ -55,7 +75,42 @@ struct EventDetailView: View {
         }
         .navigationTitle(event.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // @spec IOS-EVT-007, IOS-EVT-008, IOS-EVT-009
+            if isCreator {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button("Edit") { showingEdit = true }
+                        Button("Delete", role: .destructive) { confirmingDelete = true }
+                    } label: {
+                        Label("Event Options", systemImage: "ellipsis.circle")
+                    }
+                }
+            }
+        }
         .task { if items.isEmpty { await load() } }
+        .sheet(isPresented: $showingEdit) {
+            EventFormView(title: "Edit Event", event: event) { name, date in
+                let ok = await vm.update(id: event.id, name: name, date: date)
+                if ok, let refreshed = vm.upcoming.first(where: { $0.id == event.id })
+                    ?? vm.past.first(where: { $0.id == event.id }) {
+                    event = refreshed
+                }
+                return ok
+            }
+        }
+        .confirmationDialog("Delete this event?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            // @spec IOS-EVT-008
+            Button("Delete", role: .destructive) {
+                Task {
+                    await vm.delete(event)
+                    if vm.error == nil { dismiss() }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Items are kept, unlinked from this event.")
+        }
         .fullScreenCover(item: $detailTarget) { target in
             DeepLinkDetailView(client: client, detail: target)
         }

@@ -136,6 +136,81 @@ def get_event(event_id):
         'items': [serialize_item(i, current_user) for i in items],
     })
 
+def _validated_event_fields(data, partial=False):
+    """Run the shared web event validations over a JSON payload.
+
+    Create validates name + date (both required); patch validates only the
+    keys present so partial updates work. Returns (fields_dict, errors_list).
+    """
+    validator = FormValidator(_stringified(data))
+    name = event_date = None
+    if not partial or 'name' in data:
+        name = validator.required('name', 'Event name is required.')
+    if not partial or 'date' in data:
+        event_date = validator.parse_date('date', required=True,
+                                          error_message='Event date is required.',
+                                          format_error='Invalid date format. Please use YYYY-MM-DD.')
+    if not validator.is_valid():
+        return None, validator.errors
+    fields = {}
+    if not partial or 'name' in data:
+        fields['name'] = name
+    if not partial or 'date' in data:
+        fields['date'] = event_date
+    return fields, None
+
+
+@bp.route('/events', methods=['POST'])
+def create_event():
+    # @spec OWN-EVT-012
+    """Create an event owned by the token's user."""
+    data = request.get_json(silent=True) or {}
+    fields, errors = _validated_event_fields(data)
+    if errors:
+        return jsonify({'errors': errors}), 400
+    event = Event(name=fields['name'], date=fields['date'],
+                  created_by_id=current_user.id)
+    db.session.add(event)
+    db.session.commit()
+    current_app.logger.info(f'API event created by user_id={current_user.id}: {event.name[:50]}')
+    return jsonify({'event': serialize_event(event, item_count=0)}), 201
+
+
+@bp.route('/events/<int:event_id>', methods=['PATCH'])
+def update_event(event_id):
+    # @spec OWN-EVT-013
+    """Partial event update; creator-only."""
+    event = db.session.get(Event, event_id)
+    if event is None:
+        return _json_error(404, 'not_found')
+    if event.created_by_id != current_user.id:
+        return _json_error(403, 'forbidden')
+    data = request.get_json(silent=True) or {}
+    fields, errors = _validated_event_fields(data, partial=True)
+    if errors:
+        return jsonify({'errors': errors}), 400
+    for key, value in fields.items():
+        setattr(event, key, value)
+    db.session.commit()
+    count = Item.query.filter(
+        Item.event_id == event.id, Item.archived_at.is_(None)).count()
+    return jsonify({'event': serialize_event(event, item_count=count)})
+
+
+@bp.route('/events/<int:event_id>', methods=['DELETE'])
+def delete_event(event_id):
+    # @spec OWN-EVT-014
+    """Delete an event; associated items survive with event_id nulled."""
+    event = db.session.get(Event, event_id)
+    if event is None:
+        return _json_error(404, 'not_found')
+    if event.created_by_id != current_user.id:
+        return _json_error(403, 'forbidden')
+    Item.query.filter_by(event_id=event_id).update({'event_id': None})
+    db.session.delete(event)
+    db.session.commit()
+    return jsonify({'ok': True})
+
 
 @bp.route('/items', methods=['GET'])
 def list_items():

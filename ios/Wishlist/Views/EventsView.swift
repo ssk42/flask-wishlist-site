@@ -1,15 +1,20 @@
 import SwiftUI
 import WishlistKit
 
-/// Events tab: upcoming + past family events, read-only.
-/// @spec IOS-EVT-001
+/// Events tab: upcoming + past family events, with creator-side create/edit/delete.
+/// @spec IOS-EVT-001, IOS-EVT-006
 struct EventsView: View {
-    let client: APIClient
+    let session: Session
+    var client: APIClient { session.client }
+    /// Nil while logged out; edit/delete affordances stay hidden then.
+    /// @spec IOS-EVT-009
+    var currentUserID: Int? { MyListViewModel.userID(from: session.state) }
     @State private var vm: EventsViewModel
+    @State private var showingAdd = false
 
-    init(client: APIClient) {
-        self.client = client
-        _vm = State(initialValue: EventsViewModel(client: client))
+    init(session: Session) {
+        self.session = session
+        _vm = State(initialValue: EventsViewModel(client: session.client))
     }
 
     /// Upcoming first, date ascending.
@@ -52,7 +57,7 @@ struct EventsView: View {
                                 Section("Upcoming") {
                                     ForEach(upcomingSorted) { event in
                                         NavigationLink {
-                                            EventDetailView(client: client, event: event)
+                                            EventDetailView(client: client, event: event, vm: vm, currentUserID: currentUserID)
                                         } label: {
                                             EventCard(event: event)
                                         }
@@ -66,7 +71,7 @@ struct EventsView: View {
                                 Section("Past") {
                                     ForEach(vm.past) { event in
                                         NavigationLink {
-                                            EventDetailView(client: client, event: event)
+                                            EventDetailView(client: client, event: event, vm: vm, currentUserID: currentUserID)
                                         } label: {
                                             EventCard(event: event)
                                                 .opacity(0.7)
@@ -86,7 +91,20 @@ struct EventsView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // @spec IOS-EVT-006
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showingAdd = true } label: {
+                        Label("Add Event", systemImage: "plus")
+                    }
+                }
+            }
             .task { if isEmpty { await vm.load() } }
+            .sheet(isPresented: $showingAdd) {
+                EventFormView(title: "Add Event") { name, date in
+                    await vm.create(name: name, date: date)
+                }
+            }
         }
         .tint(.wlAccent)
     }

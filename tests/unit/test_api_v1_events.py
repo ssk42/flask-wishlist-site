@@ -128,3 +128,144 @@ def test_event_detail_not_found(app, client, user):
 def test_event_detail_requires_auth(app, client, user, other_user):
     birthday_id, _ = _seed(app, user, other_user)
     assert client.get(f"/api/v1/events/{birthday_id}").status_code == 401
+
+
+# @spec OWN-EVT-012
+def test_events_create_ok(app, client, user):
+    response = client.post("/api/v1/events", headers=_auth(client),
+                           json={"name": "Shower", "date": "2027-05-01"})
+    assert response.status_code == 201
+    event = response.get_json()["event"]
+    assert event["name"] == "Shower"
+    assert event["date"] == "2027-05-01"
+    assert event["created_by"] == {"id": user, "name": "Test User"}
+    assert event["item_count"] == 0
+    assert "reminder_sent" not in event
+
+
+# @spec OWN-EVT-012
+def test_events_create_400_missing_date(app, client, user):
+    response = client.post("/api/v1/events", headers=_auth(client),
+                           json={"name": "No date"})
+    assert response.status_code == 400
+    errors = response.get_json()["errors"]
+    assert len(errors) > 0
+
+
+# @spec OWN-EVT-012
+def test_events_create_400_bad_date(app, client, user):
+    response = client.post("/api/v1/events", headers=_auth(client),
+                           json={"name": "Shower", "date": "05/01/2027"})
+    assert response.status_code == 400
+    errors = response.get_json()["errors"]
+    assert len(errors) > 0
+
+
+# @spec OWN-EVT-012
+def test_events_create_400_blank_name(app, client, user):
+    response = client.post("/api/v1/events", headers=_auth(client),
+                           json={"name": "   ", "date": "2027-05-01"})
+    assert response.status_code == 400
+    errors = response.get_json()["errors"]
+    assert len(errors) > 0
+
+
+# @spec OWN-EVT-012
+def test_events_create_401_without_token(app, client, user):
+    response = client.post("/api/v1/events",
+                           json={"name": "Shower", "date": "2027-05-01"})
+    assert response.status_code == 401
+
+
+# @spec OWN-EVT-013
+def test_events_edit_ok_partial_name(app, client, user):
+    created = client.post("/api/v1/events", headers=_auth(client),
+                          json={"name": "Original", "date": "2027-06-01"})
+    event_id = created.get_json()["event"]["id"]
+    response = client.patch(f"/api/v1/events/{event_id}", headers=_auth(client),
+                            json={"name": "Renamed"})
+    assert response.status_code == 200
+    event = response.get_json()["event"]
+    assert event["name"] == "Renamed"
+    assert event["date"] == "2027-06-01"
+
+
+# @spec OWN-EVT-013
+def test_events_edit_ok_date(app, client, user):
+    created = client.post("/api/v1/events", headers=_auth(client),
+                          json={"name": "Original", "date": "2027-06-01"})
+    event_id = created.get_json()["event"]["id"]
+    response = client.patch(f"/api/v1/events/{event_id}", headers=_auth(client),
+                            json={"date": "2027-07-04"})
+    assert response.status_code == 200
+    event = response.get_json()["event"]
+    assert event["name"] == "Original"
+    assert event["date"] == "2027-07-04"
+
+
+# @spec OWN-EVT-013
+def test_events_edit_403_non_creator(app, client, user, other_user):
+    created = client.post("/api/v1/events",
+                          headers=_auth(client, email="other@example.com"),
+                          json={"name": "Theirs", "date": "2027-06-01"})
+    event_id = created.get_json()["event"]["id"]
+    response = client.patch(f"/api/v1/events/{event_id}", headers=_auth(client),
+                            json={"name": "Hacked"})
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "forbidden"}
+
+
+# @spec OWN-EVT-013
+def test_events_edit_404(app, client, user):
+    response = client.patch("/api/v1/events/999999", headers=_auth(client),
+                            json={"name": "Ghost"})
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "not_found"}
+
+
+# @spec OWN-EVT-013
+def test_events_edit_400_bad_date(app, client, user):
+    created = client.post("/api/v1/events", headers=_auth(client),
+                          json={"name": "Original", "date": "2027-06-01"})
+    event_id = created.get_json()["event"]["id"]
+    response = client.patch(f"/api/v1/events/{event_id}", headers=_auth(client),
+                            json={"date": "not-a-date"})
+    assert response.status_code == 400
+    errors = response.get_json()["errors"]
+    assert len(errors) > 0
+
+
+# @spec OWN-EVT-014
+def test_events_delete_ok_unlinks_items(app, client, user):
+    created = client.post("/api/v1/events", headers=_auth(client),
+                          json={"name": "Doomed", "date": "2027-08-01"})
+    event_id = created.get_json()["event"]["id"]
+    with app.app_context():
+        db.session.add(Item(description="Kept gift", user_id=user,
+                            status="Available", event_id=event_id))
+        db.session.commit()
+    response = client.delete(f"/api/v1/events/{event_id}", headers=_auth(client))
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True}
+    with app.app_context():
+        assert db.session.get(Event, event_id) is None
+        kept = Item.query.filter_by(description="Kept gift").one()
+        assert kept.event_id is None
+
+
+# @spec OWN-EVT-014
+def test_events_delete_403_non_creator(app, client, user, other_user):
+    created = client.post("/api/v1/events",
+                          headers=_auth(client, email="other@example.com"),
+                          json={"name": "Theirs", "date": "2027-06-01"})
+    event_id = created.get_json()["event"]["id"]
+    response = client.delete(f"/api/v1/events/{event_id}", headers=_auth(client))
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "forbidden"}
+
+
+# @spec OWN-EVT-014
+def test_events_delete_404(app, client, user):
+    response = client.delete("/api/v1/events/999999", headers=_auth(client))
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "not_found"}
