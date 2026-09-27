@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 
 from models import db, User, Item, Comment, Notification
 from services.utils import get_items_url_with_filters
+from services.navigation_counts import seed_unread_count
 
 bp = Blueprint('social', __name__)
 
@@ -60,6 +61,8 @@ def notifications():
     """List all notifications for the current user."""
     notifs = Notification.query.filter_by(user_id=current_user.id)\
         .order_by(Notification.created_at.desc()).all()
+    # @spec VW-UI-010
+    seed_unread_count(notifs)
     return render_template('notifications.html', notifications=notifs)
 
 

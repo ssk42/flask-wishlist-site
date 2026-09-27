@@ -7,8 +7,21 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.orm import Session, attributes
 
-# SQLAlchemy instance - initialized in app.py and passed here
+# @spec VW-FEED-013
+# Shared extension initialized by the application factory.
 db = SQLAlchemy()
+
+
+def _timestamp_column(*, onupdate=False, **options):
+    # @spec VW-FEED-012
+    """Create an independent timestamp column with write-time UTC defaults."""
+    if onupdate:
+        options['onupdate'] = lambda: datetime.datetime.now(datetime.timezone.utc)
+    return db.Column(
+        db.DateTime,
+        default=lambda: datetime.datetime.now(datetime.timezone.utc),
+        **options,
+    )
 
 
 class User(UserMixin, db.Model):
@@ -17,9 +30,11 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(50), unique=True, nullable=False)
     is_private = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
-    items = db.relationship('Item', backref='user', lazy=True, foreign_keys='Item.user_id')
+    created_at = _timestamp_column()
+    updated_at = _timestamp_column(onupdate=True)
+    items = db.relationship(
+        'Item', backref='user', lazy=True, foreign_keys='Item.user_id',
+    )
 
     @property
     def unread_count(self):
@@ -37,8 +52,8 @@ class Event(db.Model):
     date = db.Column(db.Date, nullable=False)
     created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
+    updated_at = _timestamp_column(onupdate=True)
     created_by = db.relationship('User', backref='events')
     items = db.relationship('Item', backref='event', lazy=True)
 
@@ -70,15 +85,17 @@ class Item(db.Model):
     price_backoff_until = db.Column(db.DateTime, nullable=True)
     # @spec OWN-ITEM-009, OWN-ITEM-011
     archived_at = db.Column(db.DateTime, nullable=True, index=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
+    updated_at = _timestamp_column(onupdate=True)
 
     # Item variants (size, color, quantity)
     size = db.Column(db.String(50), nullable=True)
     color = db.Column(db.String(50), nullable=True)
     quantity = db.Column(db.Integer, nullable=True)
 
-    comments = db.relationship('Comment', backref='item', lazy=True, cascade='all, delete-orphan')
+    comments = db.relationship(
+        'Comment', backref='item', lazy=True, cascade='all, delete-orphan',
+    )
 
     # Composite index for common query pattern (user_id + status)
     __table_args__ = (
@@ -95,7 +112,8 @@ class Item(db.Model):
 
     @property
     def split_progress(self):
-        if not self.price or self.price == 0:
+        # @spec VW-FEED-014
+        if not self.price:
             return 0
         return min(100, int((self.total_pledged / self.price) * 100))
 
@@ -133,7 +151,7 @@ class Comment(db.Model):
     """Comment model for item discussions."""
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(500), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
 
@@ -154,7 +172,7 @@ class Notification(db.Model):
     message = db.Column(db.String(500), nullable=False)
     link = db.Column(db.String(500), nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     recipient = db.relationship('User', backref='notifications')
@@ -176,10 +194,13 @@ class Contribution(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     is_organizer = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
 
     # Relationships
-    item = db.relationship('Item', backref=db.backref('contributions', lazy=True, cascade='all, delete-orphan'))
+    item = db.relationship(
+        'Item',
+        backref=db.backref('contributions', lazy=True, cascade='all, delete-orphan'),
+    )
     user = db.relationship('User', backref='contributions')
 
     __table_args__ = (
@@ -200,20 +221,25 @@ class PriceExtractionLog(db.Model):
     extraction_method = db.Column(db.String(50))  # 'meta', 'jsonld', 'selector', 'playwright'
     error_type = db.Column(db.String(50))  # 'captcha', 'timeout', 'no_price', 'blocked'
     response_time_ms = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
+    created_at = _timestamp_column(index=True)
 
     def __repr__(self):
         return f'<PriceLog {self.domain} Success={self.success}>'
+
+
 class PriceHistory(db.Model):
     """Track historical prices for items to show trends."""
     id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False, index=True)
     price = db.Column(db.Float, nullable=False)
-    recorded_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
+    recorded_at = _timestamp_column(index=True)
     source = db.Column(db.String(50), default='auto')  # 'auto', 'manual', 'initial'
 
     # Relationship to Item
-    item = db.relationship('Item', backref=db.backref('price_history', lazy=True, cascade='all, delete-orphan'))
+    item = db.relationship(
+        'Item',
+        backref=db.backref('price_history', lazy=True, cascade='all, delete-orphan'),
+    )
 
     __table_args__ = (
         db.Index('idx_price_history_item_date', 'item_id', 'recorded_at'),
@@ -228,7 +254,7 @@ class ApiToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
     last_used_at = db.Column(db.DateTime, nullable=True)
     revoked = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -244,7 +270,7 @@ class Device(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     apns_token = db.Column(db.String(200), unique=True, nullable=False)
     platform = db.Column(db.String(20), nullable=False, default='ios')
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = _timestamp_column()
 
     user = db.relationship('User', backref='devices')
 

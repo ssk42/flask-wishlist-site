@@ -5,7 +5,7 @@ import logging
 import click
 from flask import Flask, render_template, request, jsonify
 from flask_migrate import Migrate
-from flask_login import LoginManager, current_user
+from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
 from flask_compress import Compress
@@ -125,27 +125,13 @@ def create_app(config_name=None):
     app.register_blueprint(social_bp)
     app.register_blueprint(items_bp)
 
-    # Context processors
     @app.context_processor
-    def inject_notifications():
-        """Inject unread notification count into all templates."""
-        if current_user.is_authenticated:
-            return dict(unread_notifications_count=current_user.unread_count)
-        return dict(unread_notifications_count=0)
-
-    @app.context_processor
-    def inject_claimed_count():
-        """Inject the count of claimed items for navbar badge."""
-        if current_user.is_authenticated:
-            claimed_count = Item.query.filter(
-                Item.last_updated_by_id == current_user.id,
-                Item.status == 'Claimed',
-                Item.user_id != current_user.id
-            ).count()
-            return {'nav_claimed_count': claimed_count}
-        return {'nav_claimed_count': 0}
-
-
+    def inject_navigation_helpers():
+        # @spec VW-UI-006
+        """Expose lazy helpers; fragments incur no navigation queries."""
+        from services.navigation_counts import claim_summary, unread_count
+        return {'navigation_claim_summary': claim_summary,
+                'navigation_unread_count': unread_count}
 
     # Global Error Handlers
     #

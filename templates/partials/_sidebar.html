@@ -1,4 +1,9 @@
 {# Sidebar Navigation Partial #}
+{# @spec VW-UI-007, GIV-CLM-009 #}
+{% if current_user.is_authenticated %}
+{% set nav_claimed_count = navigation_claim_summary().claimed_count %}
+{% set unread_notifications_count = navigation_unread_count() %}
+{% endif %}
 <aside class="sidebar">
     <a href="{{ url_for('dashboard.index') }}" class="sidebar-brand">
         <i class="sidebar-brand-icon bi bi-gift"></i>

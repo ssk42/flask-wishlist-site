@@ -7,3 +7,8 @@ status: OK
 ## Artifacts
 - **LLD**: [docs/intent/boundary-giver/item-claiming.md](../../intent/boundary-giver/item-claiming.md)
 - **EARS Specs**: [docs/intent/boundary-giver/item-claiming/item-claiming-specs.md](../../intent/boundary-giver/item-claiming/item-claiming-specs.md)
+
+## ORM Cleanup Coverage
+
+- **Requirements**: GIV-CLM-009, GIV-CLM-012–017.
+- **Tests**: `tests/unit/test_orm_query_cleanup.py`.

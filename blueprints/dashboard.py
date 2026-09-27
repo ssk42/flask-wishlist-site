@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 from extensions import cache
 
 from models import Item, Event
+from services.navigation_counts import claim_summary
 
 bp = Blueprint('dashboard', __name__)
 
@@ -30,22 +31,8 @@ def index():
     today = datetime.date.today()
 
     if current_user.is_authenticated:
-        claimed_count = Item.query.filter(
-            Item.last_updated_by_id == current_user.id,
-            Item.status == 'Claimed',
-            Item.user_id != current_user.id,
-            Item.archived_at.is_(None)
-        ).count()
-        purchased_count = Item.query.filter(
-            Item.last_updated_by_id == current_user.id,
-            Item.status == 'Purchased',
-            Item.user_id != current_user.id,
-            Item.archived_at.is_(None)
-        ).count()
-        dashboard_data = {
-            'claimed_count': claimed_count,
-            'purchased_count': purchased_count
-        }
+        # @spec GIV-CLM-016
+        dashboard_data = claim_summary()
 
         # Fetch recent items from other users
         recent_items = Item.query.options(joinedload(Item.user))\
@@ -71,7 +58,8 @@ def index():
 def export_items():
     # @spec OWN-ITEM-012
     """Export all items to Excel file."""
-    items = Item.query.filter(Item.archived_at.is_(None)).all()
+    # @spec VW-FEED-011
+    items = Item.query.options(joinedload(Item.user)).filter(Item.archived_at.is_(None)).all()
 
     # Create a DataFrame
     data = {

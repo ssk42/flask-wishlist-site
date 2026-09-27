@@ -13,7 +13,8 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from sqlalchemy import case
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
+from services.navigation_counts import seed_claim_summary
 
 from models import db, User, Item, Event, Comment, Contribution
 from config import PRIORITY_CHOICES, STATUS_CHOICES
@@ -134,12 +135,13 @@ def items_list():
     sort_by = filters['sort_by']
     sort_order = filters['sort_order']
 
+    # @spec VW-FEED-009, VW-FEED-010
     query = (
         Item.query.options(
             joinedload(Item.user),
             joinedload(Item.last_updated_by),
-            joinedload(Item.comments).joinedload(Comment.author),
-            joinedload(Item.contributions).joinedload(Contribution.user)
+            selectinload(Item.comments).joinedload(Comment.author),
+            selectinload(Item.contributions).joinedload(Contribution.user)
         )
         .join(User, Item.user_id == User.id)
     )
@@ -610,14 +612,14 @@ def unarchive_item(item_id):
 @bp.route('/my-claims')
 @login_required
 def my_claims():
-    # @spec GIV-CLM-007, GIV-CLM-008
+    # @spec GIV-CLM-007, GIV-CLM-008, GIV-CLM-017
     # @spec OWN-ITEM-012
     """Show items the current user has claimed or purchased for others."""
     items = (
         Item.query.options(
             joinedload(Item.user),
             joinedload(Item.last_updated_by),
-            joinedload(Item.comments).joinedload(Comment.author)
+            selectinload(Item.comments).joinedload(Comment.author)
         )
         .filter(
             Item.archived_at.is_(None),
@@ -634,7 +636,7 @@ def my_claims():
         Contribution.query
         .options(
             joinedload(Contribution.item).joinedload(Item.user),
-            joinedload(Contribution.item).joinedload(Item.contributions)
+            joinedload(Contribution.item).selectinload(Item.contributions)
         )
         .join(Item, Contribution.item_id == Item.id)
         .filter(
@@ -652,8 +654,9 @@ def my_claims():
         group.items.append(item)
 
     # Count of claimed (not yet purchased) items for the badge
-    claimed_count = sum(1 for item in items if item.status == 'Claimed')
-    purchased_count = sum(1 for item in items if item.status == 'Purchased')
+    summary = seed_claim_summary(items)
+    claimed_count = summary['claimed_count']
+    purchased_count = summary['purchased_count']
 
     return render_template(
         'my_claims.html',
