@@ -60,7 +60,10 @@ def create_app(config_name=None):
     uri = os.getenv("DATABASE_URL")
     if uri:
         if uri.startswith("postgres://"):
-            uri = uri.replace("postgres://", "postgresql://", 1)
+            # Explicit psycopg2 driver: SQLAlchemy 2.1+ defaults postgresql:// to psycopg (v3)
+            uri = uri.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif uri.startswith("postgresql://") and "+psycopg" not in uri:
+            uri = uri.replace("postgresql://", "postgresql+psycopg2://", 1)
         os.environ['DATABASE_URL'] = uri
         app.config['SQLALCHEMY_DATABASE_URI'] = uri
 
