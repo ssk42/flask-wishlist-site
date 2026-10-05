@@ -18,7 +18,7 @@ def test_database_url_conversion(monkeypatch, tmp_path):
         spec.loader.exec_module(module)
 
         configured_uri = module.app.config["SQLALCHEMY_DATABASE_URI"]
-        assert configured_uri == "postgresql://example.com/db"
+        assert configured_uri == "postgresql+psycopg2://example.com/db"
         assert module.os.environ["DATABASE_URL"] == configured_uri
     finally:
         sys.modules.pop(module_name, None)
