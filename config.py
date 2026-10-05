@@ -47,9 +47,12 @@ class Config:
         """Get database URI with postgres:// to postgresql:// conversion for Heroku."""
         uri = os.getenv('DATABASE_URL')
         if uri:
-            # Heroku uses postgres://, SQLAlchemy requires postgresql://
+            # Heroku uses postgres://; pin psycopg2 driver explicitly
+            # (SQLAlchemy 2.1+ defaults postgresql:// to psycopg v3)
             if uri.startswith('postgres://'):
-                uri = uri.replace('postgres://', 'postgresql://', 1)
+                uri = uri.replace('postgres://', 'postgresql+psycopg2://', 1)
+            elif uri.startswith('postgresql://') and '+psycopg' not in uri:
+                uri = uri.replace('postgresql://', 'postgresql+psycopg2://', 1)
             return uri
         return None
 
