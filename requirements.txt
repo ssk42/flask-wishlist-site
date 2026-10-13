@@ -23,7 +23,7 @@ packaging==26.3
 pandas==3.0.6
 playwright==1.63.0
 playwright-stealth>=2.0.3
-psycopg2-binary>=2.9.12
+psycopg2-binary>=2.9.13
 pygments==2.21.0
 pytest==9.1.1
 pytest-cov==7.1.0
