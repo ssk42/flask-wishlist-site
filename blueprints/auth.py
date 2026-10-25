@@ -1,6 +1,5 @@
 """Authentication blueprint for user registration, login, and logout."""
 
-import hmac
 from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
@@ -26,22 +25,20 @@ def is_safe_url(target):
 @limiter.limit("5 per minute")
 def register():
     # @spec AUTH-FLOW-001, AUTH-FLOW-002, AUTH-FLOW-004
-    """Handle user registration."""
+    """Handle user registration (name + email only, no family code)."""
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip().lower()
-
-        # Verify Family Code (use constant-time comparison to prevent timing attacks)
-        password = request.form.get('password') or ''
-        family_code = current_app.config.get('FAMILY_PASSWORD') or ''
-        if not hmac.compare_digest(password.encode(), family_code.encode()):
-            flash('Incorrect Family Code. Please ask the family admin.', 'danger')
-            return render_template('registration.html', name=name, email=email)
 
         # Check if user already exists
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             flash('An account with that email already exists. Try logging in instead.', 'warning')
+            return render_template('registration.html', name=name, email=email)
+
+        existing_name = User.query.filter(User.name.ilike(name)).first()
+        if existing_name:
+            flash('That name is already in use. Try logging in instead.', 'warning')
             return render_template('registration.html', name=name, email=email)
 
         try:
@@ -63,30 +60,36 @@ def register():
 @limiter.limit("5 per minute")
 def login():
     # @spec AUTH-FLOW-001, AUTH-FLOW-002, AUTH-FLOW-003, AUTH-FLOW-004, AUTH-FLOW-005, AUTH-FLOW-006
-    """Handle user login."""
+    """Handle user login — name only, no password or family code."""
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        
-        # Verify Family Code (use constant-time comparison to prevent timing attacks)
-        password = request.form.get('password') or ''
-        family_code = current_app.config.get('FAMILY_PASSWORD') or ''
-        if not hmac.compare_digest(password.encode(), family_code.encode()):
-            flash('Incorrect Family Code.', 'danger')
-            return render_template('login.html', email=email)
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Please enter your name.', 'warning')
+            return render_template('login.html', name=name)
 
-        user = User.query.filter_by(email=email).first()
+        # Names are unique; match case-insensitively so typing is forgiving.
+        matches = User.query.filter(User.name.ilike(name)).all()
+        user = None
+        if len(matches) == 1:
+            user = matches[0]
+        elif len(matches) > 1:
+            # Case-variant duplicates: prefer an exact match.
+            exact = [u for u in matches if u.name == name]
+            if len(exact) == 1:
+                user = exact[0]
+
         if user:
             login_user(user)
-            current_app.logger.info(f'User logged in: {email} (user_id={user.id})')
+            current_app.logger.info(f'User logged in: {user.name} (user_id={user.id})')
             flash(f'Welcome back, {user.name}!', 'success')
             next_page = request.args.get('next')
             if next_page and is_safe_url(next_page):
                 return redirect(next_page)
             return redirect(url_for('dashboard.index'))
-        else:
-            current_app.logger.warning(f'Failed login attempt for email: {email}')
-            flash('We could not find an account with that email address.', 'danger')
-            return render_template('login.html', email=email)
+
+        current_app.logger.warning(f'Failed login attempt for name: {name}')
+        flash('We could not find an account with that name. Please check the spelling or sign up.', 'danger')
+        return render_template('login.html', name=name)
     return render_template('login.html')
 
 

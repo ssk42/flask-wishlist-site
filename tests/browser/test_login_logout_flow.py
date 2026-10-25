@@ -7,12 +7,12 @@ def test_login_page_renders(page, live_server):
     """Test that login page renders correctly."""
     page.goto(f"{live_server}/login")
     expect(page.locator('h1:has-text("Welcome back")')).to_be_visible()
-    expect(page.locator('input[name="email"]')).to_be_visible()
+    expect(page.locator('input[name="name"]')).to_be_visible()
     expect(page.locator('button[type="submit"]')).to_be_visible()
 
 
-def test_login_with_valid_email(page, live_server):
-    """Test successful login with registered email."""
+def test_login_with_valid_name(page, live_server):
+    """Test successful login with registered name."""
     user_email = f"user+{uuid.uuid4().hex[:8]}@example.com"
     user_name = f"TestUser{uuid.uuid4().hex[:4]}"
 
@@ -20,7 +20,6 @@ def test_login_with_valid_email(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_name)
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     # After registration, we're on login page - go to logout to clear session
@@ -28,8 +27,7 @@ def test_login_with_valid_email(page, live_server):
 
     # Login
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', user_name)
     page.click('button[type="submit"]')
 
     # Should redirect to dashboard and show welcome message with user name
@@ -38,11 +36,10 @@ def test_login_with_valid_email(page, live_server):
     expect(page.locator(f'text="Welcome back, {user_name}!"').first).to_be_visible()
 
 
-def test_login_with_invalid_email(page, live_server):
-    """Test login with unregistered email shows error."""
+def test_login_with_unknown_name(page, live_server):
+    """Test login with an unregistered name shows error."""
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', "nonexistent@example.com")
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Nonexistent User")
     page.click('button[type="submit"]')
 
     # Should show error message
@@ -57,7 +54,6 @@ def test_login_redirects_to_next_url(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Redirect User")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/logout")
 
@@ -68,8 +64,7 @@ def test_login_redirects_to_next_url(page, live_server):
     expect(page).to_have_url(f"{live_server}/login?next=%2Fevents")
 
     # Login
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Redirect User")
     page.click('button[type="submit"]')
 
     # Wait for navigation to complete and verify redirect to events page
@@ -86,11 +81,9 @@ def test_logout_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', user_name)
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', user_name)
     page.click('button[type="submit"]')
 
     # Verify logged in by checking the welcome message
@@ -119,7 +112,6 @@ def test_forgot_email_with_valid_name(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', unique_name)
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/logout")
 

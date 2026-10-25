@@ -37,8 +37,7 @@ def test_split_gift_flow(page: Page, live_server, browser_app):
     # 2. Splitter starts the split
     # Login
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', 'splitter@example.com')
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Splitter")
     page.click('button[type="submit"]')
     # Navigate to Items List where full actions are available
     page.goto(f"{live_server}/items")
@@ -72,8 +71,7 @@ def test_split_gift_flow(page: Page, live_server, browser_app):
     # 3. Contributor joins the split
     # Login
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', 'contributor@example.com')
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Contributor")
     page.click('button[type="submit"]')
     
     # Ensure we are on the items page
@@ -102,8 +100,7 @@ def test_split_gift_flow(page: Page, live_server, browser_app):
     # 4. Owner should see "Available" (Surprise Protection)
     # Login
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', 'owner@example.com')
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Owner")
     page.click('button[type="submit"]')
     
     # Ensure we are on the items page to see the item card

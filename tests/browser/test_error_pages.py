@@ -9,11 +9,9 @@ def register_and_login(page, live_server, name="Test User"):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', name)
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', name)
     page.click('button[type="submit"]')
     return user_email
 

@@ -14,11 +14,9 @@ def test_critical_wishlist_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Critical Tester")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Critical Tester")
     page.click('button[type="submit"]')
 
     # 2. Create Item with Invalid Data -> Recover

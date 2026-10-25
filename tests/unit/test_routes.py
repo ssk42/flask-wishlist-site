@@ -6,14 +6,22 @@ from models import db, User, Item
 from config import STATUS_CHOICES, PRIORITY_CHOICES
 
 
+def _name_for_email(client, email):
+    """Resolve a fixture user's name by email (web login is name-only)."""
+    from models import User
+    with client.application.app_context():
+        user = User.query.filter_by(email=email).first()
+        return user.name
+
+
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
+    return client.post("/login", data={"name": _name_for_email(client, email)}, follow_redirects=True)
 
 
 def test_register_creates_user(client, app):
     response = client.post(
         "/register",
-        data={"name": "Alice", "email": "alice@example.com", "password": "testsecret"},
+        data={"name": "Alice", "email": "alice@example.com"},
         follow_redirects=True,
     )
 
@@ -132,7 +140,7 @@ def test_register_duplicate_email_shows_warning(client, app):
 
     response = client.post(
         "/register",
-        data={"name": "Someone", "email": "duplicate@example.com", "password": "testsecret"},
+        data={"name": "Someone", "email": "duplicate@example.com"},
         follow_redirects=True,
     )
 
@@ -144,7 +152,7 @@ def test_login_success_redirects_home(client, app, user):
     # @spec AUTH-FLOW-005, AUTH-FLOW-006
     response = client.post(
         "/login",
-        data={"email": "test@example.com", "password": "testsecret"},
+        data={"name": "Test User"},
         follow_redirects=False,
     )
 
@@ -156,7 +164,7 @@ def test_login_failure_renders_error(client):
     # @spec AUTH-FLOW-003
     response = client.post(
         "/login",
-        data={"email": "missing@example.com", "password": "testsecret"},
+        data={"name": "Missing User"},
         follow_redirects=True,
     )
 
@@ -498,7 +506,7 @@ def test_register_commit_failure_rolls_back(client, monkeypatch):
 
     response = client.post(
         "/register",
-        data={"name": "Eve", "email": "eve@example.com", "password": "testsecret"},
+        data={"name": "Eve", "email": "eve@example.com"},
         follow_redirects=True,
     )
 

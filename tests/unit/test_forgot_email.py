@@ -103,11 +103,16 @@ def test_forgot_email_strips_whitespace(client, app):
 
 def test_login_page_has_forgot_email_link(client):
     # @spec AUTH-REC-007
-    """Test that login page has a link to forgot email."""
+    """Login is name-only now, so the login page no longer links to the
+    email-recovery page (the /forgot_email page itself still exists)."""
     response = client.get("/login")
     assert response.status_code == 200
-    assert b"Forgot your email?" in response.data
-    assert b'href="/forgot_email"' in response.data
+    assert b"Forgot your email?" not in response.data
+    assert b'href="/forgot_email"' not in response.data
+    # The one and only credential field is the name.
+    assert b'name="name"' in response.data
+    assert b'name="email"' not in response.data
+    assert b'name="password"' not in response.data
 
 
 def test_forgot_email_multiple_matches_shows_warning(client, app):
