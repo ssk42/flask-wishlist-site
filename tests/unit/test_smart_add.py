@@ -2,8 +2,16 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+def _name_for_email(client, email):
+    """Resolve a fixture user's name by email (web login is name-only)."""
+    from models import User
+    with client.application.app_context():
+        user = User.query.filter_by(email=email).first()
+        return user.name
+
+
 def login_via_post(client, email):
-    return client.post("/login", data={"email": email, "password": "testsecret"}, follow_redirects=True)
+    return client.post("/login", data={"name": _name_for_email(client, email)}, follow_redirects=True)
 
 def test_fetch_metadata_requires_login(client):
     response = client.post("/api/fetch-metadata", json={"url": "https://example.com"})

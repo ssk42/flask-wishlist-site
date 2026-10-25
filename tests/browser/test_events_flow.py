@@ -13,12 +13,10 @@ def test_create_event_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Event Creator")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Event Creator")
     page.click('button[type="submit"]')
 
     # Navigate to events page
@@ -48,12 +46,10 @@ def test_edit_event_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Event Editor")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Event Editor")
     page.click('button[type="submit"]')
 
     # Create an event first
@@ -83,12 +79,10 @@ def test_delete_event_flow(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Event Deleter")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Event Deleter")
     page.click('button[type="submit"]')
 
     # Create an event first
@@ -115,12 +109,10 @@ def test_events_navbar_link_visible(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Test User")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Test User")
     page.click('button[type="submit"]')
 
     # Check navbar has Events link
@@ -144,12 +136,10 @@ def test_submit_item_with_event_association(page, live_server):
     page.goto(f"{live_server}/register")
     page.fill('input[name="name"]', "Item Creator")
     page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', user_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "Item Creator")
     page.click('button[type="submit"]')
 
     # Create an event first

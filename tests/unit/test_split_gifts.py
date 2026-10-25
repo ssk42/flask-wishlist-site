@@ -51,7 +51,7 @@ def test_start_split_route(client, login, item):
         session["_user_id"] = str(splitter_id)
         session["_fresh"] = True
         
-    client.post('/login', data={'email': 'splitter@example.com', 'password': 'wishlist2025'})
+    client.post('/login', data={'name': 'Splitter'})
 
     response = client.post(f'/items/{item.id}/split', data={'amount': '25.00'}, follow_redirects=True)
     assert response.status_code == 200

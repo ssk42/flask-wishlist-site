@@ -38,8 +38,7 @@ def test_price_history_sparkline_visibility(page, live_server, browser_app):
 
     # Login as viewer
     page.goto(f"{live_server}/login")
-    page.fill('input[name="email"]', viewer_email)
-    page.fill('input[name="password"]', 'testsecret')
+    page.fill('input[name="name"]', "History Viewer")
     page.get_by_role("button", name="Log in").click()
     
     # Verify login succeeded

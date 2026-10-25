@@ -7,8 +7,16 @@ import pytest
 from models import Item, db
 
 
+def _name_for_email(client, email):
+    """Resolve a fixture user's name by email (web login is name-only)."""
+    from models import User
+    with client.application.app_context():
+        user = User.query.filter_by(email=email).first()
+        return user.name
+
+
 def _login(client):
-    return client.post('/login', data={'email': 'test@example.com', 'password': 'testsecret'})
+    return client.post('/login', data={'name': _name_for_email(client, 'test@example.com')})
 
 
 def _form_token(response):

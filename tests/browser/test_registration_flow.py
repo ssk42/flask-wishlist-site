@@ -11,10 +11,9 @@ def test_registration_flow(page, live_server):
 
     page.fill('input[name="name"]', "Browser Tester")
     page.fill('input[name="email"]', unique_email)
-    page.fill('input[name="password"]', 'testsecret')
     page.click('button[type="submit"]')
 
     expect(page).to_have_url(f"{live_server}/login")
     alert = page.locator('.alert-success')
     expect(alert).to_contain_text("Registration successful")
-    expect(page.locator('form input[name="email"]')).to_be_visible()
+    expect(page.locator('form input[name="name"]')).to_be_visible()
