@@ -5,7 +5,11 @@ rejects purchasing an item claimed by a different user (the web edit form
 was more permissive, but the API is the stricter, safer surface).
 """
 
-from models import db
+import datetime
+
+from dateutil.relativedelta import relativedelta
+
+from models import db, Item
 
 
 class ItemActionError(Exception):
@@ -53,3 +57,52 @@ def purchase_item(item, user_id):
     item.status = 'Purchased'
     item.last_updated_by_id = user_id
     db.session.commit()
+
+
+def archive_stale_items(now=None):
+    # @spec OWN-ITEM-019, OWN-ITEM-020
+    """Archive items requested more than 10 months ago.
+
+    An item is stale when it is not already archived and its `created_at`
+    is more than 10 months before `now`. Items tied to an event dated
+    today or later are exempt — they are still in play. Archiving only
+    sets `archived_at`, so status, claims, contributions, and comments
+    survive and the owner can restore the item from the Archived view.
+
+    Each affected owner receives a single summary notification. Returns
+    {'archived_count': int, 'owner_count': int}.
+    """
+    from services.notification_service import create_notification
+
+    if now is None:
+        now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff = now - relativedelta(months=10)
+    today = now.date()
+
+    candidates = (
+        Item.query
+        .filter(Item.archived_at.is_(None), Item.created_at < cutoff)
+        .order_by(Item.user_id)
+        .all()
+    )
+
+    by_owner = {}
+    for item in candidates:
+        if item.event_id is not None and item.event is not None and item.event.date >= today:
+            continue
+        item.archived_at = now
+        by_owner[item.user_id] = by_owner.get(item.user_id, 0) + 1
+
+    if by_owner:
+        db.session.commit()
+        for owner_id, count in by_owner.items():
+            noun = 'gift' if count == 1 else 'gifts'
+            verb = 'was' if count == 1 else 'were'
+            create_notification(
+                owner_id,
+                f'{count} of your requested {noun} {verb} archived automatically '
+                '(requested over 10 months ago). You can restore them from your Archived view.',
+                '/items?status=Archived',
+            )
+
+    return {'archived_count': sum(by_owner.values()), 'owner_count': len(by_owner)}
