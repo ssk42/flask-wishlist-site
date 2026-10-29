@@ -669,6 +669,40 @@ def my_claims():
     )
 
 
+@bp.route('/my-requests')
+@login_required
+def my_requests():
+    # @spec OWN-ITEM-018
+    """Show the current user's own requested gifts (non-archived)."""
+    items = (
+        Item.query.options(
+            joinedload(Item.user),
+            joinedload(Item.last_updated_by),
+            selectinload(Item.comments).joinedload(Comment.author)
+        )
+        .filter(
+            Item.archived_at.is_(None),
+            Item.user_id == current_user.id
+        )
+        .order_by(Item.created_at.desc(), Item.id.desc())
+        .all()
+    )
+
+    archived_count = (
+        Item.query
+        .filter(Item.user_id == current_user.id, Item.archived_at.isnot(None))
+        .count()
+    )
+
+    return render_template(
+        'my_requests.html',
+        items=items,
+        request_count=len(items),
+        archived_count=archived_count,
+        default_image_url=DEFAULT_IMAGE_URL
+    )
+
+
 @bp.route('/export_my_status_updates')
 @login_required
 def export_my_status_updates():

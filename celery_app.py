@@ -62,6 +62,14 @@ def make_celery():
                 'task': 'services.celery_tasks.update_stale_prices_async',
                 'schedule': crontab(minute=0, hour='*/6'),
             },
+            # @spec AUTO-TSK-012
+            # Archive gifts requested more than 10 months ago. Daily at
+            # 03:30 UTC — the sweep is one bounded query + update, and
+            # overnight keeps it clear of the price-refresh runs.
+            'archive-stale-items': {
+                'task': 'services.celery_tasks.archive_stale_items_async',
+                'schedule': crontab(minute=30, hour=3),
+            },
         },
     )
     

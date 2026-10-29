@@ -11,3 +11,4 @@
 - [x] **AUTO-TSK-009**: **When** an asynchronous task runs, it shall initialize a new Flask application context before executing the underlying synchronous core logic.
 - [x] **AUTO-TSK-010**: **When** the Celery Beat scheduler runs, the system shall dispatch the `update_stale_prices_async` task every 6 hours so items past the 7-day staleness window are refreshed within 6 hours.
 - [x] **AUTO-TSK-011**: **While** the `update_stale_prices_async` task executes a full sweep (all items stale), the task shall run under a 90-minute time limit rather than the worker's 300-second default, with 25-URL chunk commits so a hard kill keeps completed chunks' work.
+- [x] **AUTO-TSK-012**: **When** the Celery Beat scheduler runs, the system shall dispatch the `archive_stale_items_async` task once daily so items requested more than 10 months ago are archived without any user action.

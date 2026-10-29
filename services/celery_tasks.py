@@ -78,3 +78,25 @@ def send_push_task(self, user_id, message, link=None):
     except Exception as exc:
         logger.error(f'send_push_task failed: {exc}')
         raise self.retry(exc=exc, countdown=60)
+
+
+@celery_app.task(bind=True, max_retries=3)
+def archive_stale_items_async(self):
+    # @spec AUTO-TSK-007, AUTO-TSK-009, AUTO-TSK-012
+    """Celery task: Archive items requested more than 10 months ago.
+
+    This task requires the Flask app context to access the database, so it
+    creates its own app (same pattern as the other tasks in this module).
+    """
+    from app import create_app
+    from services.item_service import archive_stale_items
+
+    try:
+        app = create_app()
+        with app.app_context():
+            result = archive_stale_items()
+        logger.info(f'archive_stale_items completed: {result}')
+        return result
+    except Exception as exc:
+        logger.error(f'archive_stale_items failed: {exc}')
+        raise self.retry(exc=exc, countdown=60)

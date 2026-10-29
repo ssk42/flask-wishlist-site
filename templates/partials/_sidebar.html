@@ -22,6 +22,11 @@
             <span class="sidebar-link-text">All Gifts</span>
         </a>
 
+        <a href="{{ url_for('items.my_requests') }}" class="sidebar-link {% if request.endpoint == 'items.my_requests' %}active{% endif %}">
+            <i class="sidebar-link-icon bi bi-list-stars"></i>
+            <span class="sidebar-link-text">My Requests</span>
+        </a>
+
         <a href="{{ url_for('items.my_claims') }}"
             class="sidebar-link {% if request.endpoint == 'my_claims' %}active{% endif %}">
             <i class="sidebar-link-icon bi bi-cart"></i>
@@ -78,6 +83,10 @@
     <a href="{{ url_for('items.items_list') }}" class="mobile-tab {% if request.endpoint == 'items' %}active{% endif %}">
         <i class="mobile-tab-icon bi bi-gift"></i>
         <span>Gifts</span>
+    </a>
+    <a href="{{ url_for('items.my_requests') }}" class="mobile-tab {% if request.endpoint == 'items.my_requests' %}active{% endif %}">
+        <i class="mobile-tab-icon bi bi-list-stars"></i>
+        <span>Requests</span>
     </a>
     <a href="{{ url_for('items.my_claims') }}" class="mobile-tab {% if request.endpoint == 'my_claims' %}active{% endif %}">
         <i class="mobile-tab-icon bi bi-cart"></i>
