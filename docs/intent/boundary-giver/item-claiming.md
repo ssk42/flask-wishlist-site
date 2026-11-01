@@ -41,6 +41,27 @@ My Claims loads collection relationships in batches and scalar owners/authors
 alongside their parent rows. Collection loading preserves recipient grouping,
 item ordering, and the separate split-contribution list.
 
+## Browser Delivery of HTMX Actions
+
+Claim and unclaim controls are HTMX actions rendered by the base template on
+every page. For those controls to work, the browser must actually load the
+HTMX library and attach the session's CSRF token to each HTMX request. The
+production Content-Security-Policy permits scripts only from the application's
+own origin and jsDelivr, with no inline script. The base template therefore
+loads HTMX from jsDelivr (the same origin already used for Bootstrap) with a
+pinned subresource-integrity hash, and an external static script reads the
+CSRF token from a `csrf-token` meta element in the page head and registers the
+`htmx:configRequest` listener that sets the `X-CSRFToken` header. No part of
+this wiring relies on inline script or on a script origin the policy does not
+allow.
+
+The CSP exists only in `ProductionConfig`; the testing configuration serves
+no policy and the Flask test client does not enforce one, so divergence
+between the template's script origins and the production policy is invisible
+to ordinary request/response tests. The regression tests for this contract
+therefore read the production policy directly and check every external
+script origin the base template renders against its script-src allowlist.
+
 ## Decisions & Alternatives
 | Decision | Alternative Considered | Rationale |
 |----------|------------------------|-----------|
@@ -48,6 +69,7 @@ item ordering, and the separate split-contribution list.
 | **[inferred]** Using `last_updated_by_id` to track the claimer instead of a dedicated `claimed_by_id` field. | Creating a specific `claimed_by_id` foreign key. | Reusing the audit field simplifies the schema, though it couples audit history with business logic (claiming). |
 | **[inferred]** Returning HTMX partials for claim/unclaim when requested via `HX-Request`. | Always redirecting back to the previous page. | HTMX provides a smoother, SPA-like user experience without full page reloads. |
 | **[inferred]** Hiding claims from the item owner ("surprise protection"). | Showing all claims to everyone. | Essential for a wishlist application so the recipient's gift is not ruined. |
+| Loading HTMX from jsDelivr and wiring the CSRF header from an external static script that reads a `csrf-token` meta element. | Adding unpkg to the CSP script-src; keeping the inline configRequest listener with a CSP nonce; self-hosting the HTMX file under `/static`. | The production policy deliberately allows only the app origin and jsDelivr; aligning the template to the policy keeps one trusted CDN (already used for Bootstrap) and avoids widening the policy or adding nonce plumbing. Self-hosting remains a valid future option but changes the asset pipeline for one library. |
 
 ## Open Questions
 - **[inferred]** Bug/Quirk: If another user edits an item (e.g., changes price) while it's claimed, `last_updated_by_id` might be overwritten, potentially re-assigning or losing the "claimer" record? The codebase seems to rely heavily on `last_updated_by_id` for ownership of the claim.
