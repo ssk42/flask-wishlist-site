@@ -55,6 +55,13 @@ CSRF token from a `csrf-token` meta element in the page head and registers the
 this wiring relies on inline script or on a script origin the policy does not
 allow.
 
+The CSP exists only in `ProductionConfig`; the testing configuration serves
+no policy and the Flask test client does not enforce one, so divergence
+between the template's script origins and the production policy is invisible
+to ordinary request/response tests. The regression tests for this contract
+therefore read the production policy directly and check every external
+script origin the base template renders against its script-src allowlist.
+
 ## Decisions & Alternatives
 | Decision | Alternative Considered | Rationale |
 |----------|------------------------|-----------|
