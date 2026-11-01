@@ -115,7 +115,7 @@
                 {% else %}
                 <!-- Claim/Unclaim Buttons -->
                 {% if item.status == 'Available' %}
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 item-card-action-group">
                     <button class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill"
                         hx-post="{{ url_for('items.claim_item', item_id=item.id) }}"
                         hx-target="#item-card-{{ item.id }}" hx-swap="outerHTML"
@@ -130,7 +130,7 @@
                     </button>
                 </div>
                 {% elif item.status == 'Splitting' %}
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 item-card-action-group">
                     <button class="btn btn-sm btn-primary py-0 px-3 rounded-pill"
                         hx-get="{{ url_for('items.get_split_modal', item_id=item.id) }}"
                         hx-target="#split-modal-content" hx-trigger="click" data-bs-toggle="modal"
@@ -139,7 +139,7 @@
                     </button>
                 </div>
                 {% elif item.status == 'Claimed' and item.last_updated_by_id == current_user.id %}
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 item-card-action-group">
                     <button class="btn btn-sm btn-outline-warning py-0 px-3 rounded-pill"
                         hx-post="{{ url_for('items.unclaim_item', item_id=item.id) }}"
                         hx-target="#item-card-{{ item.id }}" hx-swap="outerHTML"
@@ -152,7 +152,7 @@
                     </a>
                 </div>
                 {% else %}
-                <span class="badge bg-light text-muted border py-1 px-2 rounded-pill fw-normal">
+                <span class="badge bg-light text-muted border py-1 px-2 rounded-pill fw-normal text-nowrap">
                     {{ item.status }}
                 </span>
                 {% endif %}

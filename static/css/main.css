@@ -1138,6 +1138,23 @@ body::after {
    claim/unclaim HTMX swaps never change the card's height (@spec GIV-CLM-020) */
 .item-card-actions {
     min-height: 2rem;
+    flex-wrap: nowrap;
+}
+
+/* The state's controls share the row as equal flex slots; a label
+   truncates instead of wrapping, so the row is one line tall at any
+   column width in every claim state (@spec GIV-CLM-020) */
+.item-card-action-group {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.item-card-action-group .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ============================================
