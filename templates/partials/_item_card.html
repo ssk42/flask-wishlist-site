@@ -5,7 +5,7 @@
         <!-- Image Section -->
         <div class="position-relative mb-3 rounded overflow-hidden" style="height: 200px;">
             <img src="{{ item.image_url or default_image_url }}" class="w-100 h-100 object-fit-cover"
-                alt="Image for {{ item.description }}" loading="lazy">
+                alt="Image for {{ item.description }}" loading="lazy" decoding="async">
 
             <!-- Badges Overlay -->
             <div class="position-absolute top-0 start-0 w-100 p-2 d-flex justify-content-between">

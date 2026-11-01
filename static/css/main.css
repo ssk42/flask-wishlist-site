@@ -1491,6 +1491,17 @@ body::after {
         justify-content: center;
     }
 
+    /* Cards drop their backdrop-filter blur on small viewports: each
+       blurred card is an offscreen compositing pass, and a full feed of
+       them is a load mobile renderer processes do not sustain. The
+       glass background is already 85% opaque, so the solid surface
+       fallback reads the same (@spec VW-RSP-006) */
+    .glass-card {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        background: var(--surface-color);
+    }
+
     .glass-card [data-bs-toggle="collapse"] {
         min-height: 44px;
     }
