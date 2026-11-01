@@ -28,10 +28,10 @@
             {% endif %}
 
             {% if item.price %}
-            <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="d-flex flex-nowrap align-items-center gap-2 mb-1">
                 <span class="text-success fw-medium">${{ "%.2f"|format(item.price) }}</span>
                 {% if item.price_updated_at %}
-                <span class="text-xs text-muted" title="Last updated: {{ item.price_updated_at }}">(as of {{
+                <span class="text-xs text-muted text-nowrap" title="Last updated: {{ item.price_updated_at }}">(as of {{
                     item.price_updated_at.strftime('%b %d') }})</span>
                 {% endif %}
 
@@ -72,14 +72,19 @@
             {% include 'partials/_split_progress.html' %}
             {% endif %}
 
-            {% if item.last_updated_by and item.user_id != current_user.id and item.status == 'Claimed' %}
-            <p class="text-xs text-muted fst-italic mb-0">Claimed by {{ item.last_updated_by.name }}</p>
+            {% if item.user_id != current_user.id %}
+            {# @spec GIV-CLM-020: the attribution line is reserved in every status
+               so a claim/unclaim swap never changes the card's height. #}
+            <p class="text-xs text-muted fst-italic mb-0 text-truncate item-claim-attribution">{% if
+                item.last_updated_by and item.status == 'Claimed' %}Claimed by {{ item.last_updated_by.name }}{%
+                else %}&nbsp;{% endif %}</p>
             {% endif %}
         </div>
 
         <!-- Actions Footer -->
         <div class="mt-auto pt-3 border-top border-light-subtle">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            {# @spec GIV-CLM-020: one action-area footprint for every claim state. #}
+            <div class="d-flex justify-content-between align-items-center mb-2 item-card-actions">
                 {% if item.user_id == current_user.id %}
                 <div class="d-flex gap-2 w-100">
                     <a href="{{ url_for('items.edit_item', item_id=item.id) }}"
@@ -134,15 +139,15 @@
                     </button>
                 </div>
                 {% elif item.status == 'Claimed' and item.last_updated_by_id == current_user.id %}
-                <div class="d-flex flex-column gap-2 w-100">
-                    <button class="btn btn-sm btn-outline-warning py-0 px-3 rounded-pill w-100"
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-warning py-0 px-3 rounded-pill"
                         hx-post="{{ url_for('items.unclaim_item', item_id=item.id) }}"
                         hx-target="#item-card-{{ item.id }}" hx-swap="outerHTML"
                         hx-confirm="Are you sure you want to unclaim this item?">
                         <i class="bi bi-x-circle"></i> Unclaim
                     </button>
                     <a href="{{ url_for('items.edit_item', item_id=item.id) }}"
-                        class="btn btn-sm btn-primary rounded-pill w-100">
+                        class="btn btn-sm btn-primary py-0 px-3 rounded-pill">
                         <i class="bi bi-pencil-square"></i> Update Status
                     </a>
                 </div>
