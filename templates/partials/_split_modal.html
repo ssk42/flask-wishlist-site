@@ -79,13 +79,13 @@
             </div>
             <div class="form-text">Remaining needed: ${{ "%.2f"|format(item.remaining_amount) }}</div>
             <div class="mt-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onclick="document.getElementById('contributionAmount{{ item.id }}').value={{ item.remaining_amount }}">Full
+                <button type="button" class="btn btn-sm btn-outline-secondary js-split-amount"
+                    data-target="contributionAmount{{ item.id }}" data-amount="{{ item.remaining_amount }}">Full
                     Remaining</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onclick="document.getElementById('contributionAmount{{ item.id }}').value=25">$25</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onclick="document.getElementById('contributionAmount{{ item.id }}').value=50">$50</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary js-split-amount"
+                    data-target="contributionAmount{{ item.id }}" data-amount="25">$25</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary js-split-amount"
+                    data-target="contributionAmount{{ item.id }}" data-amount="50">$50</button>
             </div>
         </div>
         <div class="d-grid">
@@ -99,12 +99,13 @@
     </div>
 
     {% if my_contribution.is_organizer %}
-    <form action="{{ url_for('items.complete_split', item_id=item.id) }}" method="POST" class="mb-3">
+    <form action="{{ url_for('items.complete_split', item_id=item.id) }}" method="POST" class="mb-3" {% if
+        item.remaining_amount> 0
+        %}data-confirm-message="The item is not 100% funded yet. Are you sure you want to mark it as purchased?"{%
+        endif %}>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="d-grid">
-            <button type="submit" class="btn btn-success" {% if item.remaining_amount> 0 %}onclick="return
-                confirm('The item is not 100% funded yet. Are you sure you want to mark it as
-                purchased?');"{% endif %}>
+            <button type="submit" class="btn btn-success">
                 Mark as Purchased
             </button>
         </div>
@@ -114,11 +115,11 @@
     </form>
     {% endif %}
 
-    <form action="{{ url_for('items.withdraw_contribution', item_id=item.id) }}" method="POST">
+    <form action="{{ url_for('items.withdraw_contribution', item_id=item.id) }}" method="POST"
+        data-confirm-message="Are you sure you want to withdraw?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="d-grid">
-            <button type="submit" class="btn btn-outline-danger"
-                onclick="return confirm('Are you sure you want to withdraw?');">Withdraw
+            <button type="submit" class="btn btn-outline-danger">Withdraw
                 Contribution</button>
         </div>
     </form>
@@ -137,11 +138,11 @@
                     min="1" required>
             </div>
             <div class="mt-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onclick="document.getElementById('startAmount{{ item.id }}').value={{ (item.price or 0) / 2 }}">Half
+                <button type="button" class="btn btn-sm btn-outline-secondary js-split-amount"
+                    data-target="startAmount{{ item.id }}" data-amount="{{ (item.price or 0) / 2 }}">Half
                     (${{ "%.2f"|format((item.price or 0) / 2) }})</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onclick="document.getElementById('startAmount{{ item.id }}').value=50">$50</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary js-split-amount"
+                    data-target="startAmount{{ item.id }}" data-amount="50">$50</button>
             </div>
         </div>
         <div class="d-grid">

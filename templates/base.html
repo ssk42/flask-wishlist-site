@@ -24,15 +24,10 @@
 </head>
 
 <body>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
-                    .then(registration => console.log('SW registered'))
-                    .catch(err => console.log('SW registration failed: ', err));
-            });
-        }
-    </script>
+    {# @spec GIV-CLM-021: no inline script anywhere; the worker URL is
+       passed to the external script as a data attribute. #}
+    <script src="{{ url_for('static', filename='js/sw-register.js') }}"
+        data-sw-url="{{ url_for('static', filename='sw.js') }}"></script>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <div class="app-layout">
@@ -62,6 +57,9 @@
         integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
         crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/htmx-csrf.js') }}"></script>
+    {# @spec GIV-CLM-021: delegated behaviors that replace inline handlers
+       (confirm gates, saving-state swaps, split amounts, image fallback). #}
+    <script src="{{ url_for('static', filename='js/app-behaviors.js') }}"></script>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sparkline.js') }}"></script>
     <script src="{{ url_for('static', filename='js/celebrations.js') }}"></script>

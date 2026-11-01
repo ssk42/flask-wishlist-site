@@ -8,8 +8,8 @@
         {% if item.image_url %}
         <div class="col-md-5">
             <div class="ratio ratio-1x1 rounded overflow-hidden shadow-sm bg-light">
-                <img src="{{ item.image_url }}" class="img-fluid object-fit-cover" alt="Item image"
-                    onerror="this.src='https://via.placeholder.com/400?text=No+Image';">
+                <img src="{{ item.image_url }}" class="img-fluid object-fit-cover js-img-fallback" alt="Item image"
+                    data-fallback-src="https://via.placeholder.com/400?text=No+Image">
             </div>
         </div>
         {% endif %}

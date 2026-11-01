@@ -62,6 +62,32 @@ to ordinary request/response tests. The regression tests for this contract
 therefore read the production policy directly and check every external
 script origin the base template renders against its script-src allowlist.
 
+## No Inline Script in Templates
+
+The same policy allows no inline script, so any behavior a template carries
+as an inline `<script>` block, an inline event-handler attribute, or a
+`javascript:` URL is silently dead in production while working in every
+other environment. Templates therefore carry no executable inline code at
+all: every behavior lives in an external static script under `static/js/`,
+wired through `addEventListener`, with per-instance values (URLs, amounts,
+confirmation messages) passed as `data-*` attributes instead of interpolated
+handler code. This is specified by GIV-CLM-021.
+
+Cross-page micro-behaviors that must also work inside HTMX-swapped partials —
+submit confirmation gates and saving-state button swaps, split quick-amount
+buttons, broken-image fallbacks, history-back links — are document-level
+delegated listeners in `static/js/app-behaviors.js`, loaded by the base
+template. Feature behaviors live with their pages: the item form's metadata
+autofill (`item-form.js`), notification mark-read (`notifications.js`), the
+items list's collapse tracking (`items-list.js`), and service-worker
+registration (`sw-register.js`, its URL passed as a data attribute on the
+script tag). HTMX's own `hx-on` attributes are evaluated by the library
+rather than parsed as inline script and are outside this rule.
+
+Because only `ProductionConfig` serves the policy, a regression test scans
+every template file for inline script blocks, inline handler attributes,
+and `javascript:` URLs rather than relying on rendered-page checks.
+
 ## Card Geometry Stability
 
 Claim and unclaim are HTMX swaps: the server returns a freshly rendered
@@ -108,6 +134,7 @@ happens through the split flow, not through a claim swap.
 | Loading HTMX from jsDelivr and wiring the CSRF header from an external static script that reads a `csrf-token` meta element. | Adding unpkg to the CSP script-src; keeping the inline configRequest listener with a CSP nonce; self-hosting the HTMX file under `/static`. | The production policy deliberately allows only the app origin and jsDelivr; aligning the template to the policy keeps one trusted CDN (already used for Bootstrap) and avoids widening the policy or adding nonce plumbing. Self-hosting remains a valid future option but changes the asset pipeline for one library. |
 | Geometry-neutral claim swaps: reserve the attribution line in all non-owner states, keep the action area to a single row in every state, and floor the action area's height at the tallest single-row variant. | Leave the claimed state's stacked action block and status-only attribution line in place; or fix the whole card to one constant height. | The stacked block and conditional line change card height on every claim/unclaim swap and reflow the grid the user is looking at. A fixed whole-card height fights the grid's row equalization (`h-100`) and wastes vertical space on short cards. Reserving the two state-dependent slots keeps every state's footprint identical with no visual redesign. |
 | Equal-slot non-wrapping action group: the state's controls share the row as equal flex slots and their labels truncate instead of wrapping. | Natural-width pills in a single row. | Natural widths leave the row's height at the mercy of label length: in a narrow column the wider claimed-state labels wrap to a second line inside the pill, growing the action area — and the card — on the swap. Equal slots with truncation make the row's geometry a function of the card, not of the state's wording. |
+| All template behavior externalized to static scripts with data-* wiring and document-level delegated listeners. | Add `'unsafe-inline'` or per-response nonces to the production script-src; or leave rarely-clicked handlers inline. | The policy's strictness is deliberate — it is what turned the HTMX outage into a visible failure instead of a silent one — and nonces add plumbing to every response for a handful of handlers. Delegation keeps each behavior defined once, in a file the template scan and code review can see, rather than repeated as attributes across partials, and it keeps working when HTMX swaps a partial in. |
 
 ## Open Questions
 - **[inferred]** Bug/Quirk: If another user edits an item (e.g., changes price) while it's claimed, `last_updated_by_id` might be overwritten, potentially re-assigning or losing the "claimer" record? The codebase seems to rely heavily on `last_updated_by_id` for ownership of the claim.
