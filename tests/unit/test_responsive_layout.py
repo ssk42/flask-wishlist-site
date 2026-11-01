@@ -1,15 +1,20 @@
 """Responsive-layout tests: pages must fit the viewport at any width.
 
-A flex item's automatic minimum size is its content's min-content width.
-The item card is a flex column and its title is nowrap (text-truncate), so
-a long title's min-content (measured at 570px for a real catalogue title)
+A flex item's automatic minimum size is its content's min-content width,
+and min-content propagates through every flex ancestor in turn. The item
+card is a flex column and its title is nowrap (text-truncate), so a long
+title's min-content (measured at 570px for a real catalogue title)
 propagated through the card body and the grid column and expanded the
-items page's layout viewport to 668px on a 390px phone. The stylesheet
-breaks that chain: card flex children may shrink below min-content, so
-truncation ellipsizes the title instead of stretching the page. The same
-file carries the small-viewport rules for image containment, safe-area
-clearance under the floating action button and tab bar, and 44px card
-action tap targets.
+items page's layout viewport to 668px on a 390px phone; a wide product
+photo's intrinsic width (894px) propagated the same way through the grid
+column and the shell's main content and laid the page out 992px wide at a
+606px window. The stylesheet breaks that chain at every flex item on the
+path — shell main content, grid columns, and card flex children may all
+shrink below min-content — so truncation ellipsizes the title and the
+cover frame crops the photo instead of either stretching the page. The
+same file carries the small-viewport rules for image containment,
+safe-area clearance under the floating action button and tab bar, and
+44px card action tap targets.
 
 # @spec VW-RSP-001, VW-RSP-002, VW-RSP-003, VW-RSP-004, VW-RSP-005
 """
@@ -52,6 +57,30 @@ def test_card_flex_children_may_shrink_below_min_content():
     assert "min-width: 0" in card_children
     flex_row_children = _rule(css, r"\.glass-card\s+\.d-flex\s*>\s*\*")
     assert "min-width: 0" in flex_row_children
+
+
+def test_shell_main_content_may_shrink_below_min_content():
+    """@spec VW-RSP-001: the flex shell cannot be widened by its content.
+
+    The main content region is the growing flex item of the sidebar
+    shell; with an automatic minimum size, any min-content that reaches
+    it — a wide image through its grid column — widens the whole page.
+    """
+    css = _css()
+    main_content = _rule(css, r"\.main-content")
+    assert "min-width: 0" in main_content
+
+
+def test_grid_columns_may_shrink_below_min_content():
+    """@spec VW-RSP-001, VW-RSP-003: columns size from their classes.
+
+    A grid column is a non-shrinking flex item of its row; with an
+    automatic minimum size it passes a wide image's intrinsic width up
+    the chain instead of holding the width its column classes assign.
+    """
+    css = _css()
+    columns = _rule(css, r"\.row\s*>\s*\*")
+    assert "min-width: 0" in columns
 
 
 @pytest.fixture
