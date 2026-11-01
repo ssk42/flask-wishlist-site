@@ -79,9 +79,16 @@ item is Claimed, empty otherwise — as a single line that never wraps. The
 action area is one row in every state (available, splitting, claimed by the
 viewer, claimed by another user, and the owner's own controls) and carries
 a minimum height (`item-card-actions`) equal to the tallest single-row
-variant, so the row's height is constant. The price and "as of" date line
-never wraps, so its height is constant at any column width. Together these
-keep a card's height identical before and after a claim or unclaim swap.
+variant, so the row's height is constant. Within that row, the state's
+controls sit in a non-wrapping flex group (`item-card-action-group`) whose
+controls take equal flex slots: a control's label truncates with an
+ellipsis rather than wrapping, because the states' labels differ in length
+("Update Status" is wider than "Claim") and a label wrapped to a second
+line inside its pill grows the row exactly as a stacked block would. The
+status badge shown when another user has claimed the item likewise never
+wraps. The price and "as of" date line never wraps, so its height is
+constant at any column width. Together these keep a card's height
+identical before and after a claim or unclaim swap, at any column width.
 This is specified by GIV-CLM-020.
 
 The dashboard card (`partials/_dashboard_item_card.html`) does not need the
@@ -100,6 +107,7 @@ happens through the split flow, not through a claim swap.
 | **[inferred]** Hiding claims from the item owner ("surprise protection"). | Showing all claims to everyone. | Essential for a wishlist application so the recipient's gift is not ruined. |
 | Loading HTMX from jsDelivr and wiring the CSRF header from an external static script that reads a `csrf-token` meta element. | Adding unpkg to the CSP script-src; keeping the inline configRequest listener with a CSP nonce; self-hosting the HTMX file under `/static`. | The production policy deliberately allows only the app origin and jsDelivr; aligning the template to the policy keeps one trusted CDN (already used for Bootstrap) and avoids widening the policy or adding nonce plumbing. Self-hosting remains a valid future option but changes the asset pipeline for one library. |
 | Geometry-neutral claim swaps: reserve the attribution line in all non-owner states, keep the action area to a single row in every state, and floor the action area's height at the tallest single-row variant. | Leave the claimed state's stacked action block and status-only attribution line in place; or fix the whole card to one constant height. | The stacked block and conditional line change card height on every claim/unclaim swap and reflow the grid the user is looking at. A fixed whole-card height fights the grid's row equalization (`h-100`) and wastes vertical space on short cards. Reserving the two state-dependent slots keeps every state's footprint identical with no visual redesign. |
+| Equal-slot non-wrapping action group: the state's controls share the row as equal flex slots and their labels truncate instead of wrapping. | Natural-width pills in a single row. | Natural widths leave the row's height at the mercy of label length: in a narrow column the wider claimed-state labels wrap to a second line inside the pill, growing the action area — and the card — on the swap. Equal slots with truncation make the row's geometry a function of the card, not of the state's wording. |
 
 ## Open Questions
 - **[inferred]** Bug/Quirk: If another user edits an item (e.g., changes price) while it's claimed, `last_updated_by_id` might be overwritten, potentially re-assigning or losing the "claimer" record? The codebase seems to rely heavily on `last_updated_by_id` for ownership of the claim.
