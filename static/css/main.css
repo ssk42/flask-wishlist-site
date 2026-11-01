@@ -1171,6 +1171,16 @@ body::after {
     min-width: 0;
 }
 
+/* The chain runs through every flex ancestor, not only the card: a grid
+   column is a non-shrinking flex item of its row, so a wide image's
+   intrinsic width otherwise propagates through the column exactly as a
+   nowrap title propagates through the card. Columns take their width
+   from their column classes and may shrink below min-content
+   (@spec VW-RSP-001, VW-RSP-003) */
+.row > * {
+    min-width: 0;
+}
+
 /* Images stay inside the content column or dialog that contains them
    (@spec VW-RSP-003) */
 .main-content img {
@@ -1298,8 +1308,13 @@ body::after {
     text-align: center;
 }
 
+/* The main content region is the growing flex item of the sidebar
+   shell; it may shrink below its content's min-content, so no
+   min-content that reaches it — a wide image through its grid column —
+   can widen the page (@spec VW-RSP-001) */
 .main-content {
     flex: 1;
+    min-width: 0;
     margin-left: var(--sidebar-width);
     padding: 2rem;
     transition: margin-left 0.3s ease;
@@ -1474,6 +1489,17 @@ body::after {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+    }
+
+    /* Cards drop their backdrop-filter blur on small viewports: each
+       blurred card is an offscreen compositing pass, and a full feed of
+       them is a load mobile renderer processes do not sustain. The
+       glass background is already 85% opaque, so the solid surface
+       fallback reads the same (@spec VW-RSP-006) */
+    .glass-card {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        background: var(--surface-color);
     }
 
     .glass-card [data-bs-toggle="collapse"] {

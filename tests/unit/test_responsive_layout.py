@@ -1,17 +1,27 @@
 """Responsive-layout tests: pages must fit the viewport at any width.
 
-A flex item's automatic minimum size is its content's min-content width.
-The item card is a flex column and its title is nowrap (text-truncate), so
-a long title's min-content (measured at 570px for a real catalogue title)
+A flex item's automatic minimum size is its content's min-content width,
+and min-content propagates through every flex ancestor in turn. The item
+card is a flex column and its title is nowrap (text-truncate), so a long
+title's min-content (measured at 570px for a real catalogue title)
 propagated through the card body and the grid column and expanded the
-items page's layout viewport to 668px on a 390px phone. The stylesheet
-breaks that chain: card flex children may shrink below min-content, so
-truncation ellipsizes the title instead of stretching the page. The same
-file carries the small-viewport rules for image containment, safe-area
-clearance under the floating action button and tab bar, and 44px card
-action tap targets.
+items page's layout viewport to 668px on a 390px phone; a wide product
+photo's intrinsic width (894px) propagated the same way through the grid
+column and the shell's main content and laid the page out 992px wide at a
+606px window. The stylesheet breaks that chain at every flex item on the
+path — shell main content, grid columns, and card flex children may all
+shrink below min-content — so truncation ellipsizes the title and the
+cover frame crops the photo instead of either stretching the page. The
+same file carries the small-viewport rules for image containment,
+safe-area clearance under the floating action button and tab bar, and
+44px card action tap targets. It also carries the renderer-load budget:
+at phone widths the cards' backdrop-filter blur — an offscreen
+compositing pass per card, 39 cards and ~17M square pixels of backdrop
+measured on the production feed — is removed entirely, and card images
+load lazily with asynchronous decoding, so a mobile browser's renderer
+process is not killed by the feed's compositing and decode load.
 
-# @spec VW-RSP-001, VW-RSP-002, VW-RSP-003, VW-RSP-004, VW-RSP-005
+# @spec VW-RSP-001, VW-RSP-002, VW-RSP-003, VW-RSP-004, VW-RSP-005, VW-RSP-006
 """
 import re
 from pathlib import Path
@@ -22,6 +32,8 @@ from models import db, User, Item
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAIN_CSS = REPO_ROOT / "static" / "css" / "main.css"
 BASE_HTML = REPO_ROOT / "templates" / "base.html"
+ITEM_CARD_HTML = REPO_ROOT / "templates" / "partials" / "_item_card.html"
+QUICK_VIEW_HTML = REPO_ROOT / "templates" / "partials" / "_item_quick_view.html"
 
 LONG_TITLE = (
     "KitchenAid Classic Series 4.5 Quart Tilt-Head Stand Mixer "
@@ -39,6 +51,29 @@ def _rule(css, selector_pattern):
     return match.group(1) if match else ""
 
 
+def _media_blocks(css, query):
+    """Yield the contents of each `@media <query>` block (brace-matched)."""
+    needle = "@media " + query
+    start = 0
+    while True:
+        idx = css.find(needle, start)
+        if idx == -1:
+            return
+        brace = css.index("{", idx)
+        depth = 0
+        for pos in range(brace, len(css)):
+            if css[pos] == "{":
+                depth += 1
+            elif css[pos] == "}":
+                depth -= 1
+                if depth == 0:
+                    yield css[brace + 1:pos]
+                    start = pos + 1
+                    break
+        else:
+            return
+
+
 def test_base_template_declares_device_viewport():
     """@spec VW-RSP-001: pages opt into the device-width layout viewport."""
     assert 'name="viewport" content="width=device-width, initial-scale=1"' \
@@ -52,6 +87,30 @@ def test_card_flex_children_may_shrink_below_min_content():
     assert "min-width: 0" in card_children
     flex_row_children = _rule(css, r"\.glass-card\s+\.d-flex\s*>\s*\*")
     assert "min-width: 0" in flex_row_children
+
+
+def test_shell_main_content_may_shrink_below_min_content():
+    """@spec VW-RSP-001: the flex shell cannot be widened by its content.
+
+    The main content region is the growing flex item of the sidebar
+    shell; with an automatic minimum size, any min-content that reaches
+    it — a wide image through its grid column — widens the whole page.
+    """
+    css = _css()
+    main_content = _rule(css, r"\.main-content")
+    assert "min-width: 0" in main_content
+
+
+def test_grid_columns_may_shrink_below_min_content():
+    """@spec VW-RSP-001, VW-RSP-003: columns size from their classes.
+
+    A grid column is a non-shrinking flex item of its row; with an
+    automatic minimum size it passes a wide image's intrinsic width up
+    the chain instead of holding the width its column classes assign.
+    """
+    css = _css()
+    columns = _rule(css, r"\.row\s*>\s*\*")
+    assert "min-width: 0" in columns
 
 
 @pytest.fixture
@@ -115,3 +174,34 @@ def test_mobile_card_actions_have_44px_tap_targets():
     css = _css()
     actions_btn = _rule(css, r"\.item-card-actions\s+\.btn")
     assert "min-height: 44px" in actions_btn
+
+
+def test_mobile_cards_drop_backdrop_filter():
+    """@spec VW-RSP-006: no per-card compositing pass at phone widths.
+
+    Every card on the feed carries a backdrop-filter blur at desktop
+    widths; measured live, that is 39 blurred surfaces and ~17M square
+    pixels of composited backdrop, which mobile renderer processes do
+    not sustain. At <=768px the card rule must remove the filter and
+    fall back to a solid background.
+    """
+    css = _css()
+    mobile_rules = [
+        _rule(block, r"\.glass-card")
+        for block in _media_blocks(css, "(max-width: 768px)")
+    ]
+    card_mobile = next((r for r in mobile_rules if "backdrop-filter" in r), "")
+    assert "backdrop-filter: none" in card_mobile
+    assert "-webkit-backdrop-filter: none" in card_mobile
+    assert "background:" in card_mobile
+
+
+def test_card_images_load_lazily_and_decode_asynchronously():
+    """@spec VW-RSP-006: card images stay off the renderer's critical path."""
+    card_img = re.search(r"<img[^>]*>", ITEM_CARD_HTML.read_text())
+    assert card_img is not None
+    assert 'loading="lazy"' in card_img.group(0)
+    assert 'decoding="async"' in card_img.group(0)
+    quick_img = re.search(r"<img[^>]*>", QUICK_VIEW_HTML.read_text())
+    assert quick_img is not None
+    assert 'decoding="async"' in quick_img.group(0)
