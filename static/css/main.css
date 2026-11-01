@@ -1134,6 +1134,12 @@ body::after {
     text-overflow: ellipsis;
 }
 
+/* Item card action area: one reserved height for every claim state, so
+   claim/unclaim HTMX swaps never change the card's height (@spec GIV-CLM-020) */
+.item-card-actions {
+    min-height: 2rem;
+}
+
 /* ============================================
    SIDEBAR NAVIGATION
    ============================================ */
