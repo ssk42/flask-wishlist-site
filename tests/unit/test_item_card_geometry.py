@@ -150,3 +150,80 @@ def test_action_area_min_height_rule_in_css():
         "static/css/main.css must floor the action area height via "
         ".item-card-actions { min-height: ... }"
     )
+
+
+def test_action_group_wraps_state_controls_in_available_and_claimed(client, card_setup):
+    # @spec GIV-CLM-020
+    _owner_id, _claimer_id, _bystander_id, item_id = card_setup
+    login_via_post(client, "bob@example.com")
+
+    card = _card_slice(client.get("/items").get_data(as_text=True), item_id)
+    assert "item-card-action-group" in _actions_slice(card), (
+        "Available controls must sit in the non-wrapping action group"
+    )
+
+    response = client.post(f"/claim_item/{item_id}", headers={"HX-Request": "true"})
+    assert response.status_code == 200
+    claimed_actions = _actions_slice(response.get_data(as_text=True))
+    assert "item-card-action-group" in claimed_actions, (
+        "Claimed-by-me controls must sit in the same action group"
+    )
+
+
+def test_action_group_wraps_state_controls_in_splitting_state(client, app, card_setup):
+    # @spec GIV-CLM-020
+    _owner_id, _claimer_id, _bystander_id, item_id = card_setup
+    with app.app_context():
+        item = db.session.get(Item, item_id)
+        item.status = "Splitting"
+        db.session.commit()
+
+    login_via_post(client, "bob@example.com")
+    card = _card_slice(client.get("/items").get_data(as_text=True), item_id)
+
+    actions = _actions_slice(card)
+    assert "Join Split" in actions
+    assert "item-card-action-group" in actions, (
+        "Splitting controls must sit in the same action group"
+    )
+
+
+def test_claimed_by_other_badge_cannot_wrap(client, app, card_setup):
+    # @spec GIV-CLM-020
+    _owner_id, _claimer_id, _bystander_id, item_id = card_setup
+    login_via_post(client, "bob@example.com")
+    client.post(f"/claim_item/{item_id}", headers={"HX-Request": "true"})
+
+    bystander_client = app.test_client()
+    login_via_post(bystander_client, "carol@example.com")
+    card = _card_slice(
+        bystander_client.get("/items").get_data(as_text=True), item_id)
+
+    actions = _actions_slice(card)
+    assert "text-nowrap" in actions, (
+        "the claimed-by-another status badge must not wrap to a second line"
+    )
+
+
+def test_action_group_css_guarantees_one_line_at_any_width():
+    # @spec GIV-CLM-020
+    css = MAIN_CSS.read_text()
+
+    row = re.search(r"\.item-card-actions\s*\{([^}]*)\}", css)
+    assert row, ".item-card-actions rule missing"
+    assert re.search(r"flex-wrap\s*:\s*nowrap", row.group(1)), (
+        "the action row itself must never wrap its groups"
+    )
+
+    slot = re.search(r"\.item-card-action-group\s+\.btn\s*\{([^}]*)\}", css)
+    assert slot, ".item-card-action-group .btn rule missing"
+    body = slot.group(1)
+    assert re.search(r"flex\s*:\s*1\s", body), (
+        "each state control must take an equal flex slot"
+    )
+    assert re.search(r"white-space\s*:\s*nowrap", body), (
+        "control labels must not wrap to a second line"
+    )
+    assert re.search(r"min-width\s*:\s*0", body), (
+        "slots must be allowed to shrink so labels truncate instead"
+    )
