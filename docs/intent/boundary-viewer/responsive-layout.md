@@ -50,9 +50,12 @@ fits, nothing changes; desktop rendering is unaffected.
   flex-child shrink rule — the image containment rule, and the
   small-viewport block that handles the floating action button, the
   mobile tab bar, content bottom clearance, and card-action tap targets.
-- **Templates**: unchanged markup. The base template already declares the
-  device viewport; cards and grids already use fluid Bootstrap classes.
-  The defects were sizing rules, not structure.
+- **Templates**: the base template already declares the device
+  viewport; cards and grids already use fluid Bootstrap classes. The
+  sizing defects were stylesheet rules, not structure. Card image
+  elements carry the loading contract directly: lazy loading and
+  asynchronous decoding attributes on the item-card and quick-view
+  images.
 
 ## Small-viewport rules (≤768px)
 - The mobile tab bar pads for the device safe-area inset, and the
@@ -63,6 +66,23 @@ fits, nothing changes; desktop rendering is unaffected.
   The enlargement is uniform across claim states, preserving the
   equal-footprint invariant of GIV-CLM-020.
 
+## Renderer load at small viewports
+Fitting the viewport is necessary but not sufficient: the page must also
+stay within the renderer process's compositing and decode budget, or a
+mobile browser kills and reloads it ("A problem repeatedly occurred").
+The dominant cost on the items feed is the card's backdrop-filter blur —
+each blurred card is an offscreen compositing pass over the card's full
+area, re-rendered as the page scrolls. The feed renders every unarchived
+item (39 cards on the production catalogue), each carrying a 12–16px
+blur: some 17 million square pixels of composited backdrop. At ≤768px
+cards therefore drop the backdrop filter entirely and fall back to the
+solid surface color; the glass background is already 85% opaque, so the
+visual change is slight, and desktop keeps the full glass treatment.
+Card images are remote photos at full catalogue resolution (1500×1500
+samples measured). They load lazily — only near-viewport images are
+fetched and decoded — and decode asynchronously, so the decode load
+never lands as one burst on the renderer's critical path.
+
 ## Decisions & Alternatives
 | Decision | Alternative Considered | Rationale |
 |----------|------------------------|-----------|
@@ -71,6 +91,7 @@ fits, nothing changes; desktop rendering is unaffected.
 | Enlarge tap targets only inside the ≤768px media query | Enlarge card buttons at all widths | Desktop rendering must not change; pointer precision on desktop makes the compact pills appropriate there. |
 | Keep the card image's fixed-height cover frame | Switch the frame to an aspect-ratio box | The 200px cover frame already yields uniform cards; changing its geometry would alter desktop rendering for no responsive benefit. Containment, not the frame, was the defect. |
 | Break the min-content chain at every flex ancestor — shell content and grid columns, not only inside the card | Cap the card media wrapper; clip overflow on the grid or the page | Min-content propagates through each flex item in turn, so an innermost-only break leaves the column and the shell to re-form the chain around any wide content (a photo's intrinsic width widens the column exactly as a nowrap title widens the card). Clipping hides the symptom while leaving the layout mis-sized, and clips shadows, dropdowns, and modal edges. Ancestor `min-width: 0` is a no-op wherever content already fits, and grid columns take their width from their column classes either way. |
+| Drop the card backdrop filter entirely at ≤768px, with a solid surface-color fallback | Reduce the blur radius; blur only the first screenful of cards | A smaller radius still pays a full offscreen compositing pass per card, and which cards are "first" changes with scrolling and filtering. The count of blurred surfaces, not the radius, is the load driver — zero is the only count that scales as the catalogue grows. The glass background is already 85% opaque, so the solid fallback is visually near-identical. |
 
 ## Edge audit
 Surfaces checked for the same failure class (a flex/grid ancestor that can
@@ -100,7 +121,13 @@ the fix:
 - **Filter panel**: its selects measured as victims (sized by the
   expanded layout), not causes; hiding it did not change the layout
   width.
+- **Renderer load**: the entrance animations are finite one-shot
+  effects and the image-loading shimmer is transient; neither composites
+  continuously. The modal backdrop is a flat dim layer, not a blur. The
+  persistent loads are the card backdrop filters (39 of 39 cards
+  measured blurred at phone width) and full-resolution image decodes;
+  both are addressed by the small-viewport rules above.
 
 ## Requirement traceability
-Behavior is specified by VW-RSP-001 through VW-RSP-005 in
+Behavior is specified by VW-RSP-001 through VW-RSP-006 in
 [the responsive-layout requirements](responsive-layout/responsive-layout-specs.md).
