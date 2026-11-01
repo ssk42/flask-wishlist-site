@@ -14,9 +14,14 @@ shrink below min-content — so truncation ellipsizes the title and the
 cover frame crops the photo instead of either stretching the page. The
 same file carries the small-viewport rules for image containment,
 safe-area clearance under the floating action button and tab bar, and
-44px card action tap targets.
+44px card action tap targets. It also carries the renderer-load budget:
+at phone widths the cards' backdrop-filter blur — an offscreen
+compositing pass per card, 39 cards and ~17M square pixels of backdrop
+measured on the production feed — is removed entirely, and card images
+load lazily with asynchronous decoding, so a mobile browser's renderer
+process is not killed by the feed's compositing and decode load.
 
-# @spec VW-RSP-001, VW-RSP-002, VW-RSP-003, VW-RSP-004, VW-RSP-005
+# @spec VW-RSP-001, VW-RSP-002, VW-RSP-003, VW-RSP-004, VW-RSP-005, VW-RSP-006
 """
 import re
 from pathlib import Path
@@ -27,6 +32,8 @@ from models import db, User, Item
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAIN_CSS = REPO_ROOT / "static" / "css" / "main.css"
 BASE_HTML = REPO_ROOT / "templates" / "base.html"
+ITEM_CARD_HTML = REPO_ROOT / "templates" / "partials" / "_item_card.html"
+QUICK_VIEW_HTML = REPO_ROOT / "templates" / "partials" / "_item_quick_view.html"
 
 LONG_TITLE = (
     "KitchenAid Classic Series 4.5 Quart Tilt-Head Stand Mixer "
@@ -42,6 +49,29 @@ def _rule(css, selector_pattern):
     """Return the declaration block of the first matching rule, or ''."""
     match = re.search(selector_pattern + r"\s*\{([^}]*)\}", css)
     return match.group(1) if match else ""
+
+
+def _media_blocks(css, query):
+    """Yield the contents of each `@media <query>` block (brace-matched)."""
+    needle = "@media " + query
+    start = 0
+    while True:
+        idx = css.find(needle, start)
+        if idx == -1:
+            return
+        brace = css.index("{", idx)
+        depth = 0
+        for pos in range(brace, len(css)):
+            if css[pos] == "{":
+                depth += 1
+            elif css[pos] == "}":
+                depth -= 1
+                if depth == 0:
+                    yield css[brace + 1:pos]
+                    start = pos + 1
+                    break
+        else:
+            return
 
 
 def test_base_template_declares_device_viewport():
@@ -144,3 +174,34 @@ def test_mobile_card_actions_have_44px_tap_targets():
     css = _css()
     actions_btn = _rule(css, r"\.item-card-actions\s+\.btn")
     assert "min-height: 44px" in actions_btn
+
+
+def test_mobile_cards_drop_backdrop_filter():
+    """@spec VW-RSP-006: no per-card compositing pass at phone widths.
+
+    Every card on the feed carries a backdrop-filter blur at desktop
+    widths; measured live, that is 39 blurred surfaces and ~17M square
+    pixels of composited backdrop, which mobile renderer processes do
+    not sustain. At <=768px the card rule must remove the filter and
+    fall back to a solid background.
+    """
+    css = _css()
+    mobile_rules = [
+        _rule(block, r"\.glass-card")
+        for block in _media_blocks(css, "(max-width: 768px)")
+    ]
+    card_mobile = next((r for r in mobile_rules if "backdrop-filter" in r), "")
+    assert "backdrop-filter: none" in card_mobile
+    assert "-webkit-backdrop-filter: none" in card_mobile
+    assert "background:" in card_mobile
+
+
+def test_card_images_load_lazily_and_decode_asynchronously():
+    """@spec VW-RSP-006: card images stay off the renderer's critical path."""
+    card_img = re.search(r"<img[^>]*>", ITEM_CARD_HTML.read_text())
+    assert card_img is not None
+    assert 'loading="lazy"' in card_img.group(0)
+    assert 'decoding="async"' in card_img.group(0)
+    quick_img = re.search(r"<img[^>]*>", QUICK_VIEW_HTML.read_text())
+    assert quick_img is not None
+    assert 'decoding="async"' in quick_img.group(0)
