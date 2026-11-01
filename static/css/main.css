@@ -1157,6 +1157,30 @@ body::after {
     white-space: nowrap;
 }
 
+/* A flex item's automatic minimum size is its content's min-content
+   width, and a truncating (nowrap) title's min-content is its full
+   unwrapped text — which otherwise propagates through the card body and
+   its grid column and widens the whole page on narrow viewports. Card
+   flex children may shrink below min-content, so truncation ellipsizes
+   the title at the card's edge instead (@spec VW-RSP-001, VW-RSP-002) */
+.glass-card > * {
+    min-width: 0;
+}
+
+.glass-card .d-flex > * {
+    min-width: 0;
+}
+
+/* Images stay inside the content column or dialog that contains them
+   (@spec VW-RSP-003) */
+.main-content img {
+    max-width: 100%;
+}
+
+.modal img {
+    max-width: 100%;
+}
+
 /* ============================================
    SIDEBAR NAVIGATION
    ============================================ */
@@ -1401,7 +1425,7 @@ body::after {
 
     .main-content {
         margin-left: 0;
-        padding-bottom: 5rem;
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
     }
 
     .mobile-tabs {
@@ -1413,7 +1437,7 @@ body::after {
         border-top: 1px solid var(--border-color);
         display: flex;
         justify-content: space-around;
-        padding: 0.5rem 0;
+        padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
         z-index: 1000;
     }
 
@@ -1437,8 +1461,23 @@ body::after {
         font-size: 1.25rem;
     }
 
+    /* The FAB clears the tab bar including the safe-area inset, so it
+       never covers the final card's actions (@spec VW-RSP-004) */
     .fab {
-        bottom: 5rem;
+        bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Card actions get a full-size tap target on small viewports,
+       uniformly across claim states (@spec VW-RSP-005) */
+    .item-card-actions .btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .glass-card [data-bs-toggle="collapse"] {
+        min-height: 44px;
     }
 }
 
