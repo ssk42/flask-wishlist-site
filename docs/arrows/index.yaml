@@ -89,7 +89,7 @@ arrows:
   - id: boundary-viewer
     status: GROUP
     parent: null
-    children: [feed-filtering, ui-state]
+    children: [feed-filtering, ui-state, responsive-layout]
   - id: feed-filtering
     status: OK
     parent: boundary-viewer
@@ -106,6 +106,15 @@ arrows:
     sampled: 2026-07-25
     audited: 2026-09-03
     audited_sha: 518cd5ea2d5494410ec9b77b0f29fd9e40426b73
+    next: null
+    drift: null
+  - id: responsive-layout
+    status: OK
+    parent: boundary-viewer
+    detail: boundary-viewer/responsive-layout.md
+    sampled: 2026-11-01
+    audited: null
+    audited_sha: null
     next: null
     drift: null
   - id: boundary-autonomous
