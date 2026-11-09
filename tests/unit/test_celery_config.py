@@ -65,7 +65,12 @@ class TestTaskTimeLimits:
         assert task.soft_time_limit >= 600
 
     def test_small_tasks_keep_default_limits(self):
-        """Event reminders and push are quick; they keep the worker default."""
+        """Event reminders and push are quick; they keep the worker default
+        (celery_app.conf.task_time_limit, 300s) instead of overriding it.
+        Celery 5.7 materializes the configured default onto task objects
+        (time_limit == 300); 5.6 left it as None. Both mean the same thing:
+        no per-task override."""
         from services import celery_tasks
-        assert celery_tasks.send_event_reminders_async.time_limit is None
-        assert celery_tasks.send_push_task.time_limit is None
+        default = celery_app.conf.task_time_limit
+        assert celery_tasks.send_event_reminders_async.time_limit in (None, default)
+        assert celery_tasks.send_push_task.time_limit in (None, default)
