@@ -29,8 +29,11 @@ FROM python:3.11-slim-bookworm
 WORKDIR /app
 
 # Install runtime dependencies only
+# libatomic1: playwright 1.65's bundled Node driver links libatomic.so.1;
+# without it the driver cannot start and `playwright install` fails (exit 127).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
+    libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
