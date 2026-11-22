@@ -30,11 +30,13 @@ def test_card_image_and_title_open_item_link(page, live_server):
     _register_and_login(page, live_server, "Claimer", f"claimer+{suffix}@example.com")
 
     # Full card on /items: clicking the image opens the link in a new tab.
+    # force=True because the stretched link's overlay is the real hit
+    # target — Playwright's hit-target check would wait on the img forever.
     page.goto(f"{live_server}/items")
     card = page.locator(f'.glass-card:has-text("{item_desc}")')
     expect(card).to_be_visible()
     with page.expect_popup() as popup_info:
-        card.locator("img").first.click()
+        card.locator("img").first.click(force=True)
     popup = popup_info.value
     popup.wait_for_load_state()
     assert "example.com" in popup.url
@@ -45,7 +47,7 @@ def test_card_image_and_title_open_item_link(page, live_server):
     dash_card = page.locator(f'.glass-card:has-text("{item_desc}")')
     expect(dash_card).to_be_visible()
     with page.expect_popup() as popup_info:
-        dash_card.locator("h3").first.click()
+        dash_card.locator("h3").first.click(force=True)
     popup = popup_info.value
     popup.wait_for_load_state()
     assert "example.com" in popup.url
