@@ -585,7 +585,7 @@ def archive_item(item_id):
 @bp.route('/unarchive_item/<int:item_id>', methods=['POST'])
 @login_required
 def unarchive_item(item_id):
-    # @spec OWN-ITEM-009, OWN-ITEM-010, OWN-ITEM-011, OWN-ITEM-017
+    # @spec OWN-ITEM-009, OWN-ITEM-010, OWN-ITEM-011, OWN-ITEM-017, OWN-ITEM-021
     """Restore an archived item (owner only)."""
     item = db.session.get(Item, item_id)
     if item is None:
@@ -600,6 +600,9 @@ def unarchive_item(item_id):
 
     try:
         item.archived_at = None
+        # @spec OWN-ITEM-021: stamp the restore so the auto-archive sweep
+        # measures this item's age from now — a fresh 10 months.
+        item.restored_at = datetime.datetime.now(datetime.timezone.utc)
         db.session.commit()
         flash('Item restored.', 'success')
     except Exception as exc:

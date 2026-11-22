@@ -85,6 +85,9 @@ class Item(db.Model):
     price_backoff_until = db.Column(db.DateTime, nullable=True)
     # @spec OWN-ITEM-009, OWN-ITEM-011
     archived_at = db.Column(db.DateTime, nullable=True, index=True)
+    # @spec OWN-ITEM-021: last unarchive time; the auto-archive sweep
+    # measures the item's age from the later of created_at and restored_at.
+    restored_at = db.Column(db.DateTime, nullable=True)
     created_at = _timestamp_column()
     updated_at = _timestamp_column(onupdate=True)
 

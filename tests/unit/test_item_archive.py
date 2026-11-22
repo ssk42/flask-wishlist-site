@@ -65,6 +65,26 @@ class TestArchiveTransitions:
             assert item.status == "Claimed"
             assert item.last_updated_by_id == other_user
 
+    def test_unarchive_records_restored_at(self, app, client, login, user):
+        # @spec OWN-ITEM-021
+        item_id = _make_item(app, "Bring me back", user)
+        client.post(f"/archive_item/{item_id}")
+        client.post(f"/unarchive_item/{item_id}")
+
+        with app.app_context():
+            item = db.session.get(Item, item_id)
+            assert item.archived_at is None
+            assert item.restored_at is not None
+
+    def test_unarchive_active_item_leaves_restored_at_unset(
+            self, app, client, login, user):
+        # @spec OWN-ITEM-017, OWN-ITEM-021
+        active_id = _make_item(app, "Still active", user)
+        client.post(f"/unarchive_item/{active_id}")
+
+        with app.app_context():
+            assert db.session.get(Item, active_id).restored_at is None
+
     def test_rearchive_and_unarchive_active_are_noops(self, app, client, login,
                                                       user):
         # @spec OWN-ITEM-017
