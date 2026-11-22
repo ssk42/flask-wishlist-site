@@ -10,12 +10,15 @@ from services.item_service import archive_stale_items
 NOW = datetime.datetime(2026, 10, 29, 12, 0, tzinfo=datetime.timezone.utc)
 
 
-def _make_item(app, description, owner_id, age_months, event_id=None):
+def _make_item(app, description, owner_id, age_months, event_id=None,
+               restored_months_ago=None):
     with app.app_context():
         item = Item(description=description, user_id=owner_id, event_id=event_id)
         db.session.add(item)
         db.session.commit()
         item.created_at = NOW - relativedelta(months=age_months)
+        if restored_months_ago is not None:
+            item.restored_at = NOW - relativedelta(months=restored_months_ago)
         db.session.commit()
         return item.id
 
@@ -105,6 +108,28 @@ class TestArchiveStaleItems:
             assert "2" in notes[0].message
             assert "Archived" in notes[0].link
             assert Notification.query.filter_by(user_id=other_user).count() == 0
+
+    def test_recently_restored_item_is_not_swept(self, app, user):
+        # @spec OWN-ITEM-019, OWN-ITEM-021
+        item_id = _make_item(app, "Restored keeper", user, age_months=14,
+                             restored_months_ago=1)
+
+        with app.app_context():
+            result = archive_stale_items(now=NOW)
+
+        assert result["archived_count"] == 0
+        assert _archived_at(app, item_id) is None
+
+    def test_item_restored_over_ten_months_ago_is_swept(self, app, user):
+        # @spec OWN-ITEM-019, OWN-ITEM-021
+        item_id = _make_item(app, "Restored then stale again", user,
+                             age_months=24, restored_months_ago=11)
+
+        with app.app_context():
+            result = archive_stale_items(now=NOW)
+
+        assert result["archived_count"] == 1
+        assert _archived_at(app, item_id) is not None
 
     def test_second_run_is_a_no_op(self, app, user):
         # @spec OWN-ITEM-019

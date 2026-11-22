@@ -8,6 +8,7 @@ was more permissive, but the API is the stricter, safer surface).
 import datetime
 
 from dateutil.relativedelta import relativedelta
+from sqlalchemy import func
 
 from models import db, Item
 
@@ -60,14 +61,17 @@ def purchase_item(item, user_id):
 
 
 def archive_stale_items(now=None):
-    # @spec OWN-ITEM-019, OWN-ITEM-020
+    # @spec OWN-ITEM-019, OWN-ITEM-020, OWN-ITEM-021
     """Archive items requested more than 10 months ago.
 
-    An item is stale when it is not already archived and its `created_at`
-    is more than 10 months before `now`. Items tied to an event dated
-    today or later are exempt — they are still in play. Archiving only
-    sets `archived_at`, so status, claims, contributions, and comments
-    survive and the owner can restore the item from the Archived view.
+    An item is stale when it is not already archived and its effective
+    request date — the later of `created_at` and `restored_at` — is more
+    than 10 months before `now`, so an item the owner restored gets a
+    fresh 10 months before the sweep can archive it again. Items tied
+    to an event dated today or later are exempt — they are still in
+    play. Archiving only sets `archived_at`, so status, claims,
+    contributions, and comments survive and the owner can restore the
+    item from the Archived view.
 
     Each affected owner receives a single summary notification. Returns
     {'archived_count': int, 'owner_count': int}.
@@ -81,7 +85,10 @@ def archive_stale_items(now=None):
 
     candidates = (
         Item.query
-        .filter(Item.archived_at.is_(None), Item.created_at < cutoff)
+        .filter(
+            Item.archived_at.is_(None),
+            func.coalesce(Item.restored_at, Item.created_at) < cutoff,
+        )
         .order_by(Item.user_id)
         .all()
     )
