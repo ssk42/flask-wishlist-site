@@ -124,6 +124,24 @@ preserve height. The split-progress block shown while an item is Splitting
 is content, not part of the action area; entering or leaving Splitting
 happens through the split flow, not through a claim swap.
 
+## Card Link Region
+
+An item's link is where a giver goes to buy the gift, so the card treats
+the whole image-and-content region — everything above the actions footer —
+as that link's click target whenever the item has a link. The region is a
+positioned wrapper around the image and content sections, and a
+`stretched-link` anchor to the item URL inside it stretches its click area
+over the wrapper and nothing beyond it: the footer (Claim, Split, quick
+view, comments) sits outside the wrapper and keeps its own behavior. The
+one interactive control inside the region, the price-refresh button, is
+positioned above the stretched link's overlay so its click still submits
+its own form instead of following the link. An item with no link renders
+no stretched link and its region stays inert. The dashboard card applies
+the same pattern to its header-and-title region; it contains no
+interactive controls above its footer, so nothing needs lifting there.
+The footer's external-link icon remains as the explicit, focusable path
+to the same URL. This is specified by GIV-CLM-022.
+
 ## Decisions & Alternatives
 | Decision | Alternative Considered | Rationale |
 |----------|------------------------|-----------|
@@ -134,6 +152,7 @@ happens through the split flow, not through a claim swap.
 | Loading HTMX from jsDelivr and wiring the CSRF header from an external static script that reads a `csrf-token` meta element. | Adding unpkg to the CSP script-src; keeping the inline configRequest listener with a CSP nonce; self-hosting the HTMX file under `/static`. | The production policy deliberately allows only the app origin and jsDelivr; aligning the template to the policy keeps one trusted CDN (already used for Bootstrap) and avoids widening the policy or adding nonce plumbing. Self-hosting remains a valid future option but changes the asset pipeline for one library. |
 | Geometry-neutral claim swaps: reserve the attribution line in all non-owner states, keep the action area to a single row in every state, and floor the action area's height at the tallest single-row variant. | Leave the claimed state's stacked action block and status-only attribution line in place; or fix the whole card to one constant height. | The stacked block and conditional line change card height on every claim/unclaim swap and reflow the grid the user is looking at. A fixed whole-card height fights the grid's row equalization (`h-100`) and wastes vertical space on short cards. Reserving the two state-dependent slots keeps every state's footprint identical with no visual redesign. |
 | Equal-slot non-wrapping action group: the state's controls share the row as equal flex slots and their labels truncate instead of wrapping. | Natural-width pills in a single row. | Natural widths leave the row's height at the mercy of label length: in a narrow column the wider claimed-state labels wrap to a second line inside the pill, growing the action area — and the card — on the swap. Equal slots with truncation make the row's geometry a function of the card, not of the state's wording. |
+| Clickable card link region via a `stretched-link` anchor scoped to a positioned wrapper around the image-and-content region, with the price-refresh control lifted above the overlay. | Wrap the region in a single anchor element; or delegate a click handler for the region in a static script. | A wrapping anchor cannot contain the price-refresh form — interactive content nested in an anchor is invalid and its clicks race the navigation. A scripted click target is not a real link: no open-in-new-tab gestures, no URL preview, and no keyboard reachability of its own. The stretched link keeps genuine anchor semantics while the wrapper scopes its reach to exactly the region above the footer. |
 | All template behavior externalized to static scripts with data-* wiring and document-level delegated listeners. | Add `'unsafe-inline'` or per-response nonces to the production script-src; or leave rarely-clicked handlers inline. | The policy's strictness is deliberate — it is what turned the HTMX outage into a visible failure instead of a silent one — and nonces add plumbing to every response for a handful of handlers. Delegation keeps each behavior defined once, in a file the template scan and code review can see, rather than repeated as attributes across partials, and it keeps working when HTMX swaps a partial in. |
 
 ## Open Questions
