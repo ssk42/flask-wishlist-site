@@ -1,14 +1,22 @@
 {% from 'partials/_macros.html' import priority_badge %}
 <div class="glass-card p-3 h-100 d-flex flex-column" id="dashboard-item-{{ item.id }}">
+    {# @spec GIV-CLM-022: the header-and-title region is the item link's
+       click target; the wrapper scopes the stretched link to this region. #}
+    <div class="position-relative">
     <div class="d-flex justify-content-between align-items-start mb-2">
         <span class="badge bg-light text-dark border">{{ item.user.name }}</span>
         {{ priority_badge(item.priority) }}
     </div>
-    <div class="position-relative">
+    <div>
         <h3 class="h6 fw-bold mb-1 text-truncate" title="{{ item.description }}">{{ item.description }}</h3>
         {% if item.price %}
         <p class="text-muted small mb-2">${{ "%.2f"|format(item.price) }}</p>
         {% endif %}
+    </div>
+    {% if item.link %}
+    <a href="{{ item.link }}" target="_blank" rel="noopener" class="stretched-link"
+        aria-label="Visit link for {{ item.description }}"></a>
+    {% endif %}
     </div>
 
     <div class="mt-auto pt-2 border-top border-light-subtle d-flex justify-content-between align-items-center">

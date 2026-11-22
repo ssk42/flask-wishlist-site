@@ -2,6 +2,9 @@
 {% from 'partials/_macros.html' import priority_badge %}
 <div class="col-md-6 col-lg-4 mb-4">
     <div class="glass-card p-3 h-100 d-flex flex-column stagger-item" id="item-card-{{ item.id }}" style="--stagger-index: {{ stagger_index|default(0) }};">
+        {# @spec GIV-CLM-022: the image-and-content region is the item link's
+           click target; the wrapper scopes the stretched link to this region. #}
+        <div class="position-relative">
         <!-- Image Section -->
         <div class="position-relative mb-3 rounded overflow-hidden" style="height: 200px;">
             <img src="{{ item.image_url or default_image_url }}" class="w-100 h-100 object-fit-cover"
@@ -42,8 +45,10 @@
                 </div>
 
                 {% if item.link %}
+                {# @spec GIV-CLM-022: lifted above the region's stretched link
+                   so the refresh click submits this form instead. #}
                 <form action="{{ url_for('items.refresh_price', item_id=item.id) }}" method="post"
-                    class="d-inline ms-1">
+                    class="d-inline ms-1 position-relative z-2">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <button type="submit" class="btn btn-link p-0 text-muted hover-primary" title="Refresh Price">
                         <i class="bi bi-arrow-clockwise" style="font-size: 0.8rem;"></i>
@@ -79,6 +84,12 @@
                 item.last_updated_by and item.status == 'Claimed' %}Claimed by {{ item.last_updated_by.name }}{%
                 else %}&nbsp;{% endif %}</p>
             {% endif %}
+        </div>
+
+        {% if item.link %}
+        <a href="{{ item.link }}" target="_blank" rel="noopener" class="stretched-link"
+            aria-label="Visit link for {{ item.description }}"></a>
+        {% endif %}
         </div>
 
         <!-- Actions Footer -->
