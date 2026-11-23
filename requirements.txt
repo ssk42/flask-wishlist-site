@@ -21,7 +21,7 @@ numpy==2.4.6
 openpyxl==3.1.5
 packaging==26.3
 pandas==3.1.1
-playwright==1.65.1
+playwright==1.65.2
 playwright-stealth>=2.0.3
 psycopg2-binary>=2.9.13
 pygments==2.21.0
@@ -34,7 +34,7 @@ python-json-logger==4.2.0
 pytz==2026.6
 requests==2.34.2
 six==1.17.0
-sqlalchemy==2.1.8
+sqlalchemy==2.1.9
 typing-extensions==4.16.0
 tzdata==2026.6
 werkzeug==3.1.9
